@@ -1,21 +1,21 @@
-CREATE TABLE schema_migrations (
+CREATE TABLE IF NOT EXISTS schema_migrations (
   version TEXT PRIMARY KEY,
   applied_at TEXT NOT NULL
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
 
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE user_roles (
+CREATE TABLE IF NOT EXISTS user_roles (
   user_id TEXT NOT NULL,
   role_id TEXT NOT NULL,
   PRIMARY KEY (user_id, role_id),
@@ -23,7 +23,7 @@ CREATE TABLE user_roles (
   FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
 
-CREATE TABLE vehicles (
+CREATE TABLE IF NOT EXISTS vehicles (
   id TEXT PRIMARY KEY,
   inventory_number TEXT NOT NULL UNIQUE,
   manufacturer TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE vehicles (
   updated_at TEXT NOT NULL
 );
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
   id TEXT PRIMARY KEY,
   actor_user_id TEXT,
   action TEXT NOT NULL,
@@ -46,4 +46,3 @@ CREATE TABLE audit_logs (
   created_at TEXT NOT NULL,
   details_json TEXT
 );
-

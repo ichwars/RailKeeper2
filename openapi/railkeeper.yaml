@@ -33,6 +33,16 @@ components:
       properties:
         setupRequired:
           type: boolean
+    CreateAdminRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 12
     Session:
       type: object
       required: [username, roles, csrfToken]
@@ -80,6 +90,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SetupStatus"
+  /setup/admin:
+    post:
+      tags: [Setup]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdminRequest"
+      responses:
+        "201":
+          description: Admin user created
+        "400":
+          description: Weak input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Setup already completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /auth/session:
     get:
       tags: [Auth]

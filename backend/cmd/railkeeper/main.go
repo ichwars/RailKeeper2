@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"railkeeper2/backend/internal/api"
+	"railkeeper2/backend/internal/application"
+	"railkeeper2/backend/internal/infrastructure"
 )
 
 const version = "0.1.0-dev"
@@ -21,13 +23,32 @@ func main() {
 	}
 
 	addr := env("RAILKEEPER_ADDR", ":8080")
+	dataDir := env("RAILKEEPER_DATA_DIR", "./data")
+	migrationsDir := env("RAILKEEPER_MIGRATIONS_DIR", "./migrations")
 	staticDir := env("RAILKEEPER_STATIC_DIR", "../../frontend/dist")
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	db, err := infrastructure.OpenSQLite(dataDir)
+	if err != nil {
+		logger.Error("database open failed", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = db.Close() }()
+
+	if err = infrastructure.Migrate(db, migrationsDir); err != nil {
+		logger.Error("database migration failed", "error", err)
+		os.Exit(1)
+	}
+	if err = infrastructure.SeedRoles(db); err != nil {
+		logger.Error("role seed failed", "error", err)
+		os.Exit(1)
+	}
+
 	handler := api.NewRouter(api.Config{
-		Version:   version,
-		StaticDir: staticDir,
-		Logger:    logger,
+		Version:      version,
+		StaticDir:    staticDir,
+		Logger:       logger,
+		SetupService: application.NewSetupService(db),
 	})
 
 	server := &http.Server{

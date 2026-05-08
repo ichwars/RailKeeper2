@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import { Database, Search, ShieldCheck, TrainFront } from "lucide-react";
 import { Shell } from "./Shell";
+import { SetupView } from "../features/setup/SetupView";
+import { api } from "../shared/api";
 
 const modules = [
   {
@@ -25,6 +28,42 @@ const modules = [
 ];
 
 export function App() {
+  const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    api
+      .setupStatus()
+      .then((status) => setSetupRequired(status.setupRequired))
+      .catch((error: Error) => setLoadError(error.message));
+  }, []);
+
+  if (loadError) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card">
+          <h1>RailKeeper2</h1>
+          <p>{loadError}</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (setupRequired === null) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card">
+          <h1>RailKeeper2</h1>
+          <p>Initialisierung wird geprüft...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (setupRequired) {
+    return <SetupView onComplete={() => setSetupRequired(false)} />;
+  }
+
   return (
     <Shell>
       <section className="page-head">
@@ -53,4 +92,3 @@ export function App() {
     </Shell>
   );
 }
-

@@ -16,6 +16,7 @@ frontend/*.tsbuildinfo
 
 # Runtime data
 data/
+backend/data/
 *.db
 *.db-shm
 *.db-wal
