@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Check, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { CheckCircle2, ExternalLink, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { api, MasterDataEntry, MasterDataInput } from "../../shared/api";
 
 type SettingsTab = "general" | "data" | "importExport" | "appearance";
@@ -54,6 +54,22 @@ function metadataSummary(entry: MasterDataEntry) {
   return keys.slice(0, 4).join(", ") + (keys.length > 4 ? " ..." : "");
 }
 
+function metadataString(entry: MasterDataEntry, key: string) {
+  const value = entry.metadata?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function externalLink(entry: MasterDataEntry) {
+  const website = metadataString(entry, "website");
+  if (website) {
+    return { href: website, title: "Website oeffnen" };
+  }
+  if (entry.sourceUrl) {
+    return { href: entry.sourceUrl, title: "Quelle oeffnen" };
+  }
+  return null;
+}
+
 export function SettingsView() {
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>("general");
   const [activeType, setActiveType] = useState(masterDataTypes[0].type);
@@ -62,6 +78,7 @@ export function SettingsView() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [articleSearchEnabled, setArticleSearchEnabled] = useState(true);
   const [design, setDesign] = useState("Light");
@@ -80,25 +97,61 @@ export function SettingsView() {
     );
   }, [items, search]);
 
-  const load = () => {
+  useEffect(() => {
+    let cancelled = false;
+    const typeName = activeType;
+
+    setEditing(null);
+    setForm(emptyForm);
+    setSearch("");
+    setMessage("");
+    setItems([]);
+
+    if (typeName === "symbols") {
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(true);
+    api
+      .masterData(typeName)
+      .then((entries) => {
+        if (!cancelled) {
+          setItems(entries);
+        }
+      })
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setMessage(error.message);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeType]);
+
+  const reloadActiveType = () => {
     if (isSymbolTab) {
       setItems([]);
       return;
     }
 
+    setLoading(true);
+    setMessage("");
     api
       .masterData(activeType)
       .then(setItems)
-      .catch((error: Error) => setMessage(error.message));
+      .catch((error: Error) => setMessage(error.message))
+      .finally(() => setLoading(false));
   };
-
-  useEffect(() => {
-    setEditing(null);
-    setForm(emptyForm);
-    setSearch("");
-    setMessage("");
-    load();
-  }, [activeType]);
 
   const update = (patch: Partial<FormState>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -149,7 +202,7 @@ export function SettingsView() {
       .then((entry) => {
         setEditing(entry);
         setForm(entryToForm(entry));
-        load();
+        reloadActiveType();
       })
       .catch((error: Error) => setMessage(error.message))
       .finally(() => setSaving(false));
@@ -164,7 +217,7 @@ export function SettingsView() {
         if (editing?.key === entry.key) {
           startCreate();
         }
-        load();
+        reloadActiveType();
       })
       .catch((error: Error) => setMessage(error.message));
   };
@@ -248,7 +301,7 @@ export function SettingsView() {
                 <h3>{activeDataType.label} verwalten</h3>
                 <p>{activeDataType.description}</p>
               </div>
-              <button type="button" className="icon-button" onClick={load} aria-label="Aktualisieren" title="Aktualisieren" disabled={isSymbolTab}>
+              <button type="button" className="icon-button" onClick={reloadActiveType} aria-label="Aktualisieren" title="Aktualisieren" disabled={isSymbolTab || loading}>
                 <RefreshCw size={16} />
               </button>
             </div>
@@ -308,29 +361,54 @@ export function SettingsView() {
                         <th>Aktionen</th>
                         <th>Name</th>
                         <th>Metadaten</th>
-                        <th>Website</th>
+                        <th>Link</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredItems.map((entry) => (
-                        <tr key={entry.id}>
-                          <td>
-                            <div className="table-actions">
-                              <button type="button" className="icon-button" onClick={() => startEdit(entry)} aria-label="Bearbeiten" title="Bearbeiten">
-                                <Pencil size={16} />
-                              </button>
-                              <button type="button" className="icon-button danger" onClick={() => deleteEntry(entry)} aria-label="Loeschen" title="Loeschen">
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                          <td><strong>{entry.label}</strong></td>
-                          <td>{metadataSummary(entry)}</td>
-                          <td>{entry.sourceUrl ? <a href={entry.sourceUrl} target="_blank" rel="noreferrer">oeffnen</a> : "-"}</td>
-                          <td>{entry.active ? <span className="status-pill"><Check size={14} /> aktiv</span> : "-"}</td>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={5} className="loading-cell">Daten werden geladen...</td>
                         </tr>
-                      ))}
+                      ) : filteredItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="loading-cell">Keine Eintraege gefunden.</td>
+                        </tr>
+                      ) : (
+                        filteredItems.map((entry) => {
+                          const link = externalLink(entry);
+                          return (
+                            <tr key={entry.id}>
+                              <td>
+                                <div className="table-actions">
+                                  <button type="button" className="icon-button" onClick={() => startEdit(entry)} aria-label="Bearbeiten" title="Bearbeiten">
+                                    <Pencil size={16} />
+                                  </button>
+                                  <button type="button" className="icon-button danger" onClick={() => deleteEntry(entry)} aria-label="Loeschen" title="Loeschen">
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                              <td><strong>{entry.label}</strong></td>
+                              <td>{metadataSummary(entry)}</td>
+                              <td>
+                                {link ? (
+                                  <a className="table-icon-link" href={link.href} target="_blank" rel="noreferrer" aria-label={link.title} title={link.title}>
+                                    <ExternalLink size={16} />
+                                  </a>
+                                ) : "-"}
+                              </td>
+                              <td>
+                                {entry.active ? (
+                                  <CheckCircle2 className="status-icon active" size={17} aria-label="Aktiv" />
+                                ) : (
+                                  <span className="status-icon inactive" aria-label="Inaktiv" title="Inaktiv" />
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>

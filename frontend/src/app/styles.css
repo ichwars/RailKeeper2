@@ -452,22 +452,45 @@ h1 {
   width: 92px;
 }
 
-.master-data-table a {
+.table-icon-link {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 8px;
   color: var(--muted);
-  font-weight: 600;
 }
 
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
+.table-icon-link:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent-strong);
 }
 
-.status-pill svg {
+.status-icon {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  vertical-align: middle;
+}
+
+.status-icon.active {
   color: #22c55e;
+}
+
+.status-icon.inactive::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #b8c2cc;
+  content: "";
+}
+
+.loading-cell {
+  height: 68px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
 }
 
 .settings-tabs {
