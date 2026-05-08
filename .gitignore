@@ -1,0 +1,25 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Go
+backend/bin/
+backend/coverage.out
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.tsbuildinfo
+
+# Runtime data
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env
+.env.local

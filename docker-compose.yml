@@ -1,0 +1,26 @@
+services:
+  railkeeper2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: railkeeper2:local
+    container_name: railkeeper2
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - railkeeper2_data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  railkeeper2_data:
+

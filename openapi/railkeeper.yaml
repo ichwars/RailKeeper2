@@ -1,0 +1,124 @@
+openapi: 3.1.0
+info:
+  title: RailKeeper2 API
+  version: 0.1.0
+servers:
+  - url: /api/v1
+tags:
+  - name: Setup
+  - name: Auth
+  - name: Vehicles
+  - name: MasterData
+  - name: ArticleSearch
+  - name: Backup
+  - name: Audit
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: rk_session
+  schemas:
+    Problem:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+    SetupStatus:
+      type: object
+      required: [setupRequired]
+      properties:
+        setupRequired:
+          type: boolean
+    Session:
+      type: object
+      required: [username, roles, csrfToken]
+      properties:
+        username:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        csrfToken:
+          type: string
+    Vehicle:
+      type: object
+      required: [id, inventoryNumber, manufacturer, name, gauge]
+      properties:
+        id:
+          type: string
+          format: uuid
+        inventoryNumber:
+          type: string
+        manufacturer:
+          type: string
+        articleNumber:
+          type: string
+        name:
+          type: string
+        gauge:
+          type: string
+        epoch:
+          type: string
+        railwayCompany:
+          type: string
+        category:
+          type: string
+paths:
+  /setup/status:
+    get:
+      tags: [Setup]
+      security: []
+      responses:
+        "200":
+          description: Setup state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupStatus"
+  /auth/session:
+    get:
+      tags: [Auth]
+      responses:
+        "200":
+          description: Current session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+  /vehicles:
+    get:
+      tags: [Vehicles]
+      responses:
+        "200":
+          description: Vehicle list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vehicle"
+    post:
+      tags: [Vehicles]
+      responses:
+        "201":
+          description: Vehicle created
+  /article-search:
+    get:
+      tags: [ArticleSearch]
+      parameters:
+        - name: manufacturer
+          in: query
+          schema:
+            type: string
+        - name: articleNumber
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Article search results
