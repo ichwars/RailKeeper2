@@ -395,6 +395,27 @@ h1 {
   width: min(370px, 100%);
 }
 
+.source-note {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 780px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.source-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--accent-strong);
+}
+
 .master-data-create {
   display: grid;
   grid-template-columns: minmax(140px, 1fr) minmax(220px, 1.2fr) minmax(180px, 0.8fr) auto auto;

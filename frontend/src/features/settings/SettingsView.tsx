@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ExternalLink, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { CheckCircle2, ExternalLink, Info, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { api, MasterDataEntry, MasterDataInput } from "../../shared/api";
 
 type SettingsTab = "general" | "data" | "importExport" | "appearance";
@@ -7,6 +7,7 @@ type MasterDataType = {
   type: string;
   label: string;
   description: string;
+  source: string;
 };
 
 const settingsTabs: { id: SettingsTab; label: string }[] = [
@@ -17,13 +18,48 @@ const settingsTabs: { id: SettingsTab; label: string }[] = [
 ];
 
 const masterDataTypes: MasterDataType[] = [
-  { type: "manufacturer", label: "Hersteller", description: "Hersteller mit optionaler Spurweite oder Webseite pflegen." },
-  { type: "vehicle_category", label: "Kategorie", description: "Fahrzeugkategorien fuer die Erfassung verwalten." },
-  { type: "vehicle_gattung", label: "Gattung", description: "Gattungen passend zu den Fahrzeugkategorien pflegen." },
-  { type: "epoch", label: "Epoche", description: "Epochen fuer die Fahrzeugauswahl verwalten." },
-  { type: "gauge", label: "Spur", description: "Spurweiten und Massstaebe fuer Dropdowns pflegen." },
-  { type: "railway_company", label: "Bahngesellschaft", description: "Bahngesellschaften mit Abkuerzungen und Zusatzdaten pflegen." },
-  { type: "symbols", label: "Symbole", description: "Funktionssymbole werden spaeter als eigener Datenblock erfasst." }
+  {
+    type: "manufacturer",
+    label: "Hersteller",
+    description: "Hersteller mit optionaler Spurweite oder Webseite pflegen.",
+    source: "Modellbau-Wiki Hersteller-Kategorien, importiert ueber backend/seeds/master_data.json."
+  },
+  {
+    type: "vehicle_category",
+    label: "Kategorie",
+    description: "Fahrzeugkategorien fuer die Erfassung verwalten.",
+    source: "Kategorie_Gattung.xlsx, importiert ueber backend/seeds/master_data.json."
+  },
+  {
+    type: "vehicle_gattung",
+    label: "Gattung",
+    description: "Gattungen passend zu den Fahrzeugkategorien pflegen.",
+    source: "Kategorie_Gattung.xlsx, importiert ueber backend/seeds/master_data.json."
+  },
+  {
+    type: "epoch",
+    label: "Epoche",
+    description: "Epochen fuer die Fahrzeugauswahl verwalten.",
+    source: "Epoche.txt, importiert ueber backend/seeds/master_data.json."
+  },
+  {
+    type: "gauge",
+    label: "Spur",
+    description: "Spurweiten und Massstaebe fuer Dropdowns pflegen.",
+    source: "Spurweite.xlsx, importiert ueber backend/seeds/master_data.json."
+  },
+  {
+    type: "railway_company",
+    label: "Bahngesellschaft",
+    description: "Bahngesellschaften mit Abkuerzungen und Zusatzdaten pflegen.",
+    source: "Bahngesellschaft.xlsx, importiert ueber backend/seeds/master_data.json."
+  },
+  {
+    type: "symbols",
+    label: "Symbole",
+    description: "Funktionssymbole werden spaeter als eigener Datenblock erfasst.",
+    source: "Noch keine Quelle hinterlegt."
+  }
 ];
 
 const emptyForm = {
@@ -315,6 +351,13 @@ export function SettingsView() {
                   <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Stammdaten durchsuchen" />
                 </label>
 
+                <p className="source-note">
+                  <Info size={15} aria-hidden="true" />
+                  <span>
+                    Quelle: {activeDataType.source} Bearbeitete Werte liegen danach in der lokalen SQLite-Stammdatenbank.
+                  </span>
+                </p>
+
                 <form className="master-data-create" onSubmit={submit}>
                   <strong>{editing ? "Eintrag bearbeiten" : "Neuer Eintrag"}</strong>
                   <input value={form.label} onChange={(event) => update({ label: event.target.value })} placeholder={`${activeDataType.label} eintragen`} required />
@@ -368,7 +411,7 @@ export function SettingsView() {
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan={5} className="loading-cell">Daten werden geladen...</td>
+                          <td colSpan={5} className="loading-cell">Lade aus lokaler Stammdatenbank...</td>
                         </tr>
                       ) : filteredItems.length === 0 ? (
                         <tr>
