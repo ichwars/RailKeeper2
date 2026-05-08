@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -6,6 +6,7 @@ import {
   Image,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   Upload,
@@ -87,6 +88,7 @@ export function VehiclesView() {
   const [options, setOptions] = useState<MasterDataOptions>(emptyOptions);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<Vehicle | null>(null);
   const [mode, setMode] = useState<ModalMode>("create");
@@ -103,29 +105,53 @@ export function VehiclesView() {
     direction: "asc"
   });
 
-  const load = () => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setMessage("");
     api
       .vehicles(query)
       .then(setVehicles)
-      .catch((error: Error) => setMessage(error.message));
-  };
-
-  useEffect(() => {
-    load();
+      .catch((error: Error) => setMessage(error.message))
+      .finally(() => setLoading(false));
   }, [query]);
 
   useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    const reloadVisible = () => {
+      if (!document.hidden) {
+        load();
+      }
+    };
+
+    window.addEventListener("focus", reloadVisible);
+    window.addEventListener("online", reloadVisible);
+    document.addEventListener("visibilitychange", reloadVisible);
+
+    return () => {
+      window.removeEventListener("focus", reloadVisible);
+      window.removeEventListener("online", reloadVisible);
+      document.removeEventListener("visibilitychange", reloadVisible);
+    };
+  }, [load]);
+
+  useEffect(() => {
     Promise.all([
-      api.masterData("manufacturer", true),
-      api.masterData("gauge", true),
-      api.masterData("epoch", true),
-      api.masterData("railway_company", true),
-      api.masterData("vehicle_category", true),
-      api.masterData("vehicle_gattung", true),
+      api.masterDataAll(true),
       api.masterDataRelations("vehicle_category", "vehicle_gattung")
     ])
-      .then(([manufacturers, gauges, epochs, railwayCompanies, categories, gattungen, categoryRelations]) => {
-        setOptions({ manufacturers, gauges, epochs, railwayCompanies, categories, gattungen, categoryRelations });
+      .then(([entriesByType, categoryRelations]) => {
+        setOptions({
+          manufacturers: entriesByType.manufacturer || [],
+          gauges: entriesByType.gauge || [],
+          epochs: entriesByType.epoch || [],
+          railwayCompanies: entriesByType.railway_company || [],
+          categories: entriesByType.vehicle_category || [],
+          gattungen: entriesByType.vehicle_gattung || [],
+          categoryRelations
+        });
       })
       .catch((error: Error) => setMessage(error.message));
   }, []);
@@ -318,10 +344,19 @@ export function VehiclesView() {
       <section className="panel inventory-panel">
         <div className="panel-head inventory-list-head">
           <h2>Fahrzeuge</h2>
-          <span className="count-badge">{vehicles.length}</span>
+          <div className="table-actions">
+            <span className="count-badge">{vehicles.length}</span>
+            <button type="button" className="icon-button" onClick={load} aria-label="Aktualisieren" title="Aktualisieren" disabled={loading}>
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </div>
 
-        {vehicles.length === 0 ? (
+        {message && <p className="form-message">{message}</p>}
+
+        {loading && vehicles.length === 0 ? (
+          <p className="empty-state">Lade Fahrzeuge aus lokaler Datenbank...</p>
+        ) : vehicles.length === 0 ? (
           <p className="empty-state">Noch keine Fahrzeuge vorhanden.</p>
         ) : (
           <div className="table-wrap">

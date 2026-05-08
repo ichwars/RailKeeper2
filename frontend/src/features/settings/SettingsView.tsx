@@ -146,18 +146,12 @@ export function SettingsView() {
   }, [activeType]);
 
   useEffect(() => {
-    if (activeSettingsTab !== "data") return;
+    if (activeSettingsTab !== "data" || isSymbolTab || loadedTypes[activeType]) return;
 
     let cancelled = false;
     const typesToLoad = loadableMasterDataTypes
       .map((item) => item.type)
       .filter((typeName) => !loadedTypes[typeName]);
-
-    if (typesToLoad.length === 0) {
-      return () => {
-        cancelled = true;
-      };
-    }
 
     setMessage("");
     setLoadingTypes((current) => ({
@@ -194,7 +188,7 @@ export function SettingsView() {
     return () => {
       cancelled = true;
     };
-  }, [activeSettingsTab]);
+  }, [activeSettingsTab, activeType]);
 
   const reloadActiveType = () => {
     if (isSymbolTab) {
