@@ -78,6 +78,11 @@ export type MasterDataRelation = {
 
 let csrfToken = "";
 
+type RequestOptions = {
+  retries?: number;
+  timeoutMs?: number;
+};
+
 function readCookie(name: string): string {
   const prefix = `${name}=`;
   const value = document.cookie
@@ -87,14 +92,14 @@ function readCookie(name: string): string {
   return value ? decodeURIComponent(value) : "";
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, options: RequestOptions = {}): Promise<T> {
   const method = (init.method || "GET").toUpperCase();
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 12000);
   const headers: Record<string, string> = {
     ...(!["GET", "HEAD"].includes(method) ? { "Content-Type": "application/json" } : {}),
     ...((init.headers as Record<string, string>) || {})
   };
+  const timeoutMs = options.timeoutMs || 12000;
+  const attempts = 1 + (["GET", "HEAD"].includes(method) ? options.retries || 0 : 0);
 
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
     const token = csrfToken || readCookie("rk_csrf");
@@ -103,38 +108,48 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     }
   }
 
-  try {
-    const response = await fetch(`/api/v1${path}`, {
-      credentials: "include",
-      ...init,
-      headers,
-      signal: init.signal || controller.signal
-    });
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
-    if (!response.ok) {
-      let message = response.statusText;
-      try {
-        const body = await response.json();
-        message = body.message || body.error || message;
-      } catch {
-        // Keep the HTTP status text when the server did not return JSON.
+    try {
+      const response = await fetch(`/api/v1${path}`, {
+        credentials: "include",
+        ...init,
+        headers,
+        signal: init.signal || controller.signal
+      });
+
+      if (!response.ok) {
+        let message = response.statusText;
+        try {
+          const body = await response.json();
+          message = body.message || body.error || message;
+        } catch {
+          // Keep the HTTP status text when the server did not return JSON.
+        }
+        throw new Error(message);
       }
-      throw new Error(message);
-    }
 
-    if (response.status === 204) {
-      return undefined as T;
-    }
+      if (response.status === 204) {
+        return undefined as T;
+      }
 
-    return response.json() as Promise<T>;
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Die Anfrage hat zu lange gedauert. Bitte erneut versuchen.");
+      return response.json() as Promise<T>;
+    } catch (error) {
+      if (attempt + 1 < attempts && error instanceof DOMException && error.name === "AbortError") {
+        continue;
+      }
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new Error("Die Anfrage hat zu lange gedauert. Bitte erneut versuchen.");
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
     }
-    throw error;
-  } finally {
-    window.clearTimeout(timeout);
   }
+
+  throw new Error("Die Anfrage konnte nicht verarbeitet werden.");
 }
 
 export const api = {
@@ -183,7 +198,11 @@ export const api = {
       `/master-data/${encodeURIComponent(type)}${activeOnly ? "?active=true" : ""}`
     ),
   masterDataAll: (activeOnly = false) =>
-    request<Record<string, MasterDataEntry[]>>(`/master-data-all${activeOnly ? "?active=true" : ""}`),
+    request<Record<string, MasterDataEntry[]>>(
+      `/master-data-all${activeOnly ? "?active=true" : ""}`,
+      {},
+      { retries: 1, timeoutMs: 30000 }
+    ),
   createMasterData: (type: string, input: MasterDataInput) =>
     request<MasterDataEntry>(`/master-data/${encodeURIComponent(type)}`, {
       method: "POST",
