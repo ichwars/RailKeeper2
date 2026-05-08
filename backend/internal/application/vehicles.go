@@ -23,6 +23,7 @@ type Vehicle struct {
 	InventoryNumber           string `json:"inventoryNumber"`
 	Manufacturer              string `json:"manufacturer"`
 	ArticleNumber             string `json:"articleNumber,omitempty"`
+	ArticleSourceURL          string `json:"articleSourceUrl,omitempty"`
 	Name                      string `json:"name"`
 	Gauge                     string `json:"gauge"`
 	Epoch                     string `json:"epoch,omitempty"`
@@ -76,6 +77,7 @@ type CreateVehicleInput struct {
 	InventoryNumber           string `json:"inventoryNumber"`
 	Manufacturer              string `json:"manufacturer"`
 	ArticleNumber             string `json:"articleNumber"`
+	ArticleSourceURL          string `json:"articleSourceUrl"`
 	Name                      string `json:"name"`
 	Gauge                     string `json:"gauge"`
 	Epoch                     string `json:"epoch"`
@@ -130,7 +132,7 @@ func NewVehicleService(db *sql.DB) *VehicleService {
 func (s *VehicleService) List(ctx context.Context, query string) ([]Vehicle, error) {
 	like := "%" + strings.TrimSpace(query) + "%"
 	rows, err := s.db.QueryContext(ctx, `
-SELECT id, inventory_number, manufacturer, COALESCE(article_number, ''), name, gauge,
+SELECT id, inventory_number, manufacturer, COALESCE(article_number, ''), COALESCE(article_source_url, ''), name, gauge,
        COALESCE(epoch, ''), COALESCE(railway_company, ''), COALESCE(category, ''), COALESCE(gattung, ''),
        COALESCE(description, ''), COALESCE(series, ''), COALESCE(vehicle_number, ''),
        digital, COALESCE(digital_decoder_number, ''), dt_decoder, COALESCE(dt_decoder_number, ''),
@@ -161,6 +163,7 @@ ORDER BY updated_at DESC, inventory_number ASC
 			&vehicle.InventoryNumber,
 			&vehicle.Manufacturer,
 			&vehicle.ArticleNumber,
+			&vehicle.ArticleSourceURL,
 			&vehicle.Name,
 			&vehicle.Gauge,
 			&vehicle.Epoch,
@@ -223,6 +226,7 @@ func (s *VehicleService) Create(ctx context.Context, input CreateVehicleInput, a
 		InventoryNumber:           input.InventoryNumber,
 		Manufacturer:              input.Manufacturer,
 		ArticleNumber:             input.ArticleNumber,
+		ArticleSourceURL:          input.ArticleSourceURL,
 		Name:                      input.Name,
 		Gauge:                     input.Gauge,
 		Epoch:                     input.Epoch,
@@ -284,7 +288,7 @@ func (s *VehicleService) Create(ctx context.Context, input CreateVehicleInput, a
 
 	if _, err = tx.ExecContext(ctx, `
 INSERT INTO vehicles(
-  id, inventory_number, manufacturer, article_number, name, gauge, epoch, railway_company, category, gattung,
+  id, inventory_number, manufacturer, article_number, article_source_url, name, gauge, epoch, railway_company, category, gattung,
   description, series, vehicle_number, digital, digital_decoder_number, dt_decoder, dt_decoder_number,
   exhibition_ready, abc_brakes, ean, production_period, list_price,
   length_mm, weight_g, color, lettering, load, interior, axles, axle_count, traction_tire_count, wheelset,
@@ -293,8 +297,8 @@ INSERT INTO vehicles(
   sound_generator_enabled, sound_generator_description, smoke_generator_enabled, smoke_generator_description,
   additional_info, qr_code_enabled, created_at, updated_at
 )
-VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`, vehicle.ID, vehicle.InventoryNumber, vehicle.Manufacturer, vehicle.ArticleNumber, vehicle.Name, vehicle.Gauge, vehicle.Epoch, vehicle.RailwayCompany, vehicle.Category, vehicle.Gattung, vehicle.Description, vehicle.Series, vehicle.VehicleNumber, boolToInt(vehicle.Digital), vehicle.DigitalDecoderNumber, boolToInt(vehicle.DTDecoder), vehicle.DTDecoderNumber, boolToInt(vehicle.ExhibitionReady), boolToInt(vehicle.ABCBrakes), vehicle.EAN, vehicle.ProductionPeriod, vehicle.ListPrice, vehicle.LengthMM, vehicle.WeightG, vehicle.Color, vehicle.Lettering, vehicle.Load, vehicle.Interior, vehicle.Axles, vehicle.AxleCount, vehicle.TractionTireCount, vehicle.Wheelset, boolToInt(vehicle.CouplingSame), vehicle.CouplingFront, vehicle.CouplingRear, vehicle.PowerPickup, vehicle.Adapter, boolToInt(vehicle.DriveEnabled), vehicle.DriveDescription, boolToInt(vehicle.HeadlightsEnabled), vehicle.HeadlightsDescription, boolToInt(vehicle.LightingEnabled), vehicle.LightingDescription, boolToInt(vehicle.SoundGeneratorEnabled), vehicle.SoundGeneratorDescription, boolToInt(vehicle.SmokeGeneratorEnabled), vehicle.SmokeGeneratorDescription, vehicle.AdditionalInfo, boolToInt(vehicle.QRCodeEnabled), vehicle.CreatedAt, vehicle.UpdatedAt); err != nil {
+VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`, vehicle.ID, vehicle.InventoryNumber, vehicle.Manufacturer, vehicle.ArticleNumber, vehicle.ArticleSourceURL, vehicle.Name, vehicle.Gauge, vehicle.Epoch, vehicle.RailwayCompany, vehicle.Category, vehicle.Gattung, vehicle.Description, vehicle.Series, vehicle.VehicleNumber, boolToInt(vehicle.Digital), vehicle.DigitalDecoderNumber, boolToInt(vehicle.DTDecoder), vehicle.DTDecoderNumber, boolToInt(vehicle.ExhibitionReady), boolToInt(vehicle.ABCBrakes), vehicle.EAN, vehicle.ProductionPeriod, vehicle.ListPrice, vehicle.LengthMM, vehicle.WeightG, vehicle.Color, vehicle.Lettering, vehicle.Load, vehicle.Interior, vehicle.Axles, vehicle.AxleCount, vehicle.TractionTireCount, vehicle.Wheelset, boolToInt(vehicle.CouplingSame), vehicle.CouplingFront, vehicle.CouplingRear, vehicle.PowerPickup, vehicle.Adapter, boolToInt(vehicle.DriveEnabled), vehicle.DriveDescription, boolToInt(vehicle.HeadlightsEnabled), vehicle.HeadlightsDescription, boolToInt(vehicle.LightingEnabled), vehicle.LightingDescription, boolToInt(vehicle.SoundGeneratorEnabled), vehicle.SoundGeneratorDescription, boolToInt(vehicle.SmokeGeneratorEnabled), vehicle.SmokeGeneratorDescription, vehicle.AdditionalInfo, boolToInt(vehicle.QRCodeEnabled), vehicle.CreatedAt, vehicle.UpdatedAt); err != nil {
 		return nil, fmt.Errorf("insert vehicle: %w", err)
 	}
 
@@ -337,6 +341,7 @@ func (s *VehicleService) Update(ctx context.Context, id string, input CreateVehi
 		InventoryNumber:           input.InventoryNumber,
 		Manufacturer:              input.Manufacturer,
 		ArticleNumber:             input.ArticleNumber,
+		ArticleSourceURL:          input.ArticleSourceURL,
 		Name:                      input.Name,
 		Gauge:                     input.Gauge,
 		Epoch:                     input.Epoch,
@@ -398,7 +403,7 @@ func (s *VehicleService) Update(ctx context.Context, id string, input CreateVehi
 
 	result, err := tx.ExecContext(ctx, `
 UPDATE vehicles
-SET inventory_number=?, manufacturer=?, article_number=?, name=?, gauge=?, epoch=?, railway_company=?, category=?, gattung=?,
+SET inventory_number=?, manufacturer=?, article_number=?, article_source_url=?, name=?, gauge=?, epoch=?, railway_company=?, category=?, gattung=?,
     description=?, series=?, vehicle_number=?, digital=?, digital_decoder_number=?, dt_decoder=?, dt_decoder_number=?,
     exhibition_ready=?, abc_brakes=?, ean=?, production_period=?, list_price=?,
     length_mm=?, weight_g=?, color=?, lettering=?, load=?, interior=?, axles=?, axle_count=?, traction_tire_count=?, wheelset=?,
@@ -407,7 +412,7 @@ SET inventory_number=?, manufacturer=?, article_number=?, name=?, gauge=?, epoch
     sound_generator_enabled=?, sound_generator_description=?, smoke_generator_enabled=?, smoke_generator_description=?,
     additional_info=?, qr_code_enabled=?, updated_at=?
 WHERE id=?
-`, vehicle.InventoryNumber, vehicle.Manufacturer, vehicle.ArticleNumber, vehicle.Name, vehicle.Gauge, vehicle.Epoch, vehicle.RailwayCompany, vehicle.Category, vehicle.Gattung, vehicle.Description, vehicle.Series, vehicle.VehicleNumber, boolToInt(vehicle.Digital), vehicle.DigitalDecoderNumber, boolToInt(vehicle.DTDecoder), vehicle.DTDecoderNumber, boolToInt(vehicle.ExhibitionReady), boolToInt(vehicle.ABCBrakes), vehicle.EAN, vehicle.ProductionPeriod, vehicle.ListPrice, vehicle.LengthMM, vehicle.WeightG, vehicle.Color, vehicle.Lettering, vehicle.Load, vehicle.Interior, vehicle.Axles, vehicle.AxleCount, vehicle.TractionTireCount, vehicle.Wheelset, boolToInt(vehicle.CouplingSame), vehicle.CouplingFront, vehicle.CouplingRear, vehicle.PowerPickup, vehicle.Adapter, boolToInt(vehicle.DriveEnabled), vehicle.DriveDescription, boolToInt(vehicle.HeadlightsEnabled), vehicle.HeadlightsDescription, boolToInt(vehicle.LightingEnabled), vehicle.LightingDescription, boolToInt(vehicle.SoundGeneratorEnabled), vehicle.SoundGeneratorDescription, boolToInt(vehicle.SmokeGeneratorEnabled), vehicle.SmokeGeneratorDescription, vehicle.AdditionalInfo, boolToInt(vehicle.QRCodeEnabled), vehicle.UpdatedAt, vehicle.ID)
+`, vehicle.InventoryNumber, vehicle.Manufacturer, vehicle.ArticleNumber, vehicle.ArticleSourceURL, vehicle.Name, vehicle.Gauge, vehicle.Epoch, vehicle.RailwayCompany, vehicle.Category, vehicle.Gattung, vehicle.Description, vehicle.Series, vehicle.VehicleNumber, boolToInt(vehicle.Digital), vehicle.DigitalDecoderNumber, boolToInt(vehicle.DTDecoder), vehicle.DTDecoderNumber, boolToInt(vehicle.ExhibitionReady), boolToInt(vehicle.ABCBrakes), vehicle.EAN, vehicle.ProductionPeriod, vehicle.ListPrice, vehicle.LengthMM, vehicle.WeightG, vehicle.Color, vehicle.Lettering, vehicle.Load, vehicle.Interior, vehicle.Axles, vehicle.AxleCount, vehicle.TractionTireCount, vehicle.Wheelset, boolToInt(vehicle.CouplingSame), vehicle.CouplingFront, vehicle.CouplingRear, vehicle.PowerPickup, vehicle.Adapter, boolToInt(vehicle.DriveEnabled), vehicle.DriveDescription, boolToInt(vehicle.HeadlightsEnabled), vehicle.HeadlightsDescription, boolToInt(vehicle.LightingEnabled), vehicle.LightingDescription, boolToInt(vehicle.SoundGeneratorEnabled), vehicle.SoundGeneratorDescription, boolToInt(vehicle.SmokeGeneratorEnabled), vehicle.SmokeGeneratorDescription, vehicle.AdditionalInfo, boolToInt(vehicle.QRCodeEnabled), vehicle.UpdatedAt, vehicle.ID)
 	if err != nil {
 		return nil, fmt.Errorf("update vehicle: %w", err)
 	}
@@ -493,7 +498,7 @@ func (s *VehicleService) get(ctx context.Context, id string) (*Vehicle, error) {
 	var smokeGeneratorEnabled int
 	var qrCodeEnabled int
 	if err := s.db.QueryRowContext(ctx, `
-SELECT id, inventory_number, manufacturer, COALESCE(article_number, ''), name, gauge,
+SELECT id, inventory_number, manufacturer, COALESCE(article_number, ''), COALESCE(article_source_url, ''), name, gauge,
        COALESCE(epoch, ''), COALESCE(railway_company, ''), COALESCE(category, ''), COALESCE(gattung, ''),
        COALESCE(description, ''), COALESCE(series, ''), COALESCE(vehicle_number, ''),
        digital, COALESCE(digital_decoder_number, ''), dt_decoder, COALESCE(dt_decoder_number, ''),
@@ -513,6 +518,7 @@ WHERE id=?
 		&vehicle.InventoryNumber,
 		&vehicle.Manufacturer,
 		&vehicle.ArticleNumber,
+		&vehicle.ArticleSourceURL,
 		&vehicle.Name,
 		&vehicle.Gauge,
 		&vehicle.Epoch,
@@ -597,6 +603,7 @@ func cleanVehicleInput(input CreateVehicleInput) CreateVehicleInput {
 	input.InventoryNumber = strings.TrimSpace(input.InventoryNumber)
 	input.Manufacturer = strings.TrimSpace(input.Manufacturer)
 	input.ArticleNumber = strings.TrimSpace(input.ArticleNumber)
+	input.ArticleSourceURL = strings.TrimSpace(input.ArticleSourceURL)
 	input.Name = strings.TrimSpace(input.Name)
 	input.Gauge = strings.TrimSpace(input.Gauge)
 	input.Epoch = strings.TrimSpace(input.Epoch)

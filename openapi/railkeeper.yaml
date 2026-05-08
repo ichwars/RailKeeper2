@@ -76,6 +76,8 @@ components:
           type: string
         articleNumber:
           type: string
+        articleSourceUrl:
+          type: string
         name:
           type: string
         gauge:
@@ -88,6 +90,84 @@ components:
           type: string
         gattung:
           type: string
+        description:
+          type: string
+        series:
+          type: string
+        vehicleNumber:
+          type: string
+        digital:
+          type: boolean
+        digitalDecoderNumber:
+          type: string
+        dtDecoder:
+          type: boolean
+        dtDecoderNumber:
+          type: string
+        exhibitionReady:
+          type: boolean
+        abcBrakes:
+          type: boolean
+        ean:
+          type: string
+        productionPeriod:
+          type: string
+        listPrice:
+          type: string
+        lengthMm:
+          type: string
+        weightG:
+          type: string
+        color:
+          type: string
+        lettering:
+          type: string
+        load:
+          type: string
+        interior:
+          type: string
+        axles:
+          type: string
+        axleCount:
+          type: string
+        tractionTireCount:
+          type: string
+        wheelset:
+          type: string
+        couplingSame:
+          type: boolean
+        couplingFront:
+          type: string
+        couplingRear:
+          type: string
+        powerPickup:
+          type: string
+        adapter:
+          type: string
+        driveEnabled:
+          type: boolean
+        driveDescription:
+          type: string
+        headlightsEnabled:
+          type: boolean
+        headlightsDescription:
+          type: string
+        lightingEnabled:
+          type: boolean
+        lightingDescription:
+          type: string
+        soundGeneratorEnabled:
+          type: boolean
+        soundGeneratorDescription:
+          type: string
+        smokeGeneratorEnabled:
+          type: boolean
+        smokeGeneratorDescription:
+          type: string
+        additionalInfo:
+          type: string
+        qrCodeEnabled:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -104,6 +184,8 @@ components:
           type: string
         articleNumber:
           type: string
+        articleSourceUrl:
+          type: string
         name:
           type: string
         gauge:
@@ -116,6 +198,84 @@ components:
           type: string
         gattung:
           type: string
+        description:
+          type: string
+        series:
+          type: string
+        vehicleNumber:
+          type: string
+        digital:
+          type: boolean
+        digitalDecoderNumber:
+          type: string
+        dtDecoder:
+          type: boolean
+        dtDecoderNumber:
+          type: string
+        exhibitionReady:
+          type: boolean
+        abcBrakes:
+          type: boolean
+        ean:
+          type: string
+        productionPeriod:
+          type: string
+        listPrice:
+          type: string
+        lengthMm:
+          type: string
+        weightG:
+          type: string
+        color:
+          type: string
+        lettering:
+          type: string
+        load:
+          type: string
+        interior:
+          type: string
+        axles:
+          type: string
+        axleCount:
+          type: string
+        tractionTireCount:
+          type: string
+        wheelset:
+          type: string
+        couplingSame:
+          type: boolean
+        couplingFront:
+          type: string
+        couplingRear:
+          type: string
+        powerPickup:
+          type: string
+        adapter:
+          type: string
+        driveEnabled:
+          type: boolean
+        driveDescription:
+          type: string
+        headlightsEnabled:
+          type: boolean
+        headlightsDescription:
+          type: string
+        lightingEnabled:
+          type: boolean
+        lightingDescription:
+          type: string
+        soundGeneratorEnabled:
+          type: boolean
+        soundGeneratorDescription:
+          type: string
+        smokeGeneratorEnabled:
+          type: boolean
+        smokeGeneratorDescription:
+          type: string
+        additionalInfo:
+          type: string
+        qrCodeEnabled:
+          type: boolean
     MasterDataEntry:
       type: object
       required: [id, type, key, label, active, sortOrder, metadata, createdAt, updatedAt]
@@ -176,6 +336,63 @@ components:
           type: string
         sortOrder:
           type: integer
+    ArticleSearchInput:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        articleNumber:
+          type: string
+        name:
+          type: string
+        gauge:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+    ArticleSearchField:
+      type: object
+      required: [label, value, confidence]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        confidence:
+          type: integer
+    ArticleSearchResult:
+      type: object
+      required: [source, title, url, snippet, score, fields]
+      properties:
+        source:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+        snippet:
+          type: string
+        score:
+          type: integer
+        fields:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ArticleSearchField"
+        conflicts:
+          type: array
+          items:
+            type: string
+    ArticleSearchResponse:
+      type: object
+      required: [query, results]
+      properties:
+        query:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleSearchResult"
 paths:
   /setup/status:
     get:
@@ -496,17 +713,30 @@ paths:
                 items:
                   $ref: "#/components/schemas/MasterDataRelation"
   /article-search:
-    get:
+    post:
       tags: [ArticleSearch]
-      parameters:
-        - name: manufacturer
-          in: query
-          schema:
-            type: string
-        - name: articleNumber
-          in: query
-          schema:
-            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleSearchInput"
       responses:
         "200":
           description: Article search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleSearchResponse"
+        "400":
+          description: Invalid search request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "504":
+          description: Search timeout or upstream failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"

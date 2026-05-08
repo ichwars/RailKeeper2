@@ -36,3 +36,31 @@
 - result review before applying data
 - source attribution
 
+## Milestone 6: Inventory Numbers
+
+- configurable number schemes per category
+- collision-safe counters per type
+- manual unique overrides
+- number change history
+
+## Milestone 7: Media And Attachments
+
+- main image and ordered alternative images
+- drag and drop upload
+- normalized filesystem storage
+- thumbnails and backup inclusion
+- PDF and document attachments with safe MIME checks
+- no executable attachments by default
+
+## Milestone 8: Maintenance And Decoder Data
+
+- maintenance history, repairs, upgrades and reminders
+- condition, due dates, costs and notes
+- digital functions F0-F31 with icon-based symbols
+- CV values, CV files, import/export and change history
+
+## Milestone 9: Responsive UI
+
+- light, dark and system design mode
+- desktop, tablet and phone layouts
+- inventory table and card views

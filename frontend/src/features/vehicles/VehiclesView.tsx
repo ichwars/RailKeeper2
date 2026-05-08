@@ -1,22 +1,39 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
 import {
+  AlertTriangle,
+  ArrowUpDown,
+  Check,
   ChevronDown,
   ChevronUp,
+  Download,
+  ExternalLink,
   Eye,
   Image,
   Pencil,
   Plus,
+  Printer,
+  QrCode,
   RefreshCw,
   Search,
   Trash2,
   Upload,
   X
 } from "lucide-react";
-import { api, CreateVehicleRequest, MasterDataEntry, MasterDataRelation, Vehicle } from "../../shared/api";
+import {
+  api,
+  ArticleSearchResponse,
+  ArticleSearchResult,
+  CreateVehicleRequest,
+  MasterDataEntry,
+  MasterDataRelation,
+  Vehicle
+} from "../../shared/api";
 
 const emptyVehicle: CreateVehicleRequest = {
   manufacturer: "",
   articleNumber: "",
+  articleSourceUrl: "",
   name: "",
   gauge: "H0",
   epoch: "",
@@ -68,6 +85,7 @@ type ModalMode = "create" | "view" | "edit";
 type ModalTab = "model" | "control" | "uploads";
 type SortKey = "inventoryNumber" | "manufacturer" | "articleNumber" | "name" | "gauge" | "epoch" | "category";
 type SortDirection = "asc" | "desc";
+type ArticleFieldKey = keyof CreateVehicleRequest;
 
 type MasterDataOptions = {
   manufacturers: MasterDataEntry[];
@@ -103,12 +121,92 @@ const wheelsetOptions = ["2-Leiter DC", "3-Leiter AC", "NEM", "RP25", "Metall", 
 const couplingOptions = ["NEM-Schacht", "Kurzkupplung", "Buegelkupplung", "Klauenkupplung", "Schraubenkupplung"];
 const powerPickupOptions = ["Schiene", "Oberleitung", "Batterie", "Akku"];
 const adapterOptions = ["NEM 651", "NEM 652", "PluX16", "PluX22", "MTC21", "Next18", "8-polig", "21-polig"];
+const articleSearchSettingKey = "railkeeper.articleSearchEnabled";
+
+const articleFieldLabels: Partial<Record<ArticleFieldKey, string>> = {
+  manufacturer: "Hersteller",
+  articleNumber: "Artikel-Nr.",
+  articleSourceUrl: "Quelle",
+  name: "Bezeichnung",
+  gauge: "Spurweite",
+  epoch: "Epoche",
+  railwayCompany: "Bahngesellschaft",
+  category: "Kategorie",
+  gattung: "Gattung",
+  description: "Beschreibung",
+  series: "Baureihe",
+  vehicleNumber: "Fahrzeug-Nr.",
+  digitalDecoderNumber: "Digital / Decoder-Nr.",
+  dtDecoderNumber: "DT / Decoder-Nr.",
+  ean: "EAN-Nr.",
+  productionPeriod: "Produktionszeit",
+  listPrice: "Listenpreis",
+  lengthMm: "Laenge (mm)",
+  weightG: "Gewicht (g)",
+  color: "Farbe",
+  lettering: "Beschriftung",
+  load: "Beladung",
+  interior: "Inneneinrichtung",
+  axles: "Achsen",
+  axleCount: "Anzahl",
+  tractionTireCount: "Anzahl Haftreifen",
+  wheelset: "Radsatz",
+  couplingFront: "Kupplung vorne",
+  couplingRear: "Kupplung hinten",
+  powerPickup: "Stromabnahme",
+  adapter: "Adapter",
+  driveDescription: "Antrieb Beschreibung",
+  headlightsDescription: "Fahrlicht Beschreibung",
+  lightingDescription: "Beleuchtung Beschreibung",
+  soundGeneratorDescription: "Soundgenerator Beschreibung",
+  smokeGeneratorDescription: "Rauchgenerator Beschreibung",
+  additionalInfo: "Zusatzinformationen"
+};
+
+const searchableFieldKeys: ArticleFieldKey[] = [
+  "manufacturer",
+  "articleNumber",
+  "name",
+  "gauge",
+  "epoch",
+  "railwayCompany",
+  "category",
+  "gattung",
+  "description",
+  "series",
+  "vehicleNumber",
+  "digitalDecoderNumber",
+  "dtDecoderNumber",
+  "ean",
+  "productionPeriod",
+  "lengthMm",
+  "weightG",
+  "color",
+  "lettering",
+  "load",
+  "interior",
+  "axles",
+  "axleCount",
+  "tractionTireCount",
+  "wheelset",
+  "couplingFront",
+  "couplingRear",
+  "powerPickup",
+  "adapter",
+  "driveDescription",
+  "headlightsDescription",
+  "lightingDescription",
+  "soundGeneratorDescription",
+  "smokeGeneratorDescription",
+  "additionalInfo"
+];
 
 function vehicleToForm(vehicle: Vehicle): CreateVehicleRequest {
   return {
     inventoryNumber: vehicle.inventoryNumber,
     manufacturer: vehicle.manufacturer,
     articleNumber: vehicle.articleNumber || "",
+    articleSourceUrl: vehicle.articleSourceUrl || "",
     name: vehicle.name,
     gauge: vehicle.gauge,
     epoch: vehicle.epoch || "",
@@ -165,6 +263,44 @@ function valueForSort(vehicle: Vehicle, key: SortKey) {
   return (vehicle[key] || "").toLocaleLowerCase("de-DE");
 }
 
+function articleSearchEnabled() {
+  return window.localStorage.getItem(articleSearchSettingKey) !== "false";
+}
+
+function vehicleFieldsForSearch(form: CreateVehicleRequest) {
+  return Object.fromEntries(
+    searchableFieldKeys
+      .map((key) => [key, String(form[key] || "").trim()])
+      .filter(([, value]) => value)
+  ) as Record<string, string>;
+}
+
+function fieldValue(form: CreateVehicleRequest, key: string) {
+  return String(form[key as ArticleFieldKey] || "").trim();
+}
+
+function isArticleFieldKey(key: string): key is ArticleFieldKey {
+  return key in articleFieldLabels;
+}
+
+function qrPayload(vehicle: Vehicle | null, form: CreateVehicleRequest) {
+  const inventory = form.inventoryNumber || vehicle?.inventoryNumber || "";
+  const name = form.name || vehicle?.name || "";
+  const decoder = form.digitalDecoderNumber || form.dtDecoderNumber || vehicle?.digitalDecoderNumber || vehicle?.dtDecoderNumber || "";
+  const detailURL = vehicle?.id ? `${window.location.origin}/?vehicle=${encodeURIComponent(vehicle.id)}` : window.location.origin;
+  return [
+    `URL: ${detailURL}`,
+    `INV-Nr.: ${inventory}`,
+    `Bezeichnung: ${name}`,
+    `Decodernummer: ${decoder || "-"}`
+  ].join("\n");
+}
+
+function composeBrandedQrSvg(svg: string) {
+  const mark = `<rect x="111" y="111" width="34" height="34" rx="8" fill="#fff"/><image href="/brand/railkeeper-mark.svg" x="115" y="115" width="26" height="26"/>`;
+  return svg.replace("</svg>", `${mark}</svg>`);
+}
+
 function renderStaticOptions(items: string[], emptyLabel = "Bitte waehlen") {
   return (
     <>
@@ -181,12 +317,14 @@ function renderStaticOptions(items: string[], emptyLabel = "Bitte waehlen") {
 function VehicleDetailsFields({
   form,
   readonly,
+  onOpenQr,
   update,
   updateCouplingFront,
   updateCouplingSame
 }: {
   form: CreateVehicleRequest;
   readonly: boolean;
+  onOpenQr: () => void;
   update: (patch: Partial<CreateVehicleRequest>) => void;
   updateCouplingFront: (couplingFront: string) => void;
   updateCouplingSame: (couplingSame: boolean) => void;
@@ -257,8 +395,8 @@ function VehicleDetailsFields({
             {renderStaticOptions(adapterOptions)}
           </select>
         </label>
-        <label className="switch-label">
-          Kupplung (V=H)
+        <label className="switch-label switch-card">
+          <span>Kupplung (V=H)</span>
           <span className="switch-field">
             <input type="checkbox" checked={Boolean(form.couplingSame)} onChange={(event) => updateCouplingSame(event.target.checked)} disabled={readonly} />
             <span />
@@ -335,11 +473,16 @@ function VehicleDetailsFields({
             <input value={form.smokeGeneratorDescription || ""} onChange={(event) => update({ smokeGeneratorDescription: event.target.value })} disabled={readonly || !form.smokeGeneratorEnabled} />
           </span>
         </label>
-        <label className="switch-label">
-          QR-Code erstellen
-          <span className="switch-field">
-            <input type="checkbox" checked={Boolean(form.qrCodeEnabled)} onChange={(event) => update({ qrCodeEnabled: event.target.checked })} disabled={readonly} />
-            <span />
+        <label className="switch-label switch-card qr-switch-card">
+          <span>QR-Code erstellen</span>
+          <span className="qr-card-actions">
+            <span className="switch-field">
+              <input type="checkbox" checked={Boolean(form.qrCodeEnabled)} onChange={(event) => update({ qrCodeEnabled: event.target.checked })} disabled={readonly} />
+              <span />
+            </span>
+            <button type="button" className="icon-button" onClick={onOpenQr} aria-label="QR-Code anzeigen" title="QR-Code anzeigen" disabled={!form.qrCodeEnabled}>
+              <QrCode size={16} />
+            </button>
           </span>
         </label>
       </div>
@@ -349,6 +492,151 @@ function VehicleDetailsFields({
         <textarea value={form.additionalInfo || ""} onChange={(event) => update({ additionalInfo: event.target.value })} disabled={readonly} rows={4} />
       </label>
     </>
+  );
+}
+
+function ArticleSearchDialog({
+  form,
+  loading,
+  response,
+  error,
+  selectedFields,
+  onApply,
+  onClose,
+  onToggleField
+}: {
+  form: CreateVehicleRequest;
+  loading: boolean;
+  response: ArticleSearchResponse | null;
+  error: string;
+  selectedFields: Record<string, boolean>;
+  onApply: (result: ArticleSearchResult) => void;
+  onClose: () => void;
+  onToggleField: (key: string, checked: boolean) => void;
+}) {
+  return (
+    <div className="confirm-layer article-search-layer" role="dialog" aria-modal="true" aria-label="Artikeldaten-Websuche">
+      <section className="article-search-dialog">
+        <div className="panel-head form-head">
+          <div>
+            <h2>Artikeldaten-Websuche</h2>
+            <p>{response?.query ? `Suchanfrage: ${response.query}` : "Webseiten werden als Vorschlaege ausgewertet."}</p>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Schliessen" title="Schliessen">
+            <X size={17} />
+          </button>
+        </div>
+
+        {loading && <p className="empty-state compact">Suche laeuft mit Timeout und ohne automatische Uebernahme...</p>}
+        {error && <p className="form-message">{error}</p>}
+        {!loading && !error && response && response.results.length === 0 && (
+          <p className="empty-state compact">Keine passenden Artikeldaten gefunden.</p>
+        )}
+
+        <div className="article-result-list">
+          {response?.results.map((result, index) => (
+            <article key={`${result.url}-${index}`} className="article-result-card">
+              <header>
+                <div>
+                  <strong>{result.title}</strong>
+                  <span>{result.source} - Trefferwert {result.score}</span>
+                </div>
+                <a className="icon-button" href={result.url} target="_blank" rel="noreferrer" aria-label="Quelle oeffnen" title="Quelle oeffnen">
+                  <ExternalLink size={16} />
+                </a>
+              </header>
+              {result.snippet && <p>{result.snippet}</p>}
+              {result.conflicts && result.conflicts.length > 0 && (
+                <div className="conflict-note">
+                  <AlertTriangle size={15} aria-hidden="true" />
+                  Konflikte mit bestehenden Feldern: {result.conflicts.map((key) => articleFieldLabels[key as ArticleFieldKey] || key).join(", ")}
+                </div>
+              )}
+              <div className="article-field-grid">
+                {Object.entries(result.fields).map(([key, field]) => {
+                  const existing = fieldValue(form, key);
+                  const conflict = existing && existing !== field.value;
+                  return (
+                    <label key={key} className={conflict ? "article-field-row conflict" : "article-field-row"}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedFields[key])}
+                        onChange={(event) => onToggleField(key, event.target.checked)}
+                        disabled={!isArticleFieldKey(key)}
+                      />
+                      <span>
+                        <strong>{articleFieldLabels[key as ArticleFieldKey] || field.label}</strong>
+                        <em>{field.value}</em>
+                        {existing && <small>Aktuell: {existing}</small>}
+                      </span>
+                      {conflict && <AlertTriangle size={15} aria-hidden="true" />}
+                    </label>
+                  );
+                })}
+              </div>
+              <footer>
+                <button type="button" className="primary-button" onClick={() => onApply(result)}>
+                  <Check size={16} aria-hidden="true" />
+                  Ausgewaehlte Felder uebernehmen
+                </button>
+              </footer>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function QrDialog({
+  form,
+  qrSvg,
+  error,
+  onClose,
+  onDownloadPng,
+  onDownloadSvg,
+  onPrint
+}: {
+  form: CreateVehicleRequest;
+  qrSvg: string;
+  error: string;
+  onClose: () => void;
+  onDownloadPng: () => void;
+  onDownloadSvg: () => void;
+  onPrint: () => void;
+}) {
+  return (
+    <div className="confirm-layer qr-layer" role="dialog" aria-modal="true" aria-label="QR-Code">
+      <section className="qr-dialog">
+        <div className="panel-head form-head">
+          <div>
+            <h2>QR-Code</h2>
+            <p>{form.inventoryNumber || "Ohne Inventarnummer"} - {form.name || "Ohne Bezeichnung"}</p>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Schliessen" title="Schliessen">
+            <X size={17} />
+          </button>
+        </div>
+        {error && <p className="form-message">{error}</p>}
+        <button type="button" className="qr-preview-button" onClick={onPrint} disabled={!qrSvg} title="Druckansicht oeffnen">
+          {qrSvg ? <span dangerouslySetInnerHTML={{ __html: qrSvg }} /> : "QR-Code wird erstellt..."}
+        </button>
+        <div className="qr-dialog-actions">
+          <button type="button" className="secondary-button" onClick={onDownloadPng} disabled={!qrSvg}>
+            <Download size={16} aria-hidden="true" />
+            PNG
+          </button>
+          <button type="button" className="secondary-button" onClick={onDownloadSvg} disabled={!qrSvg}>
+            <Download size={16} aria-hidden="true" />
+            SVG
+          </button>
+          <button type="button" className="primary-button" onClick={onPrint} disabled={!qrSvg}>
+            <Printer size={16} aria-hidden="true" />
+            Drucken
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -370,6 +658,14 @@ export function VehiclesView() {
     ownership: false
   });
   const [deleteCandidate, setDeleteCandidate] = useState<Vehicle | null>(null);
+  const [articleSearchOpen, setArticleSearchOpen] = useState(false);
+  const [articleSearchLoading, setArticleSearchLoading] = useState(false);
+  const [articleSearchResponse, setArticleSearchResponse] = useState<ArticleSearchResponse | null>(null);
+  const [articleSearchError, setArticleSearchError] = useState("");
+  const [selectedArticleFields, setSelectedArticleFields] = useState<Record<string, boolean>>({});
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [qrSvg, setQrSvg] = useState("");
+  const [qrError, setQrError] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "inventoryNumber",
     direction: "asc"
@@ -483,6 +779,160 @@ export function VehiclesView() {
     });
   };
 
+  const runArticleSearch = () => {
+    if (!articleSearchEnabled()) {
+      setArticleSearchError("Die Artikeldaten-Websuche ist in den Einstellungen deaktiviert.");
+      setArticleSearchOpen(true);
+      setArticleSearchResponse(null);
+      return;
+    }
+
+    setArticleSearchOpen(true);
+    setArticleSearchLoading(true);
+    setArticleSearchError("");
+    setArticleSearchResponse(null);
+    setSelectedArticleFields({});
+
+    api
+      .articleSearch({
+        manufacturer: form.manufacturer,
+        articleNumber: form.articleNumber,
+        name: form.name,
+        gauge: form.gauge,
+        fields: vehicleFieldsForSearch(form)
+      })
+      .then((response) => {
+        setArticleSearchResponse(response);
+        const initialSelection: Record<string, boolean> = {};
+        response.results[0] && Object.keys(response.results[0].fields).forEach((key) => {
+          initialSelection[key] = !fieldValue(form, key);
+        });
+        setSelectedArticleFields(initialSelection);
+      })
+      .catch((error: Error) => setArticleSearchError(error.message))
+      .finally(() => setArticleSearchLoading(false));
+  };
+
+  const toggleArticleField = (key: string, checked: boolean) => {
+    setSelectedArticleFields((current) => ({ ...current, [key]: checked }));
+  };
+
+  const applyArticleResult = (result: ArticleSearchResult) => {
+    const patch: Partial<CreateVehicleRequest> = {};
+    Object.entries(result.fields).forEach(([key, field]) => {
+      if (!selectedArticleFields[key] || !isArticleFieldKey(key)) return;
+      Object.assign(patch, { [key]: field.value });
+    });
+    update(patch);
+    setArticleSearchOpen(false);
+  };
+
+  const generateQr = async () => {
+    setQrDialogOpen(true);
+    setQrError("");
+    try {
+      const svg = await QRCode.toString(qrPayload(selected, form), {
+        type: "svg",
+        width: 256,
+        margin: 2,
+        color: {
+          dark: "#0b1e26",
+          light: "#ffffff"
+        }
+      });
+      setQrSvg(composeBrandedQrSvg(svg));
+    } catch (error) {
+      setQrError(error instanceof Error ? error.message : "QR-Code konnte nicht erstellt werden.");
+    }
+  };
+
+  const downloadQrSvg = () => {
+    if (!qrSvg) return;
+    const blob = new Blob([qrSvg], { type: "image/svg+xml" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${form.inventoryNumber || "railkeeper"}-qr.svg`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const downloadQrPng = async () => {
+    const dataURL = await QRCode.toDataURL(qrPayload(selected, form), {
+      width: 768,
+      margin: 2,
+      color: {
+        dark: "#0b1e26",
+        light: "#ffffff"
+      }
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = 768;
+    canvas.height = 768;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    const qrImage = new window.Image();
+    const logoImage = new window.Image();
+    await new Promise<void>((resolve, reject) => {
+      qrImage.onload = () => resolve();
+      qrImage.onerror = () => reject(new Error("QR-Code konnte nicht geladen werden."));
+      qrImage.src = dataURL;
+    });
+    context.drawImage(qrImage, 0, 0);
+    await new Promise<void>((resolve) => {
+      logoImage.onload = () => resolve();
+      logoImage.onerror = () => resolve();
+      logoImage.src = "/brand/railkeeper-mark.svg";
+    });
+    context.fillStyle = "#fff";
+    context.roundRect(333, 333, 102, 102, 20);
+    context.fill();
+    if (logoImage.complete) {
+      context.drawImage(logoImage, 345, 345, 78, 78);
+    }
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `${form.inventoryNumber || "railkeeper"}-qr.png`;
+    link.click();
+  };
+
+  const printQr = () => {
+    if (!qrSvg) return;
+    const printWindow = window.open("", "railkeeper-qr-print", "width=520,height=680");
+    if (!printWindow) {
+      setQrError("Druckfenster konnte nicht geoeffnet werden.");
+      return;
+    }
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>RailKeeper QR-Code</title>
+          <style>
+            body { font-family: system-ui, sans-serif; margin: 24px; color: #0b1e26; }
+            .label { width: 62mm; min-height: 38mm; border: 1px solid #d7e1dc; padding: 5mm; display: grid; grid-template-columns: 26mm 1fr; gap: 4mm; align-items: center; }
+            svg { width: 26mm; height: 26mm; }
+            strong { display: block; font-size: 12pt; }
+            span { display: block; font-size: 9pt; margin-top: 2mm; }
+            @media print { body { margin: 0; } .label { border: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            ${qrSvg}
+            <div>
+              <strong>${form.inventoryNumber || ""}</strong>
+              <span>${form.name || ""}</span>
+              <span>${form.digitalDecoderNumber || form.dtDecoderNumber || ""}</span>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   const toggleSort = (key: SortKey) => {
     setSort((current) => ({
       key,
@@ -581,9 +1031,18 @@ export function VehiclesView() {
   };
 
   const sortHeader = (key: SortKey) => (
-    <button type="button" className="sort-button" onClick={() => toggleSort(key)}>
+    <button
+      type="button"
+      className={`sort-button ${sort.key === key ? "active" : ""}`}
+      onClick={() => toggleSort(key)}
+      title={`${sortLabels[key]} sortieren`}
+    >
       {sortLabels[key]}
-      {sort.key === key && (sort.direction === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+      {sort.key === key
+        ? sort.direction === "asc"
+          ? <ChevronUp size={14} />
+          : <ChevronDown size={14} />
+        : <ArrowUpDown size={13} />}
     </button>
   );
 
@@ -727,10 +1186,20 @@ export function VehiclesView() {
                         <div className="article-search-box">
                           <div>
                             <strong>Artikelsuche</strong>
-                            <span>Nach Artikel-Nr. suchen</span>
+                            <span>Nach Hersteller, Artikel-Nr., Bezeichnung und Detaildaten suchen</span>
                           </div>
-                          <button type="button" className="secondary-button" disabled>Artikeldaten suchen</button>
+                          <button type="button" className="secondary-button" onClick={runArticleSearch} disabled={readonly || articleSearchLoading}>
+                            <Search size={15} aria-hidden="true" />
+                            {articleSearchLoading ? "Sucht..." : "Artikeldaten suchen"}
+                          </button>
                         </div>
+
+                        {form.articleSourceUrl && (
+                          <p className="source-note compact-source-note">
+                            <ExternalLink size={15} aria-hidden="true" />
+                            <span>Quelle: {form.articleSourceUrl}</span>
+                          </p>
+                        )}
 
                         <div className="form-row">
                           <label>
@@ -877,6 +1346,7 @@ export function VehiclesView() {
                         <VehicleDetailsFields
                           form={form}
                           readonly={readonly}
+                          onOpenQr={generateQr}
                           update={update}
                           updateCouplingFront={updateCouplingFront}
                           updateCouplingSame={updateCouplingSame}
@@ -948,6 +1418,31 @@ export function VehiclesView() {
             </footer>
           </form>
         </div>
+      )}
+
+      {articleSearchOpen && (
+        <ArticleSearchDialog
+          form={form}
+          loading={articleSearchLoading}
+          response={articleSearchResponse}
+          error={articleSearchError}
+          selectedFields={selectedArticleFields}
+          onApply={applyArticleResult}
+          onClose={() => setArticleSearchOpen(false)}
+          onToggleField={toggleArticleField}
+        />
+      )}
+
+      {qrDialogOpen && (
+        <QrDialog
+          form={form}
+          qrSvg={qrSvg}
+          error={qrError}
+          onClose={() => setQrDialogOpen(false)}
+          onDownloadPng={downloadQrPng}
+          onDownloadSvg={downloadQrSvg}
+          onPrint={printQr}
+        />
       )}
 
       {deleteCandidate && (

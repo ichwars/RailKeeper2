@@ -113,6 +113,7 @@ func TestUpdateVehicleChangesFields(t *testing.T) {
 		InventoryNumber:       created.InventoryNumber,
 		Manufacturer:          "Piko",
 		ArticleNumber:         "52700",
+		ArticleSourceURL:      "https://example.test/article",
 		Name:                  "BR 118 DR",
 		Gauge:                 "H0",
 		Epoch:                 "IV",
@@ -142,7 +143,7 @@ func TestUpdateVehicleChangesFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != "BR 118 DR" || updated.ArticleNumber != "52700" || updated.Epoch != "IV" || updated.Gattung != "Diesellok" {
+	if updated.Name != "BR 118 DR" || updated.ArticleNumber != "52700" || updated.ArticleSourceURL != "https://example.test/article" || updated.Epoch != "IV" || updated.Gattung != "Diesellok" {
 		t.Fatalf("unexpected update: %#v", updated)
 	}
 	if !updated.Digital || !updated.ExhibitionReady || !updated.ABCBrakes || updated.Series != "118" || updated.ListPrice != "129.90" {

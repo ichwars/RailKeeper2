@@ -23,6 +23,7 @@ export type Vehicle = {
   inventoryNumber: string;
   manufacturer: string;
   articleNumber?: string;
+  articleSourceUrl?: string;
   name: string;
   gauge: string;
   epoch?: string;
@@ -76,6 +77,7 @@ export type CreateVehicleRequest = {
   inventoryNumber?: string;
   manufacturer: string;
   articleNumber?: string;
+  articleSourceUrl?: string;
   name: string;
   gauge: string;
   epoch?: string;
@@ -152,6 +154,35 @@ export type MasterDataRelation = {
   childType: string;
   childKey: string;
   sortOrder: number;
+};
+
+export type ArticleSearchInput = {
+  manufacturer?: string;
+  articleNumber?: string;
+  name?: string;
+  gauge?: string;
+  fields?: Record<string, string>;
+};
+
+export type ArticleSearchField = {
+  label: string;
+  value: string;
+  confidence: number;
+};
+
+export type ArticleSearchResult = {
+  source: string;
+  title: string;
+  url: string;
+  snippet: string;
+  score: number;
+  fields: Record<string, ArticleSearchField>;
+  conflicts?: string[];
+};
+
+export type ArticleSearchResponse = {
+  query: string;
+  results: ArticleSearchResult[];
 };
 
 let csrfToken = "";
@@ -271,6 +302,15 @@ export const api = {
     request<void>(`/vehicles/${encodeURIComponent(id)}`, {
       method: "DELETE"
     }),
+  articleSearch: (input: ArticleSearchInput) =>
+    request<ArticleSearchResponse>(
+      "/article-search",
+      {
+        method: "POST",
+        body: JSON.stringify(input)
+      },
+      { timeoutMs: 15000 }
+    ),
   masterData: (type: string, activeOnly = false) =>
     request<MasterDataEntry[]>(
       `/master-data/${encodeURIComponent(type)}${activeOnly ? "?active=true" : ""}`

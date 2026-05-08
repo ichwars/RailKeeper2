@@ -22,6 +22,7 @@ type Config struct {
 	AuthService       *application.AuthService
 	VehicleService    *application.VehicleService
 	MasterDataService *application.MasterDataService
+	ArticleSearch     *application.ArticleSearchService
 	CookieSecure      bool
 }
 
@@ -33,6 +34,7 @@ type App struct {
 	authService       *application.AuthService
 	vehicleService    *application.VehicleService
 	masterDataService *application.MasterDataService
+	articleSearch     *application.ArticleSearchService
 	cookieSecure      bool
 }
 
@@ -48,7 +50,11 @@ func NewRouter(config Config) http.Handler {
 		authService:       config.AuthService,
 		vehicleService:    config.VehicleService,
 		masterDataService: config.MasterDataService,
+		articleSearch:     config.ArticleSearch,
 		cookieSecure:      config.CookieSecure,
+	}
+	if app.articleSearch == nil {
+		app.articleSearch = application.NewArticleSearchService()
 	}
 
 	mux := http.NewServeMux()
@@ -71,6 +77,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/vehicles/{id}", app.require("Viewer", app.getVehicle))
 	mux.HandleFunc("PUT /api/v1/vehicles/{id}", app.require("Editor", app.updateVehicle))
 	mux.HandleFunc("DELETE /api/v1/vehicles/{id}", app.require("Editor", app.deleteVehicle))
+	mux.HandleFunc("POST /api/v1/article-search", app.require("Viewer", app.searchArticleData))
 	mux.HandleFunc("GET /api/v1/master-data-all", app.require("Viewer", app.listAllMasterData))
 	mux.HandleFunc("GET /api/v1/master-data/{type}", app.require("Viewer", app.listMasterData))
 	mux.HandleFunc("POST /api/v1/master-data/{type}", app.require("Editor", app.createMasterData))
@@ -250,6 +257,27 @@ func (a *App) deleteVehicle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *App) searchArticleData(w http.ResponseWriter, r *http.Request) {
+	var input application.ArticleSearchInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+
+	result, err := a.articleSearch.Search(r.Context(), input)
+	if err != nil {
+		if errors.Is(err, application.ErrArticleSearchValidation) {
+			respondProblem(w, http.StatusBadRequest, "article_search_validation", "At least one search field is required.")
+			return
+		}
+		a.logger.Error("article search failed", "error", err)
+		respondProblem(w, http.StatusGatewayTimeout, "article_search_failed", "Artikeldaten-Websuche konnte nicht abgeschlossen werden.")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, result)
 }
 
 func (a *App) listMasterData(w http.ResponseWriter, r *http.Request) {

@@ -63,6 +63,7 @@ const masterDataTypes: MasterDataType[] = [
 ];
 
 const loadableMasterDataTypes = masterDataTypes.filter((item) => item.type !== "symbols");
+const articleSearchSettingKey = "railkeeper.articleSearchEnabled";
 
 const emptyForm = {
   key: "",
@@ -119,7 +120,9 @@ export function SettingsView() {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
-  const [articleSearchEnabled, setArticleSearchEnabled] = useState(true);
+  const [articleSearchEnabled, setArticleSearchEnabled] = useState(
+    () => window.localStorage.getItem(articleSearchSettingKey) !== "false"
+  );
   const [design, setDesign] = useState("Light");
 
   const activeDataType = useMemo(
@@ -209,6 +212,11 @@ export function SettingsView() {
 
   const update = (patch: Partial<FormState>) => {
     setForm((current) => ({ ...current, ...patch }));
+  };
+
+  const updateArticleSearchEnabled = (enabled: boolean) => {
+    setArticleSearchEnabled(enabled);
+    window.localStorage.setItem(articleSearchSettingKey, String(enabled));
   };
 
   const startCreate = () => {
@@ -312,7 +320,7 @@ export function SettingsView() {
               <input
                 type="checkbox"
                 checked={articleSearchEnabled}
-                onChange={(event) => setArticleSearchEnabled(event.target.checked)}
+                onChange={(event) => updateArticleSearchEnabled(event.target.checked)}
               />
               <span />
             </label>
