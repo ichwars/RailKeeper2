@@ -22,10 +22,12 @@ RUN apk add --no-cache ca-certificates tzdata \
 COPY --from=backend-build /out/railkeeper /usr/local/bin/railkeeper
 COPY --from=frontend-build /src/frontend/dist /app/web
 COPY backend/migrations /app/migrations
+COPY backend/seeds /app/seeds
 USER railkeeper
 ENV RAILKEEPER_ADDR=:8080 \
   RAILKEEPER_DATA_DIR=/data \
   RAILKEEPER_MIGRATIONS_DIR=/app/migrations \
+  RAILKEEPER_SEEDS_DIR=/app/seeds \
   RAILKEEPER_STATIC_DIR=/app/web
 VOLUME ["/data"]
 EXPOSE 8080

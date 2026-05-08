@@ -15,23 +15,25 @@ import (
 )
 
 type Config struct {
-	Version        string
-	StaticDir      string
-	Logger         *slog.Logger
-	SetupService   *application.SetupService
-	AuthService    *application.AuthService
-	VehicleService *application.VehicleService
-	CookieSecure   bool
+	Version           string
+	StaticDir         string
+	Logger            *slog.Logger
+	SetupService      *application.SetupService
+	AuthService       *application.AuthService
+	VehicleService    *application.VehicleService
+	MasterDataService *application.MasterDataService
+	CookieSecure      bool
 }
 
 type App struct {
-	version        string
-	staticDir      string
-	logger         *slog.Logger
-	setupService   *application.SetupService
-	authService    *application.AuthService
-	vehicleService *application.VehicleService
-	cookieSecure   bool
+	version           string
+	staticDir         string
+	logger            *slog.Logger
+	setupService      *application.SetupService
+	authService       *application.AuthService
+	vehicleService    *application.VehicleService
+	masterDataService *application.MasterDataService
+	cookieSecure      bool
 }
 
 func NewRouter(config Config) http.Handler {
@@ -39,13 +41,14 @@ func NewRouter(config Config) http.Handler {
 		config.Logger = slog.Default()
 	}
 	app := &App{
-		version:        config.Version,
-		staticDir:      config.StaticDir,
-		logger:         config.Logger,
-		setupService:   config.SetupService,
-		authService:    config.AuthService,
-		vehicleService: config.VehicleService,
-		cookieSecure:   config.CookieSecure,
+		version:           config.Version,
+		staticDir:         config.StaticDir,
+		logger:            config.Logger,
+		setupService:      config.SetupService,
+		authService:       config.AuthService,
+		vehicleService:    config.VehicleService,
+		masterDataService: config.MasterDataService,
+		cookieSecure:      config.CookieSecure,
 	}
 
 	mux := http.NewServeMux()
@@ -68,6 +71,11 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/vehicles/{id}", app.require("Viewer", app.getVehicle))
 	mux.HandleFunc("PUT /api/v1/vehicles/{id}", app.require("Editor", app.updateVehicle))
 	mux.HandleFunc("DELETE /api/v1/vehicles/{id}", app.require("Editor", app.deleteVehicle))
+	mux.HandleFunc("GET /api/v1/master-data/{type}", app.require("Viewer", app.listMasterData))
+	mux.HandleFunc("POST /api/v1/master-data/{type}", app.require("Editor", app.createMasterData))
+	mux.HandleFunc("PUT /api/v1/master-data/{type}/{key}", app.require("Editor", app.updateMasterData))
+	mux.HandleFunc("DELETE /api/v1/master-data/{type}/{key}", app.require("Editor", app.deleteMasterData))
+	mux.HandleFunc("GET /api/v1/master-data-relations", app.require("Viewer", app.listMasterDataRelations))
 
 	mux.Handle("/", staticHandler(app.staticDir))
 
@@ -241,6 +249,96 @@ func (a *App) deleteVehicle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *App) listMasterData(w http.ResponseWriter, r *http.Request) {
+	activeOnly := r.URL.Query().Get("active") == "true"
+	items, err := a.masterDataService.List(r.Context(), r.PathValue("type"), activeOnly)
+	if err != nil {
+		if errors.Is(err, application.ErrMasterDataValidation) {
+			respondProblem(w, http.StatusBadRequest, "master_data_validation", "Master data type is required.")
+			return
+		}
+		a.logger.Error("master data list failed", "error", err)
+		respondProblem(w, http.StatusInternalServerError, "master_data_list_failed", "Could not list master data.")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, items)
+}
+
+func (a *App) createMasterData(w http.ResponseWriter, r *http.Request) {
+	var input application.MasterDataInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+
+	item, err := a.masterDataService.Create(r.Context(), r.PathValue("type"), input)
+	if err != nil {
+		if errors.Is(err, application.ErrMasterDataValidation) {
+			respondProblem(w, http.StatusBadRequest, "master_data_validation", "Label is required.")
+			return
+		}
+		a.logger.Error("master data create failed", "error", err)
+		respondProblem(w, http.StatusInternalServerError, "master_data_create_failed", "Could not create master data.")
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, item)
+}
+
+func (a *App) updateMasterData(w http.ResponseWriter, r *http.Request) {
+	var input application.MasterDataInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+
+	item, err := a.masterDataService.Update(r.Context(), r.PathValue("type"), r.PathValue("key"), input)
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrMasterDataValidation):
+			respondProblem(w, http.StatusBadRequest, "master_data_validation", "Label is required.")
+		case errors.Is(err, application.ErrMasterDataNotFound):
+			respondProblem(w, http.StatusNotFound, "master_data_not_found", "Master data entry not found.")
+		default:
+			a.logger.Error("master data update failed", "error", err)
+			respondProblem(w, http.StatusInternalServerError, "master_data_update_failed", "Could not update master data.")
+		}
+		return
+	}
+
+	respondJSON(w, http.StatusOK, item)
+}
+
+func (a *App) deleteMasterData(w http.ResponseWriter, r *http.Request) {
+	if err := a.masterDataService.Delete(r.Context(), r.PathValue("type"), r.PathValue("key")); err != nil {
+		if errors.Is(err, application.ErrMasterDataNotFound) {
+			respondProblem(w, http.StatusNotFound, "master_data_not_found", "Master data entry not found.")
+			return
+		}
+		a.logger.Error("master data delete failed", "error", err)
+		respondProblem(w, http.StatusInternalServerError, "master_data_delete_failed", "Could not delete master data.")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *App) listMasterDataRelations(w http.ResponseWriter, r *http.Request) {
+	relations, err := a.masterDataService.Relations(
+		r.Context(),
+		r.URL.Query().Get("parentType"),
+		r.URL.Query().Get("childType"),
+	)
+	if err != nil {
+		a.logger.Error("master data relations list failed", "error", err)
+		respondProblem(w, http.StatusInternalServerError, "master_data_relations_failed", "Could not list master data relations.")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, relations)
 }
 
 func respondJSON(w http.ResponseWriter, status int, value any) {

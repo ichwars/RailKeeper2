@@ -28,6 +28,7 @@ export type Vehicle = {
   epoch?: string;
   railwayCompany?: string;
   category?: string;
+  gattung?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -41,6 +42,38 @@ export type CreateVehicleRequest = {
   epoch?: string;
   railwayCompany?: string;
   category?: string;
+  gattung?: string;
+};
+
+export type MasterDataEntry = {
+  id: string;
+  type: string;
+  key: string;
+  label: string;
+  active: boolean;
+  sortOrder: number;
+  sourceUrl?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MasterDataInput = {
+  key?: string;
+  label: string;
+  active?: boolean;
+  sortOrder?: number;
+  sourceUrl?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type MasterDataRelation = {
+  id: string;
+  parentType: string;
+  parentKey: string;
+  childType: string;
+  childKey: string;
+  sortOrder: number;
 };
 
 let csrfToken = "";
@@ -132,5 +165,27 @@ export const api = {
   deleteVehicle: (id: string) =>
     request<void>(`/vehicles/${encodeURIComponent(id)}`, {
       method: "DELETE"
-    })
+    }),
+  masterData: (type: string, activeOnly = false) =>
+    request<MasterDataEntry[]>(
+      `/master-data/${encodeURIComponent(type)}${activeOnly ? "?active=true" : ""}`
+    ),
+  createMasterData: (type: string, input: MasterDataInput) =>
+    request<MasterDataEntry>(`/master-data/${encodeURIComponent(type)}`, {
+      method: "POST",
+      body: JSON.stringify(input)
+    }),
+  updateMasterData: (type: string, key: string, input: MasterDataInput) =>
+    request<MasterDataEntry>(`/master-data/${encodeURIComponent(type)}/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      body: JSON.stringify(input)
+    }),
+  deleteMasterData: (type: string, key: string) =>
+    request<void>(`/master-data/${encodeURIComponent(type)}/${encodeURIComponent(key)}`, {
+      method: "DELETE"
+    }),
+  masterDataRelations: (parentType: string, childType: string) =>
+    request<MasterDataRelation[]>(
+      `/master-data-relations?parentType=${encodeURIComponent(parentType)}&childType=${encodeURIComponent(childType)}`
+    )
 };

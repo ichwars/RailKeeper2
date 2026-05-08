@@ -25,6 +25,7 @@ func main() {
 	addr := env("RAILKEEPER_ADDR", ":8080")
 	dataDir := env("RAILKEEPER_DATA_DIR", "./data")
 	migrationsDir := env("RAILKEEPER_MIGRATIONS_DIR", "./migrations")
+	seedsDir := env("RAILKEEPER_SEEDS_DIR", "./seeds")
 	staticDir := env("RAILKEEPER_STATIC_DIR", "../../frontend/dist")
 	cookieSecure := env("RAILKEEPER_COOKIE_SECURE", "false") == "true"
 
@@ -44,15 +45,20 @@ func main() {
 		logger.Error("role seed failed", "error", err)
 		os.Exit(1)
 	}
+	if err = infrastructure.SeedMasterData(db, seedsDir); err != nil {
+		logger.Error("master data seed failed", "error", err)
+		os.Exit(1)
+	}
 
 	handler := api.NewRouter(api.Config{
-		Version:        version,
-		StaticDir:      staticDir,
-		Logger:         logger,
-		SetupService:   application.NewSetupService(db),
-		AuthService:    application.NewAuthService(db),
-		VehicleService: application.NewVehicleService(db),
-		CookieSecure:   cookieSecure,
+		Version:           version,
+		StaticDir:         staticDir,
+		Logger:            logger,
+		SetupService:      application.NewSetupService(db),
+		AuthService:       application.NewAuthService(db),
+		VehicleService:    application.NewVehicleService(db),
+		MasterDataService: application.NewMasterDataService(db),
+		CookieSecure:      cookieSecure,
 	})
 
 	server := &http.Server{

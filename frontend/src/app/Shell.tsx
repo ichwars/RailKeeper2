@@ -4,10 +4,14 @@ import { Code2, LogOut, Settings, TrainFront } from "lucide-react";
 export function Shell({
   children,
   username,
+  activeView,
+  onNavigate,
   onLogout
 }: {
   children: ReactNode;
   username: string;
+  activeView: "vehicles" | "settings";
+  onNavigate: (view: "vehicles" | "settings") => void;
   onLogout: () => void;
 }) {
   return (
@@ -19,10 +23,16 @@ export function Shell({
         </div>
 
         <nav className="nav" aria-label="Hauptnavigation">
-          <a className="active" href="/">
+          <a className={activeView === "vehicles" ? "active" : ""} href="/" onClick={(event) => {
+            event.preventDefault();
+            onNavigate("vehicles");
+          }}>
             Fahrzeuge
           </a>
-          <a href="/settings">
+          <a className={activeView === "settings" ? "active" : ""} href="/settings" onClick={(event) => {
+            event.preventDefault();
+            onNavigate("settings");
+          }}>
             <Settings size={16} aria-hidden="true" />
             Einstellungen
           </a>

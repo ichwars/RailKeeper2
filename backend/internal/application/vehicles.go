@@ -28,6 +28,7 @@ type Vehicle struct {
 	Epoch           string `json:"epoch,omitempty"`
 	RailwayCompany  string `json:"railwayCompany,omitempty"`
 	Category        string `json:"category,omitempty"`
+	Gattung         string `json:"gattung,omitempty"`
 	CreatedAt       string `json:"createdAt"`
 	UpdatedAt       string `json:"updatedAt"`
 }
@@ -41,6 +42,7 @@ type CreateVehicleInput struct {
 	Epoch           string `json:"epoch"`
 	RailwayCompany  string `json:"railwayCompany"`
 	Category        string `json:"category"`
+	Gattung         string `json:"gattung"`
 }
 
 func NewVehicleService(db *sql.DB) *VehicleService {
@@ -51,7 +53,7 @@ func (s *VehicleService) List(ctx context.Context, query string) ([]Vehicle, err
 	like := "%" + strings.TrimSpace(query) + "%"
 	rows, err := s.db.QueryContext(ctx, `
 SELECT id, inventory_number, manufacturer, COALESCE(article_number, ''), name, gauge,
-       COALESCE(epoch, ''), COALESCE(railway_company, ''), COALESCE(category, ''),
+       COALESCE(epoch, ''), COALESCE(railway_company, ''), COALESCE(category, ''), COALESCE(gattung, ''),
        created_at, updated_at
 FROM vehicles
 WHERE ? = '%%'
@@ -79,6 +81,7 @@ ORDER BY updated_at DESC, inventory_number ASC
 			&vehicle.Epoch,
 			&vehicle.RailwayCompany,
 			&vehicle.Category,
+			&vehicle.Gattung,
 			&vehicle.CreatedAt,
 			&vehicle.UpdatedAt,
 		); err != nil {
@@ -124,6 +127,7 @@ func (s *VehicleService) Create(ctx context.Context, input CreateVehicleInput, a
 		Epoch:           input.Epoch,
 		RailwayCompany:  input.RailwayCompany,
 		Category:        input.Category,
+		Gattung:         input.Gattung,
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
@@ -139,9 +143,9 @@ func (s *VehicleService) Create(ctx context.Context, input CreateVehicleInput, a
 	}()
 
 	if _, err = tx.ExecContext(ctx, `
-INSERT INTO vehicles(id, inventory_number, manufacturer, article_number, name, gauge, epoch, railway_company, category, created_at, updated_at)
-VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`, vehicle.ID, vehicle.InventoryNumber, vehicle.Manufacturer, vehicle.ArticleNumber, vehicle.Name, vehicle.Gauge, vehicle.Epoch, vehicle.RailwayCompany, vehicle.Category, vehicle.CreatedAt, vehicle.UpdatedAt); err != nil {
+INSERT INTO vehicles(id, inventory_number, manufacturer, article_number, name, gauge, epoch, railway_company, category, gattung, created_at, updated_at)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`, vehicle.ID, vehicle.InventoryNumber, vehicle.Manufacturer, vehicle.ArticleNumber, vehicle.Name, vehicle.Gauge, vehicle.Epoch, vehicle.RailwayCompany, vehicle.Category, vehicle.Gattung, vehicle.CreatedAt, vehicle.UpdatedAt); err != nil {
 		return nil, fmt.Errorf("insert vehicle: %w", err)
 	}
 
@@ -189,6 +193,7 @@ func (s *VehicleService) Update(ctx context.Context, id string, input CreateVehi
 		Epoch:           input.Epoch,
 		RailwayCompany:  input.RailwayCompany,
 		Category:        input.Category,
+		Gattung:         input.Gattung,
 		CreatedAt:       existing.CreatedAt,
 		UpdatedAt:       now,
 	}
@@ -205,9 +210,9 @@ func (s *VehicleService) Update(ctx context.Context, id string, input CreateVehi
 
 	result, err := tx.ExecContext(ctx, `
 UPDATE vehicles
-SET inventory_number=?, manufacturer=?, article_number=?, name=?, gauge=?, epoch=?, railway_company=?, category=?, updated_at=?
+SET inventory_number=?, manufacturer=?, article_number=?, name=?, gauge=?, epoch=?, railway_company=?, category=?, gattung=?, updated_at=?
 WHERE id=?
-`, vehicle.InventoryNumber, vehicle.Manufacturer, vehicle.ArticleNumber, vehicle.Name, vehicle.Gauge, vehicle.Epoch, vehicle.RailwayCompany, vehicle.Category, vehicle.UpdatedAt, vehicle.ID)
+`, vehicle.InventoryNumber, vehicle.Manufacturer, vehicle.ArticleNumber, vehicle.Name, vehicle.Gauge, vehicle.Epoch, vehicle.RailwayCompany, vehicle.Category, vehicle.Gattung, vehicle.UpdatedAt, vehicle.ID)
 	if err != nil {
 		return nil, fmt.Errorf("update vehicle: %w", err)
 	}
@@ -283,7 +288,7 @@ func (s *VehicleService) get(ctx context.Context, id string) (*Vehicle, error) {
 	var vehicle Vehicle
 	if err := s.db.QueryRowContext(ctx, `
 SELECT id, inventory_number, manufacturer, COALESCE(article_number, ''), name, gauge,
-       COALESCE(epoch, ''), COALESCE(railway_company, ''), COALESCE(category, ''),
+       COALESCE(epoch, ''), COALESCE(railway_company, ''), COALESCE(category, ''), COALESCE(gattung, ''),
        created_at, updated_at
 FROM vehicles
 WHERE id=?
@@ -297,6 +302,7 @@ WHERE id=?
 		&vehicle.Epoch,
 		&vehicle.RailwayCompany,
 		&vehicle.Category,
+		&vehicle.Gattung,
 		&vehicle.CreatedAt,
 		&vehicle.UpdatedAt,
 	); err != nil {
@@ -330,5 +336,6 @@ func cleanVehicleInput(input CreateVehicleInput) CreateVehicleInput {
 	input.Epoch = strings.TrimSpace(input.Epoch)
 	input.RailwayCompany = strings.TrimSpace(input.RailwayCompany)
 	input.Category = strings.TrimSpace(input.Category)
+	input.Gattung = strings.TrimSpace(input.Gattung)
 	return input
 }

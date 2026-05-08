@@ -2,13 +2,17 @@ import { useEffect, useState } from "react";
 import { Shell } from "./Shell";
 import { LoginView } from "../features/auth/LoginView";
 import { SetupView } from "../features/setup/SetupView";
+import { SettingsView } from "../features/settings/SettingsView";
 import { VehiclesView } from "../features/vehicles/VehiclesView";
 import { api, Session } from "../shared/api";
+
+type AppView = "vehicles" | "settings";
 
 export function App() {
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [loadError, setLoadError] = useState("");
+  const [view, setView] = useState<AppView>("vehicles");
 
   useEffect(() => {
     api
@@ -75,11 +79,13 @@ export function App() {
   return (
     <Shell
       username={session.username}
+      activeView={view}
+      onNavigate={setView}
       onLogout={() => {
         api.logout().finally(() => setSession(null));
       }}
     >
-      <VehiclesView />
+      {view === "settings" ? <SettingsView /> : <VehiclesView />}
     </Shell>
   );
 }

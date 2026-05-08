@@ -86,6 +86,8 @@ components:
           type: string
         category:
           type: string
+        gattung:
+          type: string
         createdAt:
           type: string
           format: date-time
@@ -112,6 +114,68 @@ components:
           type: string
         category:
           type: string
+        gattung:
+          type: string
+    MasterDataEntry:
+      type: object
+      required: [id, type, key, label, active, sortOrder, metadata, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        key:
+          type: string
+        label:
+          type: string
+        active:
+          type: boolean
+        sortOrder:
+          type: integer
+        sourceUrl:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    MasterDataInput:
+      type: object
+      required: [label]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        active:
+          type: boolean
+        sortOrder:
+          type: integer
+        sourceUrl:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+    MasterDataRelation:
+      type: object
+      required: [id, parentType, parentKey, childType, childKey, sortOrder]
+      properties:
+        id:
+          type: string
+        parentType:
+          type: string
+        parentKey:
+          type: string
+        childType:
+          type: string
+        childKey:
+          type: string
+        sortOrder:
+          type: integer
 paths:
   /setup/status:
     get:
@@ -310,6 +374,127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /master-data/{type}:
+    get:
+      tags: [MasterData]
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Master data entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MasterDataEntry"
+    post:
+      tags: [MasterData]
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterDataInput"
+      responses:
+        "201":
+          description: Master data entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterDataEntry"
+  /master-data/{type}/{key}:
+    put:
+      tags: [MasterData]
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MasterDataInput"
+      responses:
+        "200":
+          description: Master data entry updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MasterDataEntry"
+        "404":
+          description: Master data entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags: [MasterData]
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Master data entry deleted
+        "404":
+          description: Master data entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /master-data-relations:
+    get:
+      tags: [MasterData]
+      parameters:
+        - name: parentType
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: childType
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Master data relations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MasterDataRelation"
   /article-search:
     get:
       tags: [ArticleSearch]

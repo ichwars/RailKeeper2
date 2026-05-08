@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
-import { api, CreateVehicleRequest, Vehicle } from "../../shared/api";
+import { api, CreateVehicleRequest, MasterDataEntry, MasterDataRelation, Vehicle } from "../../shared/api";
 
 const emptyVehicle: CreateVehicleRequest = {
   manufacturer: "",
@@ -9,7 +9,8 @@ const emptyVehicle: CreateVehicleRequest = {
   gauge: "H0",
   epoch: "",
   railwayCompany: "",
-  category: ""
+  category: "",
+  gattung: ""
 };
 
 function vehicleToForm(vehicle: Vehicle): CreateVehicleRequest {
@@ -21,13 +22,39 @@ function vehicleToForm(vehicle: Vehicle): CreateVehicleRequest {
     gauge: vehicle.gauge,
     epoch: vehicle.epoch || "",
     railwayCompany: vehicle.railwayCompany || "",
-    category: vehicle.category || ""
+    category: vehicle.category || "",
+    gattung: vehicle.gattung || ""
   };
+}
+
+type MasterDataOptions = {
+  manufacturers: MasterDataEntry[];
+  gauges: MasterDataEntry[];
+  epochs: MasterDataEntry[];
+  railwayCompanies: MasterDataEntry[];
+  categories: MasterDataEntry[];
+  gattungen: MasterDataEntry[];
+  categoryRelations: MasterDataRelation[];
+};
+
+const emptyOptions: MasterDataOptions = {
+  manufacturers: [],
+  gauges: [],
+  epochs: [],
+  railwayCompanies: [],
+  categories: [],
+  gattungen: [],
+  categoryRelations: []
+};
+
+function optionValue(entry: MasterDataEntry) {
+  return entry.label;
 }
 
 export function VehiclesView() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [form, setForm] = useState<CreateVehicleRequest>(emptyVehicle);
+  const [options, setOptions] = useState<MasterDataOptions>(emptyOptions);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -46,9 +73,52 @@ export function VehiclesView() {
     load();
   }, [query]);
 
+  useEffect(() => {
+    Promise.all([
+      api.masterData("manufacturer", true),
+      api.masterData("gauge", true),
+      api.masterData("epoch", true),
+      api.masterData("railway_company", true),
+      api.masterData("vehicle_category", true),
+      api.masterData("vehicle_gattung", true),
+      api.masterDataRelations("vehicle_category", "vehicle_gattung")
+    ])
+      .then(([manufacturers, gauges, epochs, railwayCompanies, categories, gattungen, categoryRelations]) => {
+        setOptions({ manufacturers, gauges, epochs, railwayCompanies, categories, gattungen, categoryRelations });
+      })
+      .catch((error: Error) => setMessage(error.message));
+  }, []);
+
   const update = (patch: Partial<CreateVehicleRequest>) => {
     setForm((current) => ({ ...current, ...patch }));
   };
+
+  const updateCategory = (category: string) => {
+    const categoryKey = options.categories.find((entry) => optionValue(entry) === category)?.key;
+    const allowed = new Set(
+      options.categoryRelations
+        .filter((relation) => relation.parentKey === categoryKey)
+        .map((relation) => relation.childKey)
+    );
+    const currentGattung = options.gattungen.find((entry) => optionValue(entry) === form.gattung);
+    update({
+      category,
+      gattung: currentGattung && allowed.has(currentGattung.key) ? form.gattung : ""
+    });
+  };
+
+  const filteredGattungen = (() => {
+    const categoryKey = options.categories.find((entry) => optionValue(entry) === form.category)?.key;
+    if (!categoryKey) {
+      return options.gattungen;
+    }
+    const allowed = new Set(
+      options.categoryRelations
+        .filter((relation) => relation.parentKey === categoryKey)
+        .map((relation) => relation.childKey)
+    );
+    return options.gattungen.filter((entry) => allowed.has(entry.key));
+  })();
 
   const resetCreate = () => {
     setSelected(null);
@@ -153,7 +223,14 @@ export function VehiclesView() {
 
           <label>
             Hersteller
-            <input value={form.manufacturer} onChange={(event) => update({ manufacturer: event.target.value })} disabled={readonly} required />
+            <select value={form.manufacturer} onChange={(event) => update({ manufacturer: event.target.value })} disabled={readonly} required>
+              <option value="">Bitte waehlen</option>
+              {options.manufacturers.map((entry) => (
+                <option key={entry.key} value={optionValue(entry)}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -164,7 +241,14 @@ export function VehiclesView() {
           <div className="form-row">
             <label>
               Spur
-              <input value={form.gauge} onChange={(event) => update({ gauge: event.target.value })} disabled={readonly} required />
+              <select value={form.gauge} onChange={(event) => update({ gauge: event.target.value })} disabled={readonly} required>
+                <option value="">Bitte waehlen</option>
+                {options.gauges.map((entry) => (
+                  <option key={entry.key} value={optionValue(entry)}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Artikel-Nr.
@@ -175,18 +259,52 @@ export function VehiclesView() {
           <div className="form-row">
             <label>
               Epoche
-              <input value={form.epoch || ""} onChange={(event) => update({ epoch: event.target.value })} disabled={readonly} />
+              <select value={form.epoch || ""} onChange={(event) => update({ epoch: event.target.value })} disabled={readonly}>
+                <option value="">Keine Auswahl</option>
+                {options.epochs.map((entry) => (
+                  <option key={entry.key} value={optionValue(entry)}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Bahngesellschaft
-              <input value={form.railwayCompany || ""} onChange={(event) => update({ railwayCompany: event.target.value })} disabled={readonly} />
+              <select value={form.railwayCompany || ""} onChange={(event) => update({ railwayCompany: event.target.value })} disabled={readonly}>
+                <option value="">Keine Auswahl</option>
+                {options.railwayCompanies.map((entry) => (
+                  <option key={entry.key} value={optionValue(entry)}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
-          <label>
-            Kategorie
-            <input value={form.category || ""} onChange={(event) => update({ category: event.target.value })} disabled={readonly} />
-          </label>
+          <div className="form-row">
+            <label>
+              Kategorie
+              <select value={form.category || ""} onChange={(event) => updateCategory(event.target.value)} disabled={readonly}>
+                <option value="">Keine Auswahl</option>
+                {options.categories.map((entry) => (
+                  <option key={entry.key} value={optionValue(entry)}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Gattung
+              <select value={form.gattung || ""} onChange={(event) => update({ gattung: event.target.value })} disabled={readonly || filteredGattungen.length === 0}>
+                <option value="">Keine Auswahl</option>
+                {filteredGattungen.map((entry) => (
+                  <option key={entry.key} value={optionValue(entry)}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           {selected && readonly && (
             <dl className="detail-meta">

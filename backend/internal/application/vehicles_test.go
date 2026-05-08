@@ -116,11 +116,12 @@ func TestUpdateVehicleChangesFields(t *testing.T) {
 		Name:            "BR 118 DR",
 		Gauge:           "H0",
 		Epoch:           "IV",
+		Gattung:         "Diesellok",
 	}, "actor-1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != "BR 118 DR" || updated.ArticleNumber != "52700" || updated.Epoch != "IV" {
+	if updated.Name != "BR 118 DR" || updated.ArticleNumber != "52700" || updated.Epoch != "IV" || updated.Gattung != "Diesellok" {
 		t.Fatalf("unexpected update: %#v", updated)
 	}
 }
