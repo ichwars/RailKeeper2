@@ -19,6 +19,7 @@ var (
 	ErrInvalidLogin = errors.New("invalid credentials")
 	ErrUnauthorized = errors.New("unauthorized")
 	ErrInvalidCSRF  = errors.New("invalid csrf token")
+	ErrForbidden    = errors.New("forbidden")
 )
 
 type AuthService struct {
@@ -124,6 +125,28 @@ func (s *AuthService) CurrentSession(ctx context.Context, sessionToken string) (
 	}, nil
 }
 
+func (s *AuthService) RequireRole(ctx context.Context, sessionToken, role string) (string, error) {
+	userID, _, err := s.sessionUser(ctx, sessionToken)
+	if err != nil {
+		return "", err
+	}
+
+	if role == "" {
+		return userID, nil
+	}
+
+	roles, err := s.roles(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+
+	if hasRole(roles, role) || hasRole(roles, "Admin") {
+		return userID, nil
+	}
+
+	return "", ErrForbidden
+}
+
 func (s *AuthService) ValidateCSRF(ctx context.Context, sessionToken, csrfToken string) error {
 	_, storedToken, err := s.sessionUser(ctx, sessionToken)
 	if err != nil {
@@ -133,6 +156,18 @@ func (s *AuthService) ValidateCSRF(ctx context.Context, sessionToken, csrfToken 
 		return ErrInvalidCSRF
 	}
 	return nil
+}
+
+func hasRole(roles []string, role string) bool {
+	if role == "Viewer" && len(roles) > 0 {
+		return true
+	}
+	for _, current := range roles {
+		if current == role {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *AuthService) Logout(ctx context.Context, sessionToken string) error {

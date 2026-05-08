@@ -143,18 +143,135 @@ h1 {
   line-height: 1.55;
 }
 
-.module-grid {
+.module-grid,
+.work-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.module-card {
+.work-grid {
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.module-card,
+.panel {
   min-height: 170px;
   padding: 20px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
+}
+
+.panel {
+  min-height: 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.panel-head svg {
+  color: var(--accent);
+}
+
+.vehicle-form {
+  display: grid;
+  gap: 14px;
+}
+
+.vehicle-form label,
+.search-field {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.vehicle-form input,
+.search-field input {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 11px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.vehicle-form input:focus,
+.search-field input:focus {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.list-head {
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.search-field {
+  position: relative;
+  width: min(260px, 100%);
+}
+
+.search-field svg {
+  position: absolute;
+  left: 10px;
+  top: 12px;
+}
+
+.search-field input {
+  padding-left: 34px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+td {
+  font-size: 14px;
+}
+
+.empty-state {
+  margin: 0;
+  color: var(--muted);
 }
 
 .module-card svg {
@@ -267,6 +384,19 @@ h1 {
 @media (max-width: 780px) {
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .work-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row,
+  .list-head {
+    grid-template-columns: 1fr;
+  }
+
+  .list-head {
+    display: grid;
   }
 
   .sidebar {

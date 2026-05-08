@@ -130,3 +130,33 @@ func TestValidateCSRFRejectsWrongToken(t *testing.T) {
 		t.Fatalf("expected invalid csrf error, got %v", err)
 	}
 }
+
+func TestRequireRoleAllowsViewerForAnyAssignedRole(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	setup := application.NewSetupService(db)
+	auth := application.NewAuthService(db)
+
+	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := auth.Login(ctx, application.LoginInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userID, err := auth.RequireRole(ctx, result.SessionToken, "Viewer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if userID == "" {
+		t.Fatal("expected actor user id")
+	}
+}

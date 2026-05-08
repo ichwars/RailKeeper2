@@ -46,12 +46,13 @@ func main() {
 	}
 
 	handler := api.NewRouter(api.Config{
-		Version:      version,
-		StaticDir:    staticDir,
-		Logger:       logger,
-		SetupService: application.NewSetupService(db),
-		AuthService:  application.NewAuthService(db),
-		CookieSecure: cookieSecure,
+		Version:        version,
+		StaticDir:      staticDir,
+		Logger:         logger,
+		SetupService:   application.NewSetupService(db),
+		AuthService:    application.NewAuthService(db),
+		VehicleService: application.NewVehicleService(db),
+		CookieSecure:   cookieSecure,
 	})
 
 	server := &http.Server{

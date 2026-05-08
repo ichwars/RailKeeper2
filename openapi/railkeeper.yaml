@@ -65,11 +65,37 @@ components:
           type: string
     Vehicle:
       type: object
-      required: [id, inventoryNumber, manufacturer, name, gauge]
+      required: [id, inventoryNumber, manufacturer, name, gauge, createdAt, updatedAt]
       properties:
         id:
           type: string
           format: uuid
+        inventoryNumber:
+          type: string
+        manufacturer:
+          type: string
+        articleNumber:
+          type: string
+        name:
+          type: string
+        gauge:
+          type: string
+        epoch:
+          type: string
+        railwayCompany:
+          type: string
+        category:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateVehicleRequest:
+      type: object
+      required: [manufacturer, name, gauge]
+      properties:
         inventoryNumber:
           type: string
         manufacturer:
@@ -171,6 +197,11 @@ paths:
   /vehicles:
     get:
       tags: [Vehicles]
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Vehicle list
@@ -182,9 +213,31 @@ paths:
                   $ref: "#/components/schemas/Vehicle"
     post:
       tags: [Vehicles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVehicleRequest"
       responses:
         "201":
           description: Vehicle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "400":
+          description: Invalid vehicle data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: Insufficient role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /article-search:
     get:
       tags: [ArticleSearch]

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -14,21 +15,23 @@ import (
 )
 
 type Config struct {
-	Version      string
-	StaticDir    string
-	Logger       *slog.Logger
-	SetupService *application.SetupService
-	AuthService  *application.AuthService
-	CookieSecure bool
+	Version        string
+	StaticDir      string
+	Logger         *slog.Logger
+	SetupService   *application.SetupService
+	AuthService    *application.AuthService
+	VehicleService *application.VehicleService
+	CookieSecure   bool
 }
 
 type App struct {
-	version      string
-	staticDir    string
-	logger       *slog.Logger
-	setupService *application.SetupService
-	authService  *application.AuthService
-	cookieSecure bool
+	version        string
+	staticDir      string
+	logger         *slog.Logger
+	setupService   *application.SetupService
+	authService    *application.AuthService
+	vehicleService *application.VehicleService
+	cookieSecure   bool
 }
 
 func NewRouter(config Config) http.Handler {
@@ -36,12 +39,13 @@ func NewRouter(config Config) http.Handler {
 		config.Logger = slog.Default()
 	}
 	app := &App{
-		version:      config.Version,
-		staticDir:    config.StaticDir,
-		logger:       config.Logger,
-		setupService: config.SetupService,
-		authService:  config.AuthService,
-		cookieSecure: config.CookieSecure,
+		version:        config.Version,
+		staticDir:      config.StaticDir,
+		logger:         config.Logger,
+		setupService:   config.SetupService,
+		authService:    config.AuthService,
+		vehicleService: config.VehicleService,
+		cookieSecure:   config.CookieSecure,
 	}
 
 	mux := http.NewServeMux()
@@ -59,6 +63,8 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", app.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", app.logout)
 	mux.HandleFunc("GET /api/v1/auth/session", app.session)
+	mux.HandleFunc("GET /api/v1/vehicles", app.require("Viewer", app.listVehicles))
+	mux.HandleFunc("POST /api/v1/vehicles", app.require("Editor", app.createVehicle))
 
 	mux.Handle("/", staticHandler(app.staticDir))
 
@@ -149,6 +155,38 @@ func (a *App) session(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, session)
 }
 
+func (a *App) listVehicles(w http.ResponseWriter, r *http.Request) {
+	vehicles, err := a.vehicleService.List(r.Context(), r.URL.Query().Get("q"))
+	if err != nil {
+		a.logger.Error("vehicle list failed", "error", err)
+		respondProblem(w, http.StatusInternalServerError, "vehicle_list_failed", "Could not list vehicles.")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, vehicles)
+}
+
+func (a *App) createVehicle(w http.ResponseWriter, r *http.Request) {
+	var input application.CreateVehicleInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+
+	vehicle, err := a.vehicleService.Create(r.Context(), input, actorUserID(r))
+	if err != nil {
+		if errors.Is(err, application.ErrVehicleValidation) {
+			respondProblem(w, http.StatusBadRequest, "vehicle_validation", "Manufacturer, name and gauge are required.")
+			return
+		}
+		a.logger.Error("vehicle create failed", "error", err)
+		respondProblem(w, http.StatusInternalServerError, "vehicle_create_failed", "Could not create vehicle.")
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, vehicle)
+}
+
 func respondJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -197,6 +235,27 @@ func (a *App) csrf(next http.Handler) http.Handler {
 	})
 }
 
+func (a *App) require(role string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := a.authService.RequireRole(r.Context(), cookieValue(r, "rk_session"), role)
+		if err != nil {
+			if errors.Is(err, application.ErrUnauthorized) {
+				respondProblem(w, http.StatusUnauthorized, "unauthorized", "Not logged in.")
+				return
+			}
+			if errors.Is(err, application.ErrForbidden) {
+				respondProblem(w, http.StatusForbidden, "forbidden", "Insufficient role.")
+				return
+			}
+			a.logger.Error("role check failed", "error", err)
+			respondProblem(w, http.StatusInternalServerError, "role_check_failed", "Could not verify permissions.")
+			return
+		}
+
+		next.ServeHTTP(w, withActorUserID(r, userID))
+	}
+}
+
 func setCookie(w http.ResponseWriter, name, value string, maxAge int, httpOnly, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
@@ -227,6 +286,17 @@ func timeUntil(t time.Time) time.Duration {
 		return time.Second
 	}
 	return duration
+}
+
+type actorUserIDKey struct{}
+
+func withActorUserID(r *http.Request, userID string) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), actorUserIDKey{}, userID))
+}
+
+func actorUserID(r *http.Request) string {
+	value, _ := r.Context().Value(actorUserIDKey{}).(string)
+	return value
 }
 
 func staticHandler(staticDir string) http.Handler {

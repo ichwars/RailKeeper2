@@ -18,6 +18,31 @@ export type Session = {
   csrfToken: string;
 };
 
+export type Vehicle = {
+  id: string;
+  inventoryNumber: string;
+  manufacturer: string;
+  articleNumber?: string;
+  name: string;
+  gauge: string;
+  epoch?: string;
+  railwayCompany?: string;
+  category?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateVehicleRequest = {
+  inventoryNumber?: string;
+  manufacturer: string;
+  articleNumber?: string;
+  name: string;
+  gauge: string;
+  epoch?: string;
+  railwayCompany?: string;
+  category?: string;
+};
+
 let csrfToken = "";
 
 function readCookie(name: string): string {
@@ -90,5 +115,12 @@ export const api = {
   logout: async () => {
     await request<void>("/auth/logout", { method: "POST" });
     csrfToken = "";
-  }
+  },
+  vehicles: (query = "") =>
+    request<Vehicle[]>(`/vehicles${query ? `?q=${encodeURIComponent(query)}` : ""}`),
+  createVehicle: (input: CreateVehicleRequest) =>
+    request<Vehicle>("/vehicles", {
+      method: "POST",
+      body: JSON.stringify(input)
+    })
 };
