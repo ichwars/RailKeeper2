@@ -82,6 +82,35 @@ a {
   margin-top: auto;
 }
 
+.user-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.user-block button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.user-block button:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent-strong);
+}
+
 .main {
   width: min(1120px, 100%);
   padding: 44px;
@@ -259,6 +288,15 @@ h1 {
   .repo-link {
     margin-left: auto;
     margin-top: 0;
+  }
+
+  .user-block {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .user-block span {
+    display: none;
   }
 
   .main {

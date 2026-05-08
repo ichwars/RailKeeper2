@@ -1,7 +1,15 @@
 import type { ReactNode } from "react";
-import { Code2, Settings, TrainFront } from "lucide-react";
+import { Code2, LogOut, Settings, TrainFront } from "lucide-react";
 
-export function Shell({ children }: { children: ReactNode }) {
+export function Shell({
+  children,
+  username,
+  onLogout
+}: {
+  children: ReactNode;
+  username: string;
+  onLogout: () => void;
+}) {
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -24,6 +32,13 @@ export function Shell({ children }: { children: ReactNode }) {
           <Code2 size={16} aria-hidden="true" />
           Repository
         </a>
+
+        <div className="user-block">
+          <span>{username}</span>
+          <button onClick={onLogout} title="Abmelden" aria-label="Abmelden">
+            <LogOut size={16} aria-hidden="true" />
+          </button>
+        </div>
       </aside>
 
       <main className="main">{children}</main>

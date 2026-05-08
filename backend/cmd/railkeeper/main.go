@@ -26,6 +26,7 @@ func main() {
 	dataDir := env("RAILKEEPER_DATA_DIR", "./data")
 	migrationsDir := env("RAILKEEPER_MIGRATIONS_DIR", "./migrations")
 	staticDir := env("RAILKEEPER_STATIC_DIR", "../../frontend/dist")
+	cookieSecure := env("RAILKEEPER_COOKIE_SECURE", "false") == "true"
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	db, err := infrastructure.OpenSQLite(dataDir)
@@ -49,6 +50,8 @@ func main() {
 		StaticDir:    staticDir,
 		Logger:       logger,
 		SetupService: application.NewSetupService(db),
+		AuthService:  application.NewAuthService(db),
+		CookieSecure: cookieSecure,
 	})
 
 	server := &http.Server{

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Database, Search, ShieldCheck, TrainFront } from "lucide-react";
 import { Shell } from "./Shell";
+import { LoginView } from "../features/auth/LoginView";
 import { SetupView } from "../features/setup/SetupView";
-import { api } from "../shared/api";
+import { api, Session } from "../shared/api";
 
 const modules = [
   {
@@ -29,12 +30,20 @@ const modules = [
 
 export function App() {
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     api
       .setupStatus()
-      .then((status) => setSetupRequired(status.setupRequired))
+      .then((status) => {
+        setSetupRequired(status.setupRequired);
+        if (status.setupRequired) {
+          setSession(null);
+          return;
+        }
+        api.session().then(setSession).catch(() => setSession(null));
+      })
       .catch((error: Error) => setLoadError(error.message));
   }, []);
 
@@ -54,18 +63,45 @@ export function App() {
       <main className="auth-page">
         <section className="auth-card">
           <h1>RailKeeper2</h1>
-          <p>Initialisierung wird geprüft...</p>
+          <p>Initialisierung wird geprueft...</p>
         </section>
       </main>
     );
   }
 
   if (setupRequired) {
-    return <SetupView onComplete={() => setSetupRequired(false)} />;
+    return (
+      <SetupView
+        onComplete={() => {
+          setSetupRequired(false);
+          setSession(null);
+        }}
+      />
+    );
+  }
+
+  if (session === undefined) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card">
+          <h1>RailKeeper2</h1>
+          <p>Session wird geprueft...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (session === null) {
+    return <LoginView onLogin={setSession} />;
   }
 
   return (
-    <Shell>
+    <Shell
+      username={session.username}
+      onLogout={() => {
+        api.logout().finally(() => setSession(null));
+      }}
+    >
       <section className="page-head">
         <div>
           <p className="eyebrow">RailKeeper2</p>
