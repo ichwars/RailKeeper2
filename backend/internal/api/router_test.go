@@ -37,6 +37,21 @@ func TestConfinedDataPathRejectsEscapes(t *testing.T) {
 	}
 }
 
+func TestAttachmentSafetyHelpers(t *testing.T) {
+	if !isBlockedAttachmentName("setup.exe") {
+		t.Fatalf("expected executable extension to be blocked")
+	}
+	if isBlockedAttachmentName("manual.pdf") {
+		t.Fatalf("expected pdf extension to be allowed")
+	}
+	if !isBlockedAttachmentMime("application/x-msdownload") {
+		t.Fatalf("expected executable mime type to be blocked")
+	}
+	if isBlockedAttachmentMime("application/pdf") {
+		t.Fatalf("expected pdf mime type to be allowed")
+	}
+}
+
 func TestRateLimiterBlocksAfterLimit(t *testing.T) {
 	limiter := newRateLimiter()
 	if !limiter.allow("login", "127.0.0.1", 2, time.Hour) {

@@ -453,6 +453,10 @@ func (a *App) uploadVehicleAttachment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mimeType := http.DetectContentType(data)
+	if isBlockedAttachmentMime(mimeType) {
+		respondProblem(w, http.StatusBadRequest, "attachment_type_blocked", "Ausfuehrbare Dateien sind nicht erlaubt.")
+		return
+	}
 	vehicleID := r.PathValue("id")
 	storageName := fmt.Sprintf("%d-%s", time.Now().UTC().UnixNano(), safeAttachmentFileName(header.Filename))
 	storagePath := filepath.Join("uploads", "vehicles", safePathSegment(vehicleID), storageName)
@@ -600,6 +604,16 @@ func isBlockedAttachmentName(value string) bool {
 	default:
 		return false
 	}
+}
+
+func isBlockedAttachmentMime(value string) bool {
+	value = strings.ToLower(strings.TrimSpace(value))
+	return strings.Contains(value, "x-msdownload") ||
+		strings.Contains(value, "x-dosexec") ||
+		strings.Contains(value, "x-sh") ||
+		strings.Contains(value, "javascript") ||
+		strings.Contains(value, "ecmascript") ||
+		strings.Contains(value, "x-msdos-program")
 }
 
 func isAllowedImageMime(value string) bool {

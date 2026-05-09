@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DragEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
   AlertTriangle,
@@ -997,6 +997,9 @@ export function VehiclesView() {
   const [pendingArticleImages, setPendingArticleImages] = useState<PendingArticleImage[]>([]);
   const [previewImage, setPreviewImage] = useState<PendingArticleImage | null>(null);
   const [attachmentEdits, setAttachmentEdits] = useState<AttachmentEditState>({});
+  const [attachmentUploadCategory, setAttachmentUploadCategory] = useState("");
+  const [attachmentUploadDescription, setAttachmentUploadDescription] = useState("");
+  const [attachmentDragActive, setAttachmentDragActive] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -1312,7 +1315,12 @@ export function VehiclesView() {
     setMessage("");
     (async () => {
       for (const file of uploadFiles) {
-        await api.uploadVehicleAttachment(selected.id, file, attachmentCategoryForFile(file));
+        await api.uploadVehicleAttachment(
+          selected.id,
+          file,
+          attachmentUploadCategory || attachmentCategoryForFile(file),
+          attachmentUploadDescription
+        );
       }
     })()
       .then(() => refreshSelectedVehicle(selected.id))
@@ -1323,6 +1331,21 @@ export function VehiclesView() {
           attachmentInputRef.current.value = "";
         }
       });
+  };
+
+  const onAttachmentDrag = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (readonly || !selected || saving) return;
+    setAttachmentDragActive(event.type === "dragenter" || event.type === "dragover");
+  };
+
+  const onAttachmentDrop = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setAttachmentDragActive(false);
+    if (readonly || !selected || saving) return;
+    uploadAttachment(event.dataTransfer.files);
   };
 
   const updateAttachmentEdit = (attachmentID: string, patch: Partial<{ description: string; category: string }>) => {
@@ -1476,6 +1499,9 @@ export function VehiclesView() {
     setForm(emptyVehicle);
     setPendingArticleImages([]);
     setAttachmentEdits({});
+    setAttachmentUploadCategory("");
+    setAttachmentUploadDescription("");
+    setAttachmentDragActive(false);
     setActiveTab("model");
     setOpenSections({ model: true, details: false, ownership: false });
     setModalOpen(true);
@@ -1489,6 +1515,9 @@ export function VehiclesView() {
     setForm(emptyVehicle);
     setPendingArticleImages([]);
     setAttachmentEdits({});
+    setAttachmentUploadCategory("");
+    setAttachmentUploadDescription("");
+    setAttachmentDragActive(false);
     setPreviewImage(null);
     setMessage("");
   };
@@ -2021,6 +2050,33 @@ export function VehiclesView() {
                         Beilage hochladen
                       </button>
                     </div>
+                    <section
+                      className={`attachment-upload-zone ${attachmentDragActive ? "active" : ""}`}
+                      onDragEnter={onAttachmentDrag}
+                      onDragOver={onAttachmentDrag}
+                      onDragLeave={onAttachmentDrag}
+                      onDrop={onAttachmentDrop}
+                      aria-label="Beilagen per Drag and Drop hochladen"
+                    >
+                      <div>
+                        <strong>Dateien hier ablegen</strong>
+                        <span>PDFs, Bilder, Decoder-Dateien und Dokumente. Ausfuehrbare Dateien werden blockiert.</span>
+                      </div>
+                      <div className="attachment-upload-fields">
+                        <select value={attachmentUploadCategory} onChange={(event) => setAttachmentUploadCategory(event.target.value)} disabled={readonly || !selected || saving}>
+                          <option value="">Kategorie automatisch</option>
+                          {attachmentCategories.map((category) => (
+                            <option key={category} value={category}>{category}</option>
+                          ))}
+                        </select>
+                        <input
+                          value={attachmentUploadDescription}
+                          onChange={(event) => setAttachmentUploadDescription(event.target.value)}
+                          disabled={readonly || !selected || saving}
+                          placeholder="Bemerkung fuer neue Beilagen"
+                        />
+                      </div>
+                    </section>
                     {!selected && <p className="empty-state compact">Beilagen koennen nach dem ersten Speichern hinzugefuegt werden.</p>}
                     {selected && (!selected.attachments || selected.attachments.length === 0) && (
                       <p className="empty-state compact">Noch keine Beilagen hinterlegt.</p>
@@ -2041,7 +2097,7 @@ export function VehiclesView() {
                               </div>
                               <div className="attachment-main">
                                 <strong>{attachment.originalName}</strong>
-                                <span>{attachment.mimeType || "Datei"} - {formatFileSize(attachment.sizeBytes)}</span>
+                                <span>{attachment.category || "Ohne Kategorie"} - {attachment.mimeType || "Datei"} - {formatFileSize(attachment.sizeBytes)}</span>
                                 <div className="attachment-edit-row">
                                   <select value={edit.category} onChange={(event) => updateAttachmentEdit(attachment.id, { category: event.target.value })} disabled={readonly}>
                                     <option value="">Kategorie</option>
