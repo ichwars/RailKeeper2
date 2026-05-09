@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -80,5 +81,43 @@ func TestArticleSearchBoostsManufacturerDomains(t *testing.T) {
 
 	if manufacturerScore <= shopScore {
 		t.Fatalf("manufacturer domain should rank higher, got manufacturer=%d shop=%d", manufacturerScore, shopScore)
+	}
+}
+
+func TestBuildArticleFieldsKeepsProductDataClean(t *testing.T) {
+	input := ArticleSearchInput{Manufacturer: "Piko", ArticleNumber: "47284", Name: "V 180", Gauge: "TT"}
+	fields := buildArticleFields(input,
+		"TT Diesellok V 180 DR III, 4-achsig - PIKO Spielwaren GmbH Webshop",
+		"https://www.piko-shop.de/de/artikel/tt-diesellok-v180-47284.html",
+		`TT Diesellok V 180 kaufen {"mandatory":true,"google_analytics":true}
+		 Neuheit 2021: Druckvariante der B 118 als V180 der DR in Epoche III.
+		 Mass [mm]: 162. Anzahl Haftreifen: 2. Digitale Schnittstelle: NEM 658 PluX16.
+		 Lichtwechsel: Fahrtrichtungsabhaengiger Lichtwechsel weiss / rot.
+		 Soundgenerator: Sound laut Artikeldaten.`,
+	)
+
+	if fields["name"].Value == "TT Diesellok V 180 DR III, 4-achsig - PIKO Spielwaren GmbH Webshop" {
+		t.Fatal("source suffix should not be part of the model name")
+	}
+	if fields["description"].Value == "" || strings.Contains(fields["description"].Value, "google_analytics") {
+		t.Fatalf("unexpected description %q", fields["description"].Value)
+	}
+	if fields["lengthMm"].Value != "162" {
+		t.Fatalf("expected length 162, got %#v", fields["lengthMm"])
+	}
+	if fields["tractionTireCount"].Value != "2" {
+		t.Fatalf("expected two traction tires, got %#v", fields["tractionTireCount"])
+	}
+	if _, ok := fields["digital"]; ok {
+		t.Fatal("digital interface must not be interpreted as digital decoder")
+	}
+	if fields["adapter"].Value != "NEM 658" && fields["adapter"].Value != "PluX16" {
+		t.Fatalf("expected adapter information, got %#v", fields["adapter"])
+	}
+	if fields["headlightsDescription"].Value == "" {
+		t.Fatal("expected light description")
+	}
+	if fields["soundGeneratorDescription"].Value == "" {
+		t.Fatal("expected sound description")
 	}
 }

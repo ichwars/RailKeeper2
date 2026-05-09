@@ -69,8 +69,28 @@ export type Vehicle = {
   smokeGeneratorDescription?: string;
   additionalInfo?: string;
   qrCodeEnabled: boolean;
+  images?: VehicleImage[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type VehicleImage = {
+  id: string;
+  vehicleId: string;
+  url: string;
+  title?: string;
+  sourceUrl?: string;
+  isPrimary: boolean;
+  sortOrder: number;
+  createdAt: string;
+};
+
+export type VehicleImageInput = {
+  url: string;
+  title?: string;
+  sourceUrl?: string;
+  isPrimary?: boolean;
+  sortOrder?: number;
 };
 
 export type CreateVehicleRequest = {
@@ -123,6 +143,7 @@ export type CreateVehicleRequest = {
   smokeGeneratorDescription?: string;
   additionalInfo?: string;
   qrCodeEnabled?: boolean;
+  images?: VehicleImageInput[];
 };
 
 export type MasterDataEntry = {

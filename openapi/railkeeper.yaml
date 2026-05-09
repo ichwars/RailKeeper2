@@ -169,6 +169,10 @@ components:
           type: string
         qrCodeEnabled:
           type: boolean
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/VehicleImage"
         createdAt:
           type: string
           format: date-time
@@ -277,6 +281,45 @@ components:
           type: string
         qrCodeEnabled:
           type: boolean
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/VehicleImageInput"
+    VehicleImage:
+      type: object
+      required: [id, vehicleId, url, isPrimary, sortOrder, createdAt]
+      properties:
+        id:
+          type: string
+        vehicleId:
+          type: string
+        url:
+          type: string
+        title:
+          type: string
+        sourceUrl:
+          type: string
+        isPrimary:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    VehicleImageInput:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        sourceUrl:
+          type: string
+        isPrimary:
+          type: boolean
+        sortOrder:
+          type: integer
     MasterDataEntry:
       type: object
       required: [id, type, key, label, active, sortOrder, metadata, createdAt, updatedAt]

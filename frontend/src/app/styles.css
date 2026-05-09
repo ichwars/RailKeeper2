@@ -815,10 +815,18 @@ h1 {
 
 .details-coupling-row .switch-card {
   min-height: 40px;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   gap: 4px !important;
-  padding: 6px 10px;
+  padding: 0 10px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.details-coupling-row .switch-card > span:first-child {
+  align-self: start;
+  min-height: 18px;
+  line-height: 18px;
 }
 
 .qr-switch-card {
@@ -958,12 +966,17 @@ th {
 }
 
 .sort-button:hover {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: color-mix(in srgb, var(--accent-bright) 30%, #fff);
   color: var(--accent-strong);
 }
 
 .sort-button.active {
-  background: color-mix(in srgb, var(--accent-bright) 24%, #fff);
+  background: color-mix(in srgb, var(--accent-bright) 42%, #fff);
+  color: var(--accent-strong);
+}
+
+th:hover .sort-button {
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
   color: var(--accent-strong);
 }
 
@@ -1038,6 +1051,16 @@ td {
   height: 56px;
   gap: 4px;
   font-size: 10px;
+}
+
+.inventory-thumb {
+  display: block;
+  width: 56px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  object-fit: contain;
+  background: #fff;
 }
 
 .module-card svg {
@@ -1721,6 +1744,11 @@ td {
   background: #fff;
 }
 
+.pending-image-card.primary {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background: color-mix(in srgb, var(--accent-bright) 12%, #fff);
+}
+
 .pending-image-card > img {
   width: 78px;
   height: 62px;
@@ -1746,6 +1774,13 @@ td {
 .pending-image-card a {
   color: var(--accent-strong);
   font-weight: 800;
+}
+
+.image-primary-button {
+  justify-self: start;
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 12px;
 }
 
 .pending-image-card .icon-button {

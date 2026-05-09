@@ -19,110 +19,131 @@ type VehicleService struct {
 }
 
 type Vehicle struct {
-	ID                        string `json:"id"`
-	InventoryNumber           string `json:"inventoryNumber"`
-	Manufacturer              string `json:"manufacturer"`
-	ArticleNumber             string `json:"articleNumber,omitempty"`
-	ArticleSourceURL          string `json:"articleSourceUrl,omitempty"`
-	Name                      string `json:"name"`
-	Gauge                     string `json:"gauge"`
-	Epoch                     string `json:"epoch,omitempty"`
-	RailwayCompany            string `json:"railwayCompany,omitempty"`
-	Category                  string `json:"category,omitempty"`
-	Gattung                   string `json:"gattung,omitempty"`
-	Description               string `json:"description,omitempty"`
-	Series                    string `json:"series,omitempty"`
-	VehicleNumber             string `json:"vehicleNumber,omitempty"`
-	Digital                   bool   `json:"digital"`
-	DigitalDecoderNumber      string `json:"digitalDecoderNumber,omitempty"`
-	DTDecoder                 bool   `json:"dtDecoder"`
-	DTDecoderNumber           string `json:"dtDecoderNumber,omitempty"`
-	ExhibitionReady           bool   `json:"exhibitionReady"`
-	ABCBrakes                 bool   `json:"abcBrakes"`
-	EAN                       string `json:"ean,omitempty"`
-	ProductionPeriod          string `json:"productionPeriod,omitempty"`
-	ListPrice                 string `json:"listPrice,omitempty"`
-	LengthMM                  string `json:"lengthMm,omitempty"`
-	WeightG                   string `json:"weightG,omitempty"`
-	Color                     string `json:"color,omitempty"`
-	Lettering                 string `json:"lettering,omitempty"`
-	Load                      string `json:"load,omitempty"`
-	Interior                  string `json:"interior,omitempty"`
-	Axles                     string `json:"axles,omitempty"`
-	AxleCount                 string `json:"axleCount,omitempty"`
-	TractionTireCount         string `json:"tractionTireCount,omitempty"`
-	Wheelset                  string `json:"wheelset,omitempty"`
-	CouplingSame              bool   `json:"couplingSame"`
-	CouplingFront             string `json:"couplingFront,omitempty"`
-	CouplingRear              string `json:"couplingRear,omitempty"`
-	PowerPickup               string `json:"powerPickup,omitempty"`
-	Adapter                   string `json:"adapter,omitempty"`
-	DriveEnabled              bool   `json:"driveEnabled"`
-	DriveDescription          string `json:"driveDescription,omitempty"`
-	HeadlightsEnabled         bool   `json:"headlightsEnabled"`
-	HeadlightsDescription     string `json:"headlightsDescription,omitempty"`
-	LightingEnabled           bool   `json:"lightingEnabled"`
-	LightingDescription       string `json:"lightingDescription,omitempty"`
-	SoundGeneratorEnabled     bool   `json:"soundGeneratorEnabled"`
-	SoundGeneratorDescription string `json:"soundGeneratorDescription,omitempty"`
-	SmokeGeneratorEnabled     bool   `json:"smokeGeneratorEnabled"`
-	SmokeGeneratorDescription string `json:"smokeGeneratorDescription,omitempty"`
-	AdditionalInfo            string `json:"additionalInfo,omitempty"`
-	QRCodeEnabled             bool   `json:"qrCodeEnabled"`
-	CreatedAt                 string `json:"createdAt"`
-	UpdatedAt                 string `json:"updatedAt"`
+	ID                        string         `json:"id"`
+	InventoryNumber           string         `json:"inventoryNumber"`
+	Manufacturer              string         `json:"manufacturer"`
+	ArticleNumber             string         `json:"articleNumber,omitempty"`
+	ArticleSourceURL          string         `json:"articleSourceUrl,omitempty"`
+	Name                      string         `json:"name"`
+	Gauge                     string         `json:"gauge"`
+	Epoch                     string         `json:"epoch,omitempty"`
+	RailwayCompany            string         `json:"railwayCompany,omitempty"`
+	Category                  string         `json:"category,omitempty"`
+	Gattung                   string         `json:"gattung,omitempty"`
+	Description               string         `json:"description,omitempty"`
+	Series                    string         `json:"series,omitempty"`
+	VehicleNumber             string         `json:"vehicleNumber,omitempty"`
+	Digital                   bool           `json:"digital"`
+	DigitalDecoderNumber      string         `json:"digitalDecoderNumber,omitempty"`
+	DTDecoder                 bool           `json:"dtDecoder"`
+	DTDecoderNumber           string         `json:"dtDecoderNumber,omitempty"`
+	ExhibitionReady           bool           `json:"exhibitionReady"`
+	ABCBrakes                 bool           `json:"abcBrakes"`
+	EAN                       string         `json:"ean,omitempty"`
+	ProductionPeriod          string         `json:"productionPeriod,omitempty"`
+	ListPrice                 string         `json:"listPrice,omitempty"`
+	LengthMM                  string         `json:"lengthMm,omitempty"`
+	WeightG                   string         `json:"weightG,omitempty"`
+	Color                     string         `json:"color,omitempty"`
+	Lettering                 string         `json:"lettering,omitempty"`
+	Load                      string         `json:"load,omitempty"`
+	Interior                  string         `json:"interior,omitempty"`
+	Axles                     string         `json:"axles,omitempty"`
+	AxleCount                 string         `json:"axleCount,omitempty"`
+	TractionTireCount         string         `json:"tractionTireCount,omitempty"`
+	Wheelset                  string         `json:"wheelset,omitempty"`
+	CouplingSame              bool           `json:"couplingSame"`
+	CouplingFront             string         `json:"couplingFront,omitempty"`
+	CouplingRear              string         `json:"couplingRear,omitempty"`
+	PowerPickup               string         `json:"powerPickup,omitempty"`
+	Adapter                   string         `json:"adapter,omitempty"`
+	DriveEnabled              bool           `json:"driveEnabled"`
+	DriveDescription          string         `json:"driveDescription,omitempty"`
+	HeadlightsEnabled         bool           `json:"headlightsEnabled"`
+	HeadlightsDescription     string         `json:"headlightsDescription,omitempty"`
+	LightingEnabled           bool           `json:"lightingEnabled"`
+	LightingDescription       string         `json:"lightingDescription,omitempty"`
+	SoundGeneratorEnabled     bool           `json:"soundGeneratorEnabled"`
+	SoundGeneratorDescription string         `json:"soundGeneratorDescription,omitempty"`
+	SmokeGeneratorEnabled     bool           `json:"smokeGeneratorEnabled"`
+	SmokeGeneratorDescription string         `json:"smokeGeneratorDescription,omitempty"`
+	AdditionalInfo            string         `json:"additionalInfo,omitempty"`
+	QRCodeEnabled             bool           `json:"qrCodeEnabled"`
+	Images                    []VehicleImage `json:"images,omitempty"`
+	CreatedAt                 string         `json:"createdAt"`
+	UpdatedAt                 string         `json:"updatedAt"`
+}
+
+type VehicleImage struct {
+	ID        string `json:"id"`
+	VehicleID string `json:"vehicleId"`
+	URL       string `json:"url"`
+	Title     string `json:"title,omitempty"`
+	SourceURL string `json:"sourceUrl,omitempty"`
+	IsPrimary bool   `json:"isPrimary"`
+	SortOrder int    `json:"sortOrder"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type VehicleImageInput struct {
+	URL       string `json:"url"`
+	Title     string `json:"title"`
+	SourceURL string `json:"sourceUrl"`
+	IsPrimary bool   `json:"isPrimary"`
+	SortOrder int    `json:"sortOrder"`
 }
 
 type CreateVehicleInput struct {
-	InventoryNumber           string `json:"inventoryNumber"`
-	Manufacturer              string `json:"manufacturer"`
-	ArticleNumber             string `json:"articleNumber"`
-	ArticleSourceURL          string `json:"articleSourceUrl"`
-	Name                      string `json:"name"`
-	Gauge                     string `json:"gauge"`
-	Epoch                     string `json:"epoch"`
-	RailwayCompany            string `json:"railwayCompany"`
-	Category                  string `json:"category"`
-	Gattung                   string `json:"gattung"`
-	Description               string `json:"description"`
-	Series                    string `json:"series"`
-	VehicleNumber             string `json:"vehicleNumber"`
-	Digital                   bool   `json:"digital"`
-	DigitalDecoderNumber      string `json:"digitalDecoderNumber"`
-	DTDecoder                 bool   `json:"dtDecoder"`
-	DTDecoderNumber           string `json:"dtDecoderNumber"`
-	ExhibitionReady           bool   `json:"exhibitionReady"`
-	ABCBrakes                 bool   `json:"abcBrakes"`
-	EAN                       string `json:"ean"`
-	ProductionPeriod          string `json:"productionPeriod"`
-	ListPrice                 string `json:"listPrice"`
-	LengthMM                  string `json:"lengthMm"`
-	WeightG                   string `json:"weightG"`
-	Color                     string `json:"color"`
-	Lettering                 string `json:"lettering"`
-	Load                      string `json:"load"`
-	Interior                  string `json:"interior"`
-	Axles                     string `json:"axles"`
-	AxleCount                 string `json:"axleCount"`
-	TractionTireCount         string `json:"tractionTireCount"`
-	Wheelset                  string `json:"wheelset"`
-	CouplingSame              bool   `json:"couplingSame"`
-	CouplingFront             string `json:"couplingFront"`
-	CouplingRear              string `json:"couplingRear"`
-	PowerPickup               string `json:"powerPickup"`
-	Adapter                   string `json:"adapter"`
-	DriveEnabled              bool   `json:"driveEnabled"`
-	DriveDescription          string `json:"driveDescription"`
-	HeadlightsEnabled         bool   `json:"headlightsEnabled"`
-	HeadlightsDescription     string `json:"headlightsDescription"`
-	LightingEnabled           bool   `json:"lightingEnabled"`
-	LightingDescription       string `json:"lightingDescription"`
-	SoundGeneratorEnabled     bool   `json:"soundGeneratorEnabled"`
-	SoundGeneratorDescription string `json:"soundGeneratorDescription"`
-	SmokeGeneratorEnabled     bool   `json:"smokeGeneratorEnabled"`
-	SmokeGeneratorDescription string `json:"smokeGeneratorDescription"`
-	AdditionalInfo            string `json:"additionalInfo"`
-	QRCodeEnabled             bool   `json:"qrCodeEnabled"`
+	InventoryNumber           string              `json:"inventoryNumber"`
+	Manufacturer              string              `json:"manufacturer"`
+	ArticleNumber             string              `json:"articleNumber"`
+	ArticleSourceURL          string              `json:"articleSourceUrl"`
+	Name                      string              `json:"name"`
+	Gauge                     string              `json:"gauge"`
+	Epoch                     string              `json:"epoch"`
+	RailwayCompany            string              `json:"railwayCompany"`
+	Category                  string              `json:"category"`
+	Gattung                   string              `json:"gattung"`
+	Description               string              `json:"description"`
+	Series                    string              `json:"series"`
+	VehicleNumber             string              `json:"vehicleNumber"`
+	Digital                   bool                `json:"digital"`
+	DigitalDecoderNumber      string              `json:"digitalDecoderNumber"`
+	DTDecoder                 bool                `json:"dtDecoder"`
+	DTDecoderNumber           string              `json:"dtDecoderNumber"`
+	ExhibitionReady           bool                `json:"exhibitionReady"`
+	ABCBrakes                 bool                `json:"abcBrakes"`
+	EAN                       string              `json:"ean"`
+	ProductionPeriod          string              `json:"productionPeriod"`
+	ListPrice                 string              `json:"listPrice"`
+	LengthMM                  string              `json:"lengthMm"`
+	WeightG                   string              `json:"weightG"`
+	Color                     string              `json:"color"`
+	Lettering                 string              `json:"lettering"`
+	Load                      string              `json:"load"`
+	Interior                  string              `json:"interior"`
+	Axles                     string              `json:"axles"`
+	AxleCount                 string              `json:"axleCount"`
+	TractionTireCount         string              `json:"tractionTireCount"`
+	Wheelset                  string              `json:"wheelset"`
+	CouplingSame              bool                `json:"couplingSame"`
+	CouplingFront             string              `json:"couplingFront"`
+	CouplingRear              string              `json:"couplingRear"`
+	PowerPickup               string              `json:"powerPickup"`
+	Adapter                   string              `json:"adapter"`
+	DriveEnabled              bool                `json:"driveEnabled"`
+	DriveDescription          string              `json:"driveDescription"`
+	HeadlightsEnabled         bool                `json:"headlightsEnabled"`
+	HeadlightsDescription     string              `json:"headlightsDescription"`
+	LightingEnabled           bool                `json:"lightingEnabled"`
+	LightingDescription       string              `json:"lightingDescription"`
+	SoundGeneratorEnabled     bool                `json:"soundGeneratorEnabled"`
+	SoundGeneratorDescription string              `json:"soundGeneratorDescription"`
+	SmokeGeneratorEnabled     bool                `json:"smokeGeneratorEnabled"`
+	SmokeGeneratorDescription string              `json:"smokeGeneratorDescription"`
+	AdditionalInfo            string              `json:"additionalInfo"`
+	QRCodeEnabled             bool                `json:"qrCodeEnabled"`
+	Images                    []VehicleImageInput `json:"images"`
 }
 
 func NewVehicleService(db *sql.DB) *VehicleService {
@@ -195,6 +216,9 @@ ORDER BY updated_at DESC, inventory_number ASC
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate vehicles: %w", err)
+	}
+	if err := s.attachImages(ctx, vehicles); err != nil {
+		return nil, err
 	}
 	return vehicles, nil
 }
@@ -284,6 +308,7 @@ func (s *VehicleService) Create(ctx context.Context, input CreateVehicleInput, a
 		SmokeGeneratorDescription: input.SmokeGeneratorDescription,
 		AdditionalInfo:            input.AdditionalInfo,
 		QRCodeEnabled:             input.QRCodeEnabled,
+		Images:                    vehicleImagesFromInput("", input.Images, now),
 		CreatedAt:                 now,
 		UpdatedAt:                 now,
 	}
@@ -309,6 +334,9 @@ INSERT INTO audit_logs(id, actor_user_id, action, target_type, target_id, create
 VALUES(?, ?, 'VehicleCreated', 'vehicle', ?, ?, '{}')
 `, randomID(), actorUserID, vehicle.ID, now); err != nil {
 		return nil, fmt.Errorf("write vehicle audit log: %w", err)
+	}
+	if err = saveVehicleImages(ctx, tx, vehicle.ID, input.Images, now); err != nil {
+		return nil, err
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -389,6 +417,7 @@ func (s *VehicleService) Update(ctx context.Context, id string, input CreateVehi
 		SmokeGeneratorDescription: input.SmokeGeneratorDescription,
 		AdditionalInfo:            input.AdditionalInfo,
 		QRCodeEnabled:             input.QRCodeEnabled,
+		Images:                    vehicleImagesFromInput(id, input.Images, now),
 		CreatedAt:                 existing.CreatedAt,
 		UpdatedAt:                 now,
 	}
@@ -448,6 +477,9 @@ INSERT INTO audit_logs(id, actor_user_id, action, target_type, target_id, create
 VALUES(?, ?, 'VehicleUpdated', 'vehicle', ?, ?, '{}')
 `, randomID(), actorUserID, vehicle.ID, now); err != nil {
 		return nil, fmt.Errorf("write vehicle audit log: %w", err)
+	}
+	if err = saveVehicleImages(ctx, tx, vehicle.ID, input.Images, now); err != nil {
+		return nil, err
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -600,8 +632,72 @@ WHERE id=?
 	vehicle.SoundGeneratorEnabled = soundGeneratorEnabled == 1
 	vehicle.SmokeGeneratorEnabled = smokeGeneratorEnabled == 1
 	vehicle.QRCodeEnabled = qrCodeEnabled == 1
+	images, err := s.loadVehicleImages(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	vehicle.Images = images
 
 	return &vehicle, nil
+}
+
+func (s *VehicleService) attachImages(ctx context.Context, vehicles []Vehicle) error {
+	for index := range vehicles {
+		images, err := s.loadVehicleImages(ctx, vehicles[index].ID)
+		if err != nil {
+			return err
+		}
+		vehicles[index].Images = images
+	}
+	return nil
+}
+
+func (s *VehicleService) loadVehicleImages(ctx context.Context, vehicleID string) ([]VehicleImage, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT id, vehicle_id, url, COALESCE(title, ''), COALESCE(source_url, ''), is_primary, sort_order, created_at
+FROM vehicle_images
+WHERE vehicle_id=?
+ORDER BY is_primary DESC, sort_order ASC, created_at ASC
+`, vehicleID)
+	if err != nil {
+		return nil, fmt.Errorf("list vehicle images: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	images := []VehicleImage{}
+	for rows.Next() {
+		var image VehicleImage
+		var isPrimary int
+		if err := rows.Scan(&image.ID, &image.VehicleID, &image.URL, &image.Title, &image.SourceURL, &isPrimary, &image.SortOrder, &image.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan vehicle image: %w", err)
+		}
+		image.IsPrimary = isPrimary == 1
+		images = append(images, image)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate vehicle images: %w", err)
+	}
+	return images, nil
+}
+
+func saveVehicleImages(ctx context.Context, tx *sql.Tx, vehicleID string, images []VehicleImageInput, now string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM vehicle_images WHERE vehicle_id=?`, vehicleID); err != nil {
+		return fmt.Errorf("clear vehicle images: %w", err)
+	}
+	cleaned := cleanVehicleImageInputs(images)
+	for index, image := range cleaned {
+		sortOrder := image.SortOrder
+		if sortOrder == 0 {
+			sortOrder = index
+		}
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO vehicle_images(id, vehicle_id, url, title, source_url, is_primary, sort_order, created_at)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+`, randomID(), vehicleID, image.URL, image.Title, image.SourceURL, boolToInt(image.IsPrimary), sortOrder, now); err != nil {
+			return fmt.Errorf("insert vehicle image: %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *VehicleService) nextInventoryNumber(ctx context.Context, tx *sql.Tx, vehicleCategory string) (string, error) {
@@ -733,8 +829,64 @@ func cleanVehicleInput(input CreateVehicleInput) CreateVehicleInput {
 	input.SoundGeneratorDescription = strings.TrimSpace(input.SoundGeneratorDescription)
 	input.SmokeGeneratorDescription = strings.TrimSpace(input.SmokeGeneratorDescription)
 	input.AdditionalInfo = strings.TrimSpace(input.AdditionalInfo)
+	input.Images = cleanVehicleImageInputs(input.Images)
 	if input.CouplingSame {
 		input.CouplingRear = input.CouplingFront
 	}
 	return input
+}
+
+func cleanVehicleImageInputs(images []VehicleImageInput) []VehicleImageInput {
+	seen := map[string]bool{}
+	cleaned := []VehicleImageInput{}
+	hasPrimary := false
+	for _, image := range images {
+		image.URL = strings.TrimSpace(image.URL)
+		image.Title = strings.TrimSpace(image.Title)
+		image.SourceURL = strings.TrimSpace(image.SourceURL)
+		if image.URL == "" {
+			continue
+		}
+		key := strings.ToLower(image.URL)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		if image.IsPrimary {
+			if hasPrimary {
+				image.IsPrimary = false
+			} else {
+				hasPrimary = true
+			}
+		}
+		cleaned = append(cleaned, image)
+		if len(cleaned) >= 12 {
+			break
+		}
+	}
+	if len(cleaned) > 0 && !hasPrimary {
+		cleaned[0].IsPrimary = true
+	}
+	return cleaned
+}
+
+func vehicleImagesFromInput(vehicleID string, images []VehicleImageInput, now string) []VehicleImage {
+	cleaned := cleanVehicleImageInputs(images)
+	out := make([]VehicleImage, 0, len(cleaned))
+	for index, image := range cleaned {
+		sortOrder := image.SortOrder
+		if sortOrder == 0 {
+			sortOrder = index
+		}
+		out = append(out, VehicleImage{
+			VehicleID: vehicleID,
+			URL:       image.URL,
+			Title:     image.Title,
+			SourceURL: image.SourceURL,
+			IsPrimary: image.IsPrimary,
+			SortOrder: sortOrder,
+			CreatedAt: now,
+		})
+	}
+	return out
 }

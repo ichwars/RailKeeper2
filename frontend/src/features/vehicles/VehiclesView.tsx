@@ -89,6 +89,7 @@ type SortDirection = "asc" | "desc";
 type ArticleFieldKey = keyof CreateVehicleRequest;
 type PendingArticleImage = ArticleSearchImage & {
   id: string;
+  isPrimary?: boolean;
 };
 
 type MasterDataOptions = {
@@ -358,6 +359,30 @@ function articleFieldStatus(current: string, found: string) {
   if (!current) return "leer";
   if (current.toLocaleLowerCase("de-DE") === found.toLocaleLowerCase("de-DE")) return "bereits gleich";
   return "Konflikt";
+}
+
+function sourceDisplayName(rawUrl: string) {
+  try {
+    const host = new URL(rawUrl).hostname.replace(/^www\./, "");
+    const [name] = host.split(".");
+    return name ? name.charAt(0).toUpperCase() + name.slice(1) : host;
+  } catch {
+    return "Quelle";
+  }
+}
+
+function primaryImage(images?: { url: string; isPrimary?: boolean }[]) {
+  return images?.find((image) => image.isPrimary) || images?.[0];
+}
+
+function vehicleImagesToPending(vehicle: Vehicle): PendingArticleImage[] {
+  return (vehicle.images || []).map((image) => ({
+    id: image.id || image.url,
+    url: image.url,
+    title: image.title || "",
+    source: image.sourceUrl || image.url,
+    isPrimary: image.isPrimary
+  }));
 }
 
 function qrPayload(vehicle: Vehicle | null, form: CreateVehicleRequest) {
@@ -692,6 +717,8 @@ function ArticleSearchDialog({
                             {rows.map(({ key, field }) => {
                               const current = currentArticleValue(form, key);
                               const status = articleFieldStatus(current, field.value);
+                              const foundDisplay = key === "articleSourceUrl" ? sourceDisplayName(field.value) : field.value;
+                              const currentDisplay = key === "articleSourceUrl" && current ? sourceDisplayName(current) : current;
                               const selectionKey = articleSelectionKey(result, key, index);
                               return (
                                 <tr key={key} className={status === "Konflikt" ? "conflict" : ""}>
@@ -703,8 +730,8 @@ function ArticleSearchDialog({
                                     />
                                   </td>
                                   <td><strong>{articleFieldLabels[key] || field.label}</strong></td>
-                                  <td>{current || "-"}</td>
-                                  <td>{field.value || "-"}</td>
+                                  <td>{currentDisplay || "-"}</td>
+                                  <td>{foundDisplay || "-"}</td>
                                   <td><span className={`article-status ${status === "Konflikt" ? "conflict" : status === "bereits gleich" ? "same" : "empty"}`}>{status}</span></td>
                                 </tr>
                               );
@@ -998,15 +1025,23 @@ export function VehiclesView() {
     });
     const selectedImages = (result.images || [])
       .filter((image) => selectedArticleImages[imageSelectionKey(result, image, resultIndex)])
-      .map((image) => ({ ...image, id: `${result.url}-${image.url}` }));
+      .map((image, imageIndex) => ({ ...image, id: `${result.url}-${image.url}`, isPrimary: pendingArticleImages.length === 0 && imageIndex === 0 }));
     if (selectedImages.length > 0) {
       setPendingArticleImages((current) => {
         const existing = new Set(current.map((image) => image.url));
-        return [...current, ...selectedImages.filter((image) => !existing.has(image.url))];
+        const next = [...current, ...selectedImages.filter((image) => !existing.has(image.url))];
+        if (!next.some((image) => image.isPrimary) && next.length > 0) {
+          next[0] = { ...next[0], isPrimary: true };
+        }
+        return next;
       });
     }
     update(patch);
     setArticleSearchOpen(false);
+  };
+
+  const setPrimaryPendingImage = (id: string) => {
+    setPendingArticleImages((current) => current.map((image) => ({ ...image, isPrimary: image.id === id })));
   };
 
   const generateQr = async () => {
@@ -1148,7 +1183,7 @@ export function VehiclesView() {
       .then((detail) => {
         setSelected(detail);
         setForm(vehicleToForm(detail));
-        setPendingArticleImages([]);
+        setPendingArticleImages(vehicleImagesToPending(detail));
         setMode("view");
         setActiveTab("model");
         setOpenSections({ model: true, details: false, ownership: false });
@@ -1164,7 +1199,7 @@ export function VehiclesView() {
       .then((detail) => {
         setSelected(detail);
         setForm(vehicleToForm(detail));
-        setPendingArticleImages([]);
+        setPendingArticleImages(vehicleImagesToPending(detail));
         setMode("edit");
         setActiveTab("model");
         setOpenSections({ model: true, details: false, ownership: false });
@@ -1183,14 +1218,23 @@ export function VehiclesView() {
     setSaving(true);
     setMessage("");
 
+    const images = pendingArticleImages.map((image, index) => ({
+      url: image.url,
+      title: image.title,
+      sourceUrl: image.source,
+      isPrimary: Boolean(image.isPrimary),
+      sortOrder: index
+    }));
+    const payload = { ...form, images };
     const action = mode === "edit" && selected
-      ? api.updateVehicle(selected.id, form)
-      : api.createVehicle(form);
+      ? api.updateVehicle(selected.id, payload)
+      : api.createVehicle(payload);
 
     action
       .then((vehicle) => {
         setSelected(vehicle);
         setForm(vehicleToForm(vehicle));
+        setPendingArticleImages(vehicleImagesToPending(vehicle));
         setMode("view");
         load();
         if (mode === "create") {
@@ -1307,7 +1351,11 @@ export function VehiclesView() {
                 {sortedVehicles.map((vehicle) => (
                   <tr key={vehicle.id}>
                     <td>
-                      <div className="image-placeholder">Keine Vorschau</div>
+                      {primaryImage(vehicle.images) ? (
+                        <img className="inventory-thumb" src={primaryImage(vehicle.images)?.url} alt="" />
+                      ) : (
+                        <div className="image-placeholder">Keine Vorschau</div>
+                      )}
                     </td>
                     <td>{vehicle.inventoryNumber}</td>
                     <td>{vehicle.manufacturer}</td>
@@ -1383,7 +1431,9 @@ export function VehiclesView() {
                         {form.articleSourceUrl && (
                           <p className="source-note compact-source-note">
                             <ExternalLink size={15} aria-hidden="true" />
-                            <span>Quelle: {form.articleSourceUrl}</span>
+                            <span>
+                              Quelle: <a href={form.articleSourceUrl} target="_blank" rel="noreferrer">{sourceDisplayName(form.articleSourceUrl)}</a>
+                            </span>
                           </p>
                         )}
 
@@ -1585,16 +1635,27 @@ export function VehiclesView() {
                   ) : (
                     <div className="pending-image-grid">
                       {pendingArticleImages.map((image) => (
-                        <figure key={image.id} className="pending-image-card">
+                        <figure key={image.id} className={image.isPrimary ? "pending-image-card primary" : "pending-image-card"}>
                           <img src={image.url} alt="" />
                           <figcaption>
                             <strong>{image.title || "Artikeldaten-Bild"}</strong>
                             <a href={image.source} target="_blank" rel="noreferrer">Quelle oeffnen</a>
+                            <button type="button" className="secondary-button image-primary-button" onClick={() => setPrimaryPendingImage(image.id)}>
+                              {image.isPrimary ? "Hauptbild" : "Als Hauptbild"}
+                            </button>
                           </figcaption>
                           <button
                             type="button"
                             className="icon-button danger"
-                            onClick={() => setPendingArticleImages((current) => current.filter((entry) => entry.id !== image.id))}
+                            onClick={() =>
+                              setPendingArticleImages((current) => {
+                                const next = current.filter((entry) => entry.id !== image.id);
+                                if (next.length > 0 && !next.some((entry) => entry.isPrimary)) {
+                                  next[0] = { ...next[0], isPrimary: true };
+                                }
+                                return next;
+                              })
+                            }
                             aria-label="Bild entfernen"
                             title="Bild entfernen"
                           >

@@ -226,22 +226,27 @@ func (a *DuckDuckGoArticleSearchAdapter) Search(ctx context.Context, input Artic
 }
 
 var (
-	resultBlockPattern   = regexp.MustCompile(`(?s)<div class="result results_links.*?</div>\s*</div>`)
-	resultLinkPattern    = regexp.MustCompile(`(?s)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
-	snippetPattern       = regexp.MustCompile(`(?s)<a[^>]+class="result__snippet"[^>]*>(.*?)</a>|<div[^>]+class="result__snippet"[^>]*>(.*?)</div>`)
-	tagPattern           = regexp.MustCompile(`(?s)<[^>]+>`)
-	pricePattern         = regexp.MustCompile(`(?i)(\d{1,4}(?:[,.]\d{2})?)\s?(?:eur|euro|€)`)
-	lengthPattern        = regexp.MustCompile(`(?i)(?:laenge|länge|lange|length)[^\d]{0,18}(\d{2,4}(?:[,.]\d+)?)\s?mm`)
-	weightPattern        = regexp.MustCompile(`(?i)(?:gewicht|weight)[^\d]{0,18}(\d{1,5}(?:[,.]\d+)?)\s?g`)
-	eanPattern           = regexp.MustCompile(`\b(\d{12,14})\b`)
-	epochPattern         = regexp.MustCompile(`(?i)(?:epoche|epoch|ep\.)\s*(I{1,3}|IV|V|VI)\b`)
-	railwayPattern       = regexp.MustCompile(`\b(DB|DR|DRG|DB AG|SBB|OeBB|ÖBB|BLS|SNCF|NS|FS)\b`)
-	adapterPattern       = regexp.MustCompile(`(?i)\b(NEM\s?651|NEM\s?652|PluX\s?16|PluX\s?22|MTC\s?21|Next\s?18|8-?polig|21-?polig|DSS\s?8pol)\b`)
-	powerPattern         = regexp.MustCompile(`(?i)\b(DC|AC|2-?Leiter|3-?Leiter|Gleichstrom|Wechselstrom)\b`)
-	imageMetaPattern     = regexp.MustCompile(`(?is)<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image|thumbnail)["'][^>]+content=["']([^"']+)["']`)
-	imageMetaAltPattern  = regexp.MustCompile(`(?is)<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image|thumbnail)["']`)
-	imageTagPattern      = regexp.MustCompile(`(?is)<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?)["'][^>]*>`)
-	metaDescriptionRegex = regexp.MustCompile(`(?is)<meta[^>]+(?:name|property)=["'](?:description|og:description)["'][^>]+content=["']([^"']+)["']`)
+	resultBlockPattern      = regexp.MustCompile(`(?s)<div class="result results_links.*?</div>\s*</div>`)
+	resultLinkPattern       = regexp.MustCompile(`(?s)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
+	snippetPattern          = regexp.MustCompile(`(?s)<a[^>]+class="result__snippet"[^>]*>(.*?)</a>|<div[^>]+class="result__snippet"[^>]*>(.*?)</div>`)
+	tagPattern              = regexp.MustCompile(`(?s)<[^>]+>`)
+	scriptStylePattern      = regexp.MustCompile(`(?is)<script[^>]*>.*?</script>|<style[^>]*>.*?</style>|<noscript[^>]*>.*?</noscript>|<svg[^>]*>.*?</svg>`)
+	pricePattern            = regexp.MustCompile(`(?i)(\d{1,4}(?:[,.]\d{2})?)\s?(?:eur|euro|\x{20AC})`)
+	lengthPattern           = regexp.MustCompile(`(?i)(?:laenge|l..nge|lange|length|mass|ma..)[^\d]{0,24}(\d{2,4}(?:[,.]\d+)?)\s?(?:mm)?`)
+	weightPattern           = regexp.MustCompile(`(?i)(?:gewicht|weight)[^\d]{0,18}(\d{1,5}(?:[,.]\d+)?)\s?g`)
+	tractionTirePattern     = regexp.MustCompile(`(?i)(?:haftreifen|traction\s*tire)[^\d]{0,18}(\d{1,2})`)
+	eanPattern              = regexp.MustCompile(`\b(\d{12,14})\b`)
+	epochPattern            = regexp.MustCompile(`(?i)(?:epoche|epoch|ep\.)\s*(I{1,3}|IV|V|VI)\b`)
+	railwayPattern          = regexp.MustCompile(`\b(DB AG|DB|DRG|DR|SBB|OeBB|BLS|SNCF|NS|FS)\b`)
+	adapterPattern          = regexp.MustCompile(`(?i)\b(NEM\s?651|NEM\s?652|NEM\s?658|PluX\s?16|PluX\s?22|MTC\s?21|Next\s?18|8-?polig|21-?polig|DSS\s?8pol)\b`)
+	powerPattern            = regexp.MustCompile(`(?i)\b(DC|AC|2-?Leiter|3-?Leiter|Gleichstrom|Wechselstrom)\b`)
+	digitalPositivePattern  = regexp.MustCompile(`(?i)(?:\bdigital\s*[:=]\s*(?:ja|yes|true)\b|\bdigitaldecoder\b|\bsounddecoder\b|\bmit\s+(?:dcc\s+)?decoder\b)`)
+	lightDescriptionPattern = regexp.MustCompile(`(?i)(?:lichtwechsel|fahrlicht|beleuchtung)[^\n:;]{0,35}[:]\s*([^.;\n]{3,160})`)
+	soundDescriptionPattern = regexp.MustCompile(`(?i)(?:sound|soundgenerator|geraeusch|ger..usch)[^\n:;]{0,35}[:]\s*([^.;\n]{3,160})`)
+	imageMetaPattern        = regexp.MustCompile(`(?is)<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image|thumbnail)["'][^>]+content=["']([^"']+)["']`)
+	imageMetaAltPattern     = regexp.MustCompile(`(?is)<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image|thumbnail)["']`)
+	imageTagPattern         = regexp.MustCompile(`(?is)<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?)["'][^>]*>`)
+	metaDescriptionRegex    = regexp.MustCompile(`(?is)<meta[^>]+(?:name|property)=["'](?:description|og:description)["'][^>]+content=["']([^"']+)["']`)
 )
 
 var manufacturerDomains = map[string][]string{
@@ -250,8 +255,7 @@ var manufacturerDomains = map[string][]string{
 	"esu":         {"esu.eu"},
 	"fleischmann": {"fleischmann.de"},
 	"lgb":         {"lgb.de", "maerklin.de"},
-	"maerklin":    {"maerklin.de", "märklin.de"},
-	"märklin":     {"maerklin.de", "märklin.de"},
+	"maerklin":    {"maerklin.de"},
 	"piko":        {"piko.de", "piko-shop.de"},
 	"roco":        {"roco.cc"},
 	"tillig":      {"tillig.com"},
@@ -290,10 +294,11 @@ func parseDuckDuckGoResults(body string, input ArticleSearchInput) []ArticleSear
 }
 
 func buildArticleFields(input ArticleSearchInput, title, resultURL, snippet string) map[string]ArticleSearchField {
+	cleanName := cleanArticleName(title, resultURL)
 	fields := map[string]ArticleSearchField{
 		"name": {
 			Label:      "Bezeichnung",
-			Value:      title,
+			Value:      cleanName,
 			Confidence: 60,
 		},
 		"articleSourceUrl": {
@@ -313,8 +318,8 @@ func buildArticleFields(input ArticleSearchInput, title, resultURL, snippet stri
 	if input.Gauge != "" && strings.Contains(strings.ToLower(combined), strings.ToLower(input.Gauge)) {
 		fields["gauge"] = ArticleSearchField{Label: "Spurweite", Value: input.Gauge, Confidence: 80}
 	}
-	if snippet != "" {
-		fields["description"] = ArticleSearchField{Label: "Beschreibung", Value: snippet, Confidence: 45}
+	if description := bestArticleDescription(input, cleanName, snippet, resultURL); description != "" {
+		fields["description"] = ArticleSearchField{Label: "Beschreibung", Value: description, Confidence: 65}
 	}
 	if value := firstRegexValue(eanPattern, combined); value != "" && value != input.ArticleNumber {
 		fields["ean"] = ArticleSearchField{Label: "EAN-Nr.", Value: value, Confidence: 60}
@@ -334,22 +339,32 @@ func buildArticleFields(input ArticleSearchInput, title, resultURL, snippet stri
 	if value := firstRegexValue(weightPattern, combined); value != "" {
 		fields["weightG"] = ArticleSearchField{Label: "Gewicht (g)", Value: strings.ReplaceAll(value, ",", "."), Confidence: 55}
 	}
+	if value := firstRegexValue(tractionTirePattern, combined); value != "" {
+		fields["tractionTireCount"] = ArticleSearchField{Label: "Anzahl Haftreifen", Value: value, Confidence: 58}
+	}
 	if value := firstRegexValue(adapterPattern, combined); value != "" {
 		fields["adapter"] = ArticleSearchField{Label: "Schnittstelle / Adapter", Value: normalizeWhitespace(value), Confidence: 60}
 	}
 	if value := firstRegexValue(powerPattern, combined); value != "" {
 		fields["powerPickup"] = ArticleSearchField{Label: "Stromsystem", Value: normalizeWhitespace(value), Confidence: 50}
 	}
-	if strings.Contains(combinedLower, "digital") || strings.Contains(combinedLower, "decoder") {
+	if digitalPositivePattern.MatchString(combined) {
 		fields["digital"] = ArticleSearchField{Label: "Digital", Value: "Ja", Confidence: 48}
 	}
-	if strings.Contains(combinedLower, "sound") {
+	if soundDescription := firstRegexValue(soundDescriptionPattern, combined); soundDescription != "" {
 		fields["soundGeneratorEnabled"] = ArticleSearchField{Label: "Soundgenerator", Value: "Ja", Confidence: 48}
-		fields["soundGeneratorDescription"] = ArticleSearchField{Label: "Soundgenerator Beschreibung", Value: "Sound laut Artikeldaten", Confidence: 35}
+		fields["soundGeneratorDescription"] = ArticleSearchField{Label: "Soundgenerator Beschreibung", Value: normalizeWhitespace(soundDescription), Confidence: 55}
+	} else if strings.Contains(combinedLower, "sound") && !strings.Contains(combinedLower, "ohne sound") {
+		fields["soundGeneratorEnabled"] = ArticleSearchField{Label: "Soundgenerator", Value: "Ja", Confidence: 38}
 	}
-	if strings.Contains(combinedLower, "licht") || strings.Contains(combinedLower, "beleuchtung") {
+	if lightDescription := firstRegexValue(lightDescriptionPattern, combined); lightDescription != "" {
 		fields["headlightsEnabled"] = ArticleSearchField{Label: "Fahrlicht", Value: "Ja", Confidence: 42}
 		fields["lightingEnabled"] = ArticleSearchField{Label: "Beleuchtung", Value: "Ja", Confidence: 42}
+		fields["headlightsDescription"] = ArticleSearchField{Label: "Fahrlicht Beschreibung", Value: normalizeWhitespace(lightDescription), Confidence: 55}
+		fields["lightingDescription"] = ArticleSearchField{Label: "Beleuchtung Beschreibung", Value: normalizeWhitespace(lightDescription), Confidence: 50}
+	} else if strings.Contains(combinedLower, "licht") || strings.Contains(combinedLower, "beleuchtung") {
+		fields["headlightsEnabled"] = ArticleSearchField{Label: "Fahrlicht", Value: "Ja", Confidence: 36}
+		fields["lightingEnabled"] = ArticleSearchField{Label: "Beleuchtung", Value: "Ja", Confidence: 36}
 	}
 	return fields
 }
@@ -399,7 +414,7 @@ func (a *DuckDuckGoArticleSearchAdapter) enrichResultsFromPages(ctx context.Cont
 				results[index].Fields["articleSourceUrl"] = sourceField
 			}
 		}
-		pageText := cleanHTML(body)
+		pageText := visibleArticleText(body)
 		if pageDescription := firstRegexValue(metaDescriptionRegex, body); pageDescription != "" {
 			pageText = cleanHTML(pageDescription) + " " + pageText
 		}
@@ -517,6 +532,113 @@ func manufacturerDomainToken(manufacturer string) string {
 
 func normalizeWhitespace(value string) string {
 	return strings.Join(strings.Fields(value), " ")
+}
+
+func visibleArticleText(value string) string {
+	value = scriptStylePattern.ReplaceAllString(value, " ")
+	return cleanHTML(value)
+}
+
+func cleanArticleName(title, resultURL string) string {
+	value := cleanHTML(title)
+	sourceParts := []string{
+		" - " + sourceDisplayName(resultURL),
+		" | " + sourceDisplayName(resultURL),
+		" - PIKO Spielwaren GmbH Webshop",
+		" - PIKO Webshop",
+		" - Amazon.de",
+		" - eBay",
+		" - idealo",
+	}
+	for _, part := range sourceParts {
+		if part != " - " && part != " | " && strings.HasSuffix(strings.ToLower(value), strings.ToLower(part)) {
+			value = strings.TrimSpace(value[:len(value)-len(part)])
+		}
+	}
+	return strings.Trim(value, " -|")
+}
+
+func sourceDisplayName(resultURL string) string {
+	parsed, err := url.Parse(resultURL)
+	if err != nil || parsed.Host == "" {
+		return "Quelle"
+	}
+	host := strings.TrimPrefix(strings.ToLower(parsed.Host), "www.")
+	parts := strings.Split(host, ".")
+	if len(parts) == 0 || parts[0] == "" {
+		return host
+	}
+	return parts[0]
+}
+
+func bestArticleDescription(input ArticleSearchInput, name, text, resultURL string) string {
+	text = normalizeWhitespace(text)
+	if len(text) < 20 {
+		return ""
+	}
+	candidates := splitDescriptionCandidates(text)
+	best := ""
+	bestScore := -1
+	for _, candidate := range candidates {
+		candidate = normalizeWhitespace(candidate)
+		if !looksLikeHumanDescription(candidate) {
+			continue
+		}
+		score := 0
+		lower := strings.ToLower(candidate)
+		for _, token := range uniqueNonEmpty([]string{input.ArticleNumber, input.Name, input.Gauge, input.Manufacturer, "neuheit", "druckvariante", "epoche", "dr", "db"}) {
+			if strings.Contains(lower, strings.ToLower(token)) {
+				score += 8
+			}
+		}
+		if strings.Contains(strings.ToLower(resultURL), "piko") || strings.Contains(strings.ToLower(resultURL), "roco") || strings.Contains(strings.ToLower(resultURL), "tillig") {
+			score += 4
+		}
+		if len(candidate) > 60 && len(candidate) < 280 {
+			score += 3
+		}
+		if score > bestScore {
+			bestScore = score
+			best = candidate
+		}
+	}
+	if best == "" {
+		return ""
+	}
+	if len(best) > 320 {
+		best = best[:320]
+	}
+	return strings.TrimSpace(best)
+}
+
+func splitDescriptionCandidates(text string) []string {
+	parts := regexp.MustCompile(`[.!?]\s+|\s{2,}`).Split(text, -1)
+	out := []string{}
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	if len(out) == 0 && text != "" {
+		out = append(out, text)
+	}
+	return out
+}
+
+func looksLikeHumanDescription(value string) bool {
+	value = strings.TrimSpace(value)
+	if len(value) < 20 || len(value) > 600 {
+		return false
+	}
+	lower := strings.ToLower(value)
+	badTokens := []string{"google_analytics", "cookie", "mandatory", "preferences", "statistics", "marketing", "function", "const ", "new map", "document.", "window.", "{", "};", "class "}
+	for _, token := range badTokens {
+		if strings.Contains(lower, token) {
+			return false
+		}
+	}
+	return true
 }
 
 func firstRegexValue(pattern *regexp.Regexp, value string) string {

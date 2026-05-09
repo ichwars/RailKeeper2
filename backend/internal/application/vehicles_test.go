@@ -233,6 +233,52 @@ func TestUpdateVehicleRecordsInventoryNumberHistory(t *testing.T) {
 	}
 }
 
+func TestVehiclePersistsImages(t *testing.T) {
+	db := testDB(t)
+	service := application.NewVehicleService(db)
+	ctx := context.Background()
+
+	created, err := service.Create(ctx, application.CreateVehicleInput{
+		Manufacturer: "Piko",
+		Name:         "BR 118",
+		Gauge:        "TT",
+		Images: []application.VehicleImageInput{
+			{URL: "https://example.test/side.jpg", Title: "Seite"},
+			{URL: "https://example.test/front.jpg", Title: "Front", IsPrimary: true},
+		},
+	}, "actor-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(created.Images) != 2 || !created.Images[1].IsPrimary {
+		t.Fatalf("unexpected created images: %#v", created.Images)
+	}
+
+	detail, err := service.Get(ctx, created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(detail.Images) != 2 || detail.Images[0].URL != "https://example.test/front.jpg" || !detail.Images[0].IsPrimary {
+		t.Fatalf("unexpected detail images: %#v", detail.Images)
+	}
+
+	updated, err := service.Update(ctx, created.ID, application.CreateVehicleInput{
+		InventoryNumber: created.InventoryNumber,
+		Manufacturer:    "Piko",
+		Name:            "BR 118",
+		Gauge:           "TT",
+		Images: []application.VehicleImageInput{
+			{URL: "https://example.test/new.jpg", Title: "Neu"},
+		},
+	}, "actor-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(updated.Images) != 1 || updated.Images[0].URL != "https://example.test/new.jpg" || !updated.Images[0].IsPrimary {
+		t.Fatalf("unexpected updated images: %#v", updated.Images)
+	}
+}
+
 func TestDeleteVehicleRemovesRecord(t *testing.T) {
 	db := testDB(t)
 	service := application.NewVehicleService(db)
