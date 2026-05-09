@@ -32,6 +32,7 @@ type Config struct {
 	MasterDataService *application.MasterDataService
 	ArticleSearch     *application.ArticleSearchService
 	InventoryNumbers  *application.InventoryNumberService
+	BackupService     *application.BackupService
 	CookieSecure      bool
 }
 
@@ -46,6 +47,7 @@ type App struct {
 	masterDataService *application.MasterDataService
 	articleSearch     *application.ArticleSearchService
 	inventoryNumbers  *application.InventoryNumberService
+	backupService     *application.BackupService
 	cookieSecure      bool
 	rateLimits        *rateLimiter
 }
@@ -68,11 +70,15 @@ func NewRouter(config Config) http.Handler {
 		masterDataService: config.MasterDataService,
 		articleSearch:     config.ArticleSearch,
 		inventoryNumbers:  config.InventoryNumbers,
+		backupService:     config.BackupService,
 		cookieSecure:      config.CookieSecure,
 		rateLimits:        newRateLimiter(),
 	}
 	if app.articleSearch == nil {
 		app.articleSearch = application.NewArticleSearchService()
+	}
+	if app.backupService == nil {
+		app.backupService = application.NewBackupService(nil, app.dataDir)
 	}
 
 	mux := http.NewServeMux()
@@ -125,6 +131,8 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("PUT /api/v1/master-data/{type}/{key}", app.require("Editor", app.updateMasterData))
 	mux.HandleFunc("DELETE /api/v1/master-data/{type}/{key}", app.require("Editor", app.deleteMasterData))
 	mux.HandleFunc("GET /api/v1/master-data-relations", app.require("Viewer", app.listMasterDataRelations))
+	mux.HandleFunc("GET /api/v1/backup/export", app.require("Admin", app.exportBackup))
+	mux.HandleFunc("POST /api/v1/backup/restore", app.require("Admin", app.restoreBackup))
 
 	mux.Handle("/", staticHandler(app.staticDir))
 
@@ -872,6 +880,74 @@ func (a *App) downloadVehicleCVFile(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": path.Base(file.OriginalName)}))
 	http.ServeFile(w, r, fullPath)
+}
+
+const maxBackupBytes = 250 * 1024 * 1024
+
+func (a *App) exportBackup(w http.ResponseWriter, r *http.Request) {
+	backup, err := a.backupService.Export(r.Context())
+	if err != nil {
+		a.logger.Error("backup export failed", "error", err)
+		respondProblem(w, http.StatusInternalServerError, "backup_export_failed", "Backup konnte nicht erstellt werden.")
+		return
+	}
+
+	filename := "railkeeper2-backup-" + time.Now().UTC().Format("20060102-150405") + ".json"
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+	if err := json.NewEncoder(w).Encode(backup); err != nil {
+		a.logger.Error("backup encode failed", "error", err)
+	}
+}
+
+func (a *App) restoreBackup(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBackupBytes+1024*1024)
+	if err := r.ParseMultipartForm(maxBackupBytes); err != nil {
+		respondProblem(w, http.StatusBadRequest, "backup_restore_invalid", "Backup-Datei konnte nicht gelesen werden.")
+		return
+	}
+	if r.MultipartForm != nil {
+		defer func() { _ = r.MultipartForm.RemoveAll() }()
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		respondProblem(w, http.StatusBadRequest, "backup_file_missing", "Eine Backup-Datei ist erforderlich.")
+		return
+	}
+	defer func() { _ = file.Close() }()
+	if header.Size > maxBackupBytes {
+		respondProblem(w, http.StatusBadRequest, "backup_file_too_large", "Die Backup-Datei ist zu gross.")
+		return
+	}
+	data, err := io.ReadAll(io.LimitReader(file, maxBackupBytes+1))
+	if err != nil || int64(len(data)) > maxBackupBytes {
+		respondProblem(w, http.StatusBadRequest, "backup_file_too_large", "Die Backup-Datei ist zu gross.")
+		return
+	}
+
+	backup, err := application.DecodeBackup(data)
+	if err != nil {
+		respondProblem(w, http.StatusBadRequest, "backup_restore_invalid", "Backup-Datei ist ungueltig.")
+		return
+	}
+	result, err := a.backupService.Import(r.Context(), backup)
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrBackupInvalid), errors.Is(err, application.ErrBackupPath):
+			respondProblem(w, http.StatusBadRequest, "backup_restore_invalid", "Backup-Datei ist ungueltig.")
+		default:
+			a.logger.Error("backup restore failed", "error", err)
+			respondProblem(w, http.StatusInternalServerError, "backup_restore_failed", "Backup konnte nicht wiederhergestellt werden.")
+		}
+		return
+	}
+	if a.masterDataService != nil {
+		if err := a.masterDataService.WarmCache(r.Context()); err != nil {
+			a.logger.Error("master data cache refresh after backup restore failed", "error", err)
+		}
+	}
+	respondJSON(w, http.StatusOK, result)
 }
 
 func safeAttachmentFileName(value string) string {

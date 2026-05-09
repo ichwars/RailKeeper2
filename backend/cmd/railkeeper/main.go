@@ -68,6 +68,7 @@ func main() {
 		MasterDataService: masterDataService,
 		ArticleSearch:     application.NewArticleSearchService(),
 		InventoryNumbers:  application.NewInventoryNumberService(db),
+		BackupService:     application.NewBackupService(db, dataDir),
 		CookieSecure:      cookieSecure,
 	})
 

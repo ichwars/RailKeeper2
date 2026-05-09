@@ -531,6 +531,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ArticleSearchResult"
+    BackupImportResult:
+      type: object
+      required: [restoredTables, restoredRows, restoredFiles]
+      properties:
+        restoredTables:
+          type: integer
+        restoredRows:
+          type: integer
+        restoredFiles:
+          type: integer
 paths:
   /setup/status:
     get:
@@ -1046,6 +1056,57 @@ paths:
                 $ref: "#/components/schemas/Problem"
         "504":
           description: Search timeout or upstream failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /backup/export:
+    get:
+      tags: [Backup]
+      summary: Export a local RailKeeper backup
+      responses:
+        "200":
+          description: Backup JSON containing app data and upload files
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /backup/restore:
+    post:
+      tags: [Backup]
+      summary: Restore a local RailKeeper backup
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Restore summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupImportResult"
+        "400":
+          description: Invalid backup file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: Admin role required
           content:
             application/json:
               schema:

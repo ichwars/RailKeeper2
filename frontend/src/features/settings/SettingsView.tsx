@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ExternalLink, Info, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { CheckCircle2, Download, ExternalLink, Info, Pencil, RefreshCw, ShieldAlert, Trash2, Upload, X } from "lucide-react";
 import { api, InventoryNumberScheme, MasterDataEntry, MasterDataInput } from "../../shared/api";
 
 type SettingsTab = "general" | "data" | "importExport" | "appearance";
@@ -127,6 +127,9 @@ export function SettingsView() {
   const [inventorySchemes, setInventorySchemes] = useState<InventoryNumberScheme[]>([]);
   const [inventorySchemesLoading, setInventorySchemesLoading] = useState(false);
   const [inventorySchemesMessage, setInventorySchemesMessage] = useState("");
+  const [backupFile, setBackupFile] = useState<File | null>(null);
+  const [backupMessage, setBackupMessage] = useState("");
+  const [backupSaving, setBackupSaving] = useState(false);
 
   const activeDataType = useMemo(
     () => masterDataTypes.find((item) => item.type === activeType) || masterDataTypes[0],
@@ -313,6 +316,29 @@ export function SettingsView() {
         reloadActiveType();
       })
       .catch((error: Error) => setMessage(error.message));
+  };
+
+  const restoreBackup = () => {
+    if (!backupFile) {
+      setBackupMessage("Bitte zuerst eine Backup-Datei auswaehlen.");
+      return;
+    }
+    if (!window.confirm("Backup wirklich wiederherstellen? Bestand, Stammdaten, Wartung, CVs und Uploads werden durch den Inhalt der Datei ersetzt.")) {
+      return;
+    }
+    setBackupSaving(true);
+    setBackupMessage("");
+    api
+      .restoreBackup(backupFile)
+      .then((result) => {
+        setBackupMessage(
+          `Backup wiederhergestellt: ${result.restoredRows} Datensaetze, ${result.restoredFiles} Dateien.`
+        );
+        setLoadedTypes({});
+        setItemsByType({});
+      })
+      .catch((error: Error) => setBackupMessage(error.message))
+      .finally(() => setBackupSaving(false));
   };
 
   return (
@@ -584,9 +610,53 @@ export function SettingsView() {
       )}
 
       {activeSettingsTab === "importExport" && (
-        <section className="panel settings-card">
+        <section className="panel settings-card import-export-card">
           <h2>Import/Export</h2>
-          <p>Import und Export werden spaeter auf Basis der stabilen Datenstruktur umgesetzt.</p>
+          <p>Lokales Vollbackup fuer Bestand, Stammdaten, Wartung, Digitalfunktionen, CV-Daten und Upload-Dateien.</p>
+
+          <div className="backup-grid">
+            <section className="backup-box">
+              <div>
+                <h3>Backup exportieren</h3>
+                <p>Erstellt eine JSON-Datei mit allen RailKeeper-Daten und lokal gespeicherten Uploads. Benutzerkonten und Sitzungen werden nicht exportiert.</p>
+              </div>
+              <a className="primary-button" href={api.backupExportUrl()}>
+                <Download size={17} />
+                Backup herunterladen
+              </a>
+            </section>
+
+            <section className="backup-box warning">
+              <div>
+                <h3>Backup wiederherstellen</h3>
+                <p>Ersetzt lokale App-Daten und Uploads durch den Inhalt der Backup-Datei. Bitte vorher ein aktuelles Backup exportieren.</p>
+              </div>
+              <label className="backup-file-field">
+                Backup-Datei
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={(event) => setBackupFile(event.target.files?.[0] || null)}
+                />
+              </label>
+              <button type="button" className="secondary-button danger" onClick={restoreBackup} disabled={backupSaving}>
+                {backupSaving ? (
+                  "Wird wiederhergestellt..."
+                ) : (
+                  <>
+                    <Upload size={17} />
+                    Backup einspielen
+                  </>
+                )}
+              </button>
+            </section>
+          </div>
+
+          <p className="source-note backup-note">
+            <ShieldAlert size={16} aria-hidden="true" />
+            <span>Restore ist absichtlich Admin-geschuetzt und ersetzt Daten. Der Export enthaelt keine Passworthashes.</span>
+          </p>
+          {backupMessage && <p className="form-message">{backupMessage}</p>}
         </section>
       )}
 

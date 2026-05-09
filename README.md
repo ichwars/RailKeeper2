@@ -20,6 +20,10 @@ The application runs as one Go service that serves both the JSON API and the Rea
 - image suggestions from article search, primary image selection and preview
 - QR code generation with PNG/SVG download and print view
 - file attachments for vehicles, including category, notes, download and PDF inline view
+- maintenance and condition history per vehicle
+- decoder function mapping from F0 to F31 with editable symbol master data
+- structured CV values with import/export and stored CV files
+- local JSON backup/restore for app data and upload files
 - audit log entries for setup, login/logout and vehicle changes
 - OpenAPI contract in `openapi/railkeeper.yaml`
 - Docker Compose deployment with persistent `/data` volume
@@ -109,7 +113,7 @@ Create `.env` from `.env.example`, then run:
 docker compose up -d --build
 ```
 
-The container stores SQLite data, uploads and future backup files in `/data`.
+The container stores SQLite data and uploads in `/data`. Backups can be exported from the settings UI as JSON files.
 
 ## Data Sources
 
@@ -118,9 +122,5 @@ Initial master data is seeded from `backend/seeds/master_data.json`. Article dat
 ## Not Yet Included
 
 - accessories
-- full backup/restore UI
-- maintenance history
-- decoder function mapping F0-F31
-- structured CV value import/export
 - thumbnails for local image uploads
 - card/table view switch for inventory

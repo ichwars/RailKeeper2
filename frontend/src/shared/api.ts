@@ -342,6 +342,12 @@ export type ArticleSearchResponse = {
   results: ArticleSearchResult[];
 };
 
+export type BackupImportResult = {
+  restoredTables: number;
+  restoredRows: number;
+  restoredFiles: number;
+};
+
 let csrfToken = "";
 
 type RequestOptions = {
@@ -587,6 +593,19 @@ export const api = {
       },
       { timeoutMs: 15000 }
     ),
+  backupExportUrl: () => "/api/v1/backup/export",
+  restoreBackup: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<BackupImportResult>(
+      "/backup/restore",
+      {
+        method: "POST",
+        body: form
+      },
+      { timeoutMs: 120000 }
+    );
+  },
   masterData: (type: string, activeOnly = false) =>
     request<MasterDataEntry[]>(
       `/master-data/${encodeURIComponent(type)}${activeOnly ? "?active=true" : ""}`

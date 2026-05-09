@@ -590,6 +590,62 @@ h1 {
   content: "";
 }
 
+.import-export-card {
+  display: grid;
+  gap: 18px;
+}
+
+.backup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.backup-box {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+}
+
+.backup-box.warning {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--line));
+}
+
+.backup-box h3 {
+  margin: 0 0 6px;
+}
+
+.backup-box p {
+  margin: 0;
+}
+
+.backup-box .primary-button,
+.backup-box .secondary-button {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.backup-file-field {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.backup-file-field input {
+  width: 100%;
+}
+
+.backup-note {
+  max-width: 760px;
+}
+
 .loading-cell {
   height: 68px;
   color: var(--muted);
