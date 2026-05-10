@@ -43,9 +43,14 @@ func (a *App) previewVehicleImport(w http.ResponseWriter, r *http.Request) {
 		}
 		respondJSON(w, http.StatusOK, vehicleImportPreviewResponse{Rows: rows})
 	case ".xls":
-		respondProblem(w, http.StatusBadRequest, "vehicle_import_unsupported", "Dieses Excel-Binärformat wird noch nicht unterstützt. Bitte als XLSX, ODS, CSV, TSV oder JSON speichern.")
+		rows, err := parseXLSRows(data)
+		if err != nil {
+			respondProblem(w, http.StatusBadRequest, "vehicle_import_invalid", "XLS-Datei konnte nicht ausgewertet werden.")
+			return
+		}
+		respondJSON(w, http.StatusOK, vehicleImportPreviewResponse{Rows: rows})
 	default:
-		respondProblem(w, http.StatusBadRequest, "vehicle_import_unsupported", "Bitte eine XLSX- oder ODS-Datei hochladen.")
+		respondProblem(w, http.StatusBadRequest, "vehicle_import_unsupported", "Bitte eine XLSX-, XLS- oder ODS-Datei hochladen.")
 	}
 }
 

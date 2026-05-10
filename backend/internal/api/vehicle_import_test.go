@@ -3,6 +3,8 @@ package api
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
+	"math"
 	"testing"
 )
 
@@ -99,6 +101,36 @@ func TestParseODSRows(t *testing.T) {
 	}
 }
 
+func TestParseBIFFWorkbookRows(t *testing.T) {
+	global := appendBIFFRecord(nil, biffBOF, nil)
+	global = appendBIFFRecord(global, biffSST, buildTestSST("Hersteller", "Bezeichnung", "Piko"))
+	boundSheetSize := 4 + 4 + 1 + 1 + 1 + 1 + len("Bestand")
+	sheetOffset := uint32(len(global) + boundSheetSize)
+	bound := make([]byte, 0, boundSheetSize-4)
+	bound = binary.LittleEndian.AppendUint32(bound, sheetOffset)
+	bound = append(bound, 0, 0, byte(len("Bestand")), 0)
+	bound = append(bound, "Bestand"...)
+	global = appendBIFFRecord(global, biffBound, bound)
+
+	sheet := appendBIFFRecord(nil, biffBOF, nil)
+	sheet = appendBIFFRecord(sheet, biffLabelSST, buildLabelSST(0, 0, 0))
+	sheet = appendBIFFRecord(sheet, biffLabelSST, buildLabelSST(0, 1, 1))
+	sheet = appendBIFFRecord(sheet, biffLabelSST, buildLabelSST(1, 0, 2))
+	sheet = appendBIFFRecord(sheet, biffNumber, buildNumberCell(1, 1, 162))
+	sheet = appendBIFFRecord(sheet, biffEOF, nil)
+
+	rows, err := parseBIFFWorkbookRows(append(global, sheet...))
+	if err != nil {
+		t.Fatalf("parse biff workbook: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %#v", rows)
+	}
+	if rows[0][0] != "Hersteller" || rows[0][1] != "Bezeichnung" || rows[1][0] != "Piko" || rows[1][1] != "162" {
+		t.Fatalf("unexpected rows: %#v", rows)
+	}
+}
+
 func writeZipFile(t *testing.T, writer *zip.Writer, name string, content string) {
 	t.Helper()
 	file, err := writer.Create(name)
@@ -108,4 +140,40 @@ func writeZipFile(t *testing.T, writer *zip.Writer, name string, content string)
 	if _, err := file.Write([]byte(content)); err != nil {
 		t.Fatalf("write zip file %s: %v", name, err)
 	}
+}
+
+func appendBIFFRecord(target []byte, recordID uint16, data []byte) []byte {
+	target = binary.LittleEndian.AppendUint16(target, recordID)
+	target = binary.LittleEndian.AppendUint16(target, uint16(len(data)))
+	return append(target, data...)
+}
+
+func buildTestSST(values ...string) []byte {
+	var data []byte
+	data = binary.LittleEndian.AppendUint32(data, uint32(len(values)))
+	data = binary.LittleEndian.AppendUint32(data, uint32(len(values)))
+	for _, value := range values {
+		data = binary.LittleEndian.AppendUint16(data, uint16(len(value)))
+		data = append(data, 0)
+		data = append(data, value...)
+	}
+	return data
+}
+
+func buildLabelSST(row uint16, column uint16, sstIndex uint32) []byte {
+	var data []byte
+	data = binary.LittleEndian.AppendUint16(data, row)
+	data = binary.LittleEndian.AppendUint16(data, column)
+	data = binary.LittleEndian.AppendUint16(data, 0)
+	data = binary.LittleEndian.AppendUint32(data, sstIndex)
+	return data
+}
+
+func buildNumberCell(row uint16, column uint16, value float64) []byte {
+	var data []byte
+	data = binary.LittleEndian.AppendUint16(data, row)
+	data = binary.LittleEndian.AppendUint16(data, column)
+	data = binary.LittleEndian.AppendUint16(data, 0)
+	data = binary.LittleEndian.AppendUint64(data, math.Float64bits(value))
+	return data
 }

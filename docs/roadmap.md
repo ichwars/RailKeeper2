@@ -20,7 +20,7 @@
 - backup and restore
 - backup compatibility preflight
 - overview dashboard
-- vehicle CSV/TSV/XLSX/ODS/JSON import and export
+- vehicle CSV/TSV/XLSX/XLS/ODS/JSON import and export
 - manual column mapping for unknown vehicle import headers
 - field-level update preview for vehicle imports
 - safe duplicate update mode for vehicle imports
@@ -39,10 +39,7 @@
 
 ## Next Practical Milestones
 
-1. Vehicle import polish
-   - secure backend import for XLS
-
-2. ESU LokProgrammer import
+1. ESU LokProgrammer import
    - read safe ESUX metadata such as decoder, address, project name and preview image
    - import ESUX files as decoder attachments
    - evaluate LokProgrammer CSV/XML/text exports for CV values and function mappings

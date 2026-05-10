@@ -693,7 +693,7 @@ export function ImportExportView() {
     }
     setMessage("");
     const extension = file.name.split(".").pop()?.toLowerCase() || "";
-    if (extension === "xlsx" || extension === "ods") {
+    if (extension === "xlsx" || extension === "xls" || extension === "ods") {
       setRows([]);
       setImportTable(null);
       setPreviewLoading(true);
@@ -711,12 +711,6 @@ export function ImportExportView() {
       } finally {
         setPreviewLoading(false);
       }
-      return;
-    }
-    if (extension === "xls") {
-      setRows([]);
-      setImportTable(null);
-      setMessage("XLS ist als altes Excel-Binärformat vorgemerkt. Aktuell bitte als XLSX, ODS, CSV, TSV oder JSON speichern.");
       return;
     }
 
@@ -798,7 +792,7 @@ export function ImportExportView() {
           <div className="panel-head">
             <div>
               <h2>Import</h2>
-              <p>CSV, TSV, XLSX, ODS und RailKeeper-JSON werden ausgewertet. XLS ist vorgemerkt.</p>
+              <p>CSV, TSV, XLSX, XLS, ODS und RailKeeper-JSON werden ausgewertet.</p>
             </div>
             <FileInput size={20} aria-hidden="true" />
           </div>
