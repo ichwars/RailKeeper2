@@ -1,5 +1,5 @@
 import { ChangeEvent, Fragment, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Database, Download, FileInput, Save, Upload } from "lucide-react";
+import { AlertTriangle, Check, Database, Download, FileInput, Printer, Save, Upload } from "lucide-react";
 import { api, CreateVehicleRequest, Vehicle } from "../../shared/api";
 
 type ImportRow = {
@@ -539,21 +539,11 @@ function getImportChanges(row: ImportRow, existing?: Vehicle): ImportChange[] {
 }
 
 function vehiclesToCSV(vehicles: Vehicle[]) {
-  const headers = ["Inventarnummer", "Hersteller", "Artikel-Nr.", "Bezeichnung", "Spur", "Epoche", "Bahngesellschaft", "Kategorie", "Gattung", "Digital", "Decoder-Nr.", "Listenpreis"];
-  const rows = vehicles.map((vehicle) => [
-    vehicle.inventoryNumber,
-    vehicle.manufacturer,
-    vehicle.articleNumber,
-    vehicle.name,
-    vehicle.gauge,
-    vehicle.epoch,
-    vehicle.railwayCompany,
-    vehicle.category,
-    vehicle.gattung,
-    vehicle.digital ? "ja" : "nein",
-    vehicle.digitalDecoderNumber,
-    vehicle.listPrice
-  ]);
+  const headers = vehicleImportFields.map((field) => field.label);
+  const rows = vehicles.map((vehicle) => {
+    const request = vehicleToRequest(vehicle);
+    return vehicleImportFields.map((field) => displayImportValue(request[field.key]).replace(/^-$/, ""));
+  });
   return [headers, ...rows].map((row) => row.map(csvEscape).join(";")).join("\n");
 }
 
@@ -565,6 +555,99 @@ function downloadText(fileName: string, content: string, type: string) {
   link.download = fileName;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function htmlEscape(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function printInventory(vehicles: Vehicle[]) {
+  const printWindow = window.open("", "railkeeper-bestand-druck");
+  if (!printWindow) {
+    window.alert("Die Druckansicht konnte nicht geöffnet werden. Bitte Popups für RailKeeper erlauben.");
+    return;
+  }
+
+  const digital = vehicles.filter((vehicle) => vehicle.digital).length;
+  const analog = vehicles.length - digital;
+  const rows = vehicles.map((vehicle) => `
+    <tr>
+      <td>${htmlEscape(vehicle.inventoryNumber)}</td>
+      <td>${htmlEscape(vehicle.manufacturer)}</td>
+      <td>${htmlEscape(vehicle.articleNumber)}</td>
+      <td>${htmlEscape(vehicle.name)}</td>
+      <td>${htmlEscape(vehicle.gauge)}</td>
+      <td>${htmlEscape(vehicle.epoch)}</td>
+      <td>${htmlEscape(vehicle.category)}</td>
+      <td>${vehicle.digital ? "digital" : "analog"}</td>
+      <td>${htmlEscape(vehicle.listPrice)}</td>
+    </tr>
+  `).join("");
+
+  printWindow.document.open();
+  printWindow.document.write(`<!doctype html>
+    <html lang="de">
+      <head>
+        <meta charset="utf-8" />
+        <title>RailKeeper Bestand</title>
+        <style>
+          @page { size: A4 landscape; margin: 14mm; }
+          * { box-sizing: border-box; }
+          body { margin: 0; color: #0b1e26; font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; }
+          header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #1c621b; }
+          h1 { margin: 0 0 4px; font-size: 24px; line-height: 1.1; }
+          p { margin: 0; color: #4f6869; }
+          .stats { display: grid; grid-template-columns: repeat(3, auto); gap: 8px; text-align: right; }
+          .stats span { display: block; padding: 6px 8px; border: 1px solid #d5dfdc; border-radius: 6px; background: #f5f8f6; font-weight: 700; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { padding: 6px 7px; border-bottom: 1px solid #d5dfdc; text-align: left; vertical-align: top; }
+          th { background: #edf2f1; color: #4f6869; font-size: 10px; text-transform: uppercase; }
+          tr:nth-child(even) td { background: #f8faf9; }
+          footer { margin-top: 12px; color: #4f6869; font-size: 10px; }
+        </style>
+      </head>
+      <body>
+        <header>
+          <div>
+            <h1>RailKeeper Bestand</h1>
+            <p>Fahrzeugliste, erstellt am ${htmlEscape(new Date().toLocaleString("de-DE"))}</p>
+          </div>
+          <div class="stats">
+            <span>${vehicles.length} Fahrzeuge</span>
+            <span>${digital} digital</span>
+            <span>${analog} analog</span>
+          </div>
+        </header>
+        <table>
+          <thead>
+            <tr>
+              <th>Inventar</th>
+              <th>Hersteller</th>
+              <th>Artikel</th>
+              <th>Bezeichnung</th>
+              <th>Spur</th>
+              <th>Epoche</th>
+              <th>Kategorie</th>
+              <th>Digital</th>
+              <th>Listenpreis</th>
+            </tr>
+          </thead>
+          <tbody>${rows || `<tr><td colspan="9">Keine Fahrzeuge vorhanden.</td></tr>`}</tbody>
+        </table>
+        <footer>RailKeeper2 lokale Druckansicht. Im Druckdialog kann diese Ansicht als PDF gespeichert werden.</footer>
+        <script>
+          window.addEventListener("load", () => {
+            window.focus();
+            window.print();
+          });
+        </script>
+      </body>
+    </html>`);
+  printWindow.document.close();
 }
 
 export function ImportExportView() {
@@ -821,13 +904,17 @@ export function ImportExportView() {
             <Download size={20} aria-hidden="true" />
           </div>
           <div className="export-actions">
-            <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => downloadText("railkeeper-bestand.csv", vehiclesToCSV(vehicles), "text/csv;charset=utf-8")}>
+            <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => downloadText("railkeeper-bestand.csv", `\uFEFF${vehiclesToCSV(vehicles)}`, "text/csv;charset=utf-8")}>
               <Download size={15} aria-hidden="true" />
               CSV exportieren
             </button>
             <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => downloadText("railkeeper-bestand.json", JSON.stringify({ format: "railkeeper-vehicles", version: 1, vehicles }, null, 2), "application/json;charset=utf-8")}>
               <Download size={15} aria-hidden="true" />
               JSON exportieren
+            </button>
+            <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => printInventory(vehicles)}>
+              <Printer size={15} aria-hidden="true" />
+              PDF/Druckansicht
             </button>
           </div>
         </article>
