@@ -24,6 +24,7 @@
 - safe duplicate update mode for vehicle imports
 - maintenance and condition history
 - images and attachments per maintenance entry
+- maintenance radar and dashboard summaries
 - digital function mapping
 - structured CV values and CV files
 - responsive inventory table/card switch
@@ -33,26 +34,22 @@
 1. Local media polish
    - optional WebP thumbnail generation
 
-2. Maintenance and condition polish
-   - richer dashboard summaries for planned maintenance
-
-3. Digital functions polish
+2. Digital functions polish
    - richer icon picker
    - import/export of function mappings
 
-4. Decoder and CV data polish
+3. Decoder and CV data polish
    - decoder profiles
    - change history
 
-5. Responsive inventory polish
+4. Responsive inventory polish
    - compact mobile layout
-   - richer dashboard summaries
 
-6. Vehicle import polish
+5. Vehicle import polish
    - secure backend import for XLS/ODS
    - field-level import preview before updating existing vehicles
 
-7. ESU LokProgrammer import
+6. ESU LokProgrammer import
    - read safe ESUX metadata such as decoder, address, project name and preview image
    - import ESUX files as decoder attachments
    - evaluate LokProgrammer CSV/XML/text exports for CV values and function mappings
