@@ -43,6 +43,24 @@ func TestCreateVehicleUsesCategoryInventoryNumberScheme(t *testing.T) {
 	}
 }
 
+func TestCreateVehicleDoesNotUseAccessoryInventoryNumberScheme(t *testing.T) {
+	db := testDB(t)
+	service := application.NewVehicleService(db)
+
+	vehicle, err := service.Create(context.Background(), application.CreateVehicleInput{
+		Manufacturer: "Piko",
+		Name:         "Kiste",
+		Gauge:        "H0",
+		Category:     "Zubehör",
+	}, "actor-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vehicle.InventoryNumber != "RK-FAH-000001" {
+		t.Fatalf("accessory-like category should fall back to vehicle scheme, got %q", vehicle.InventoryNumber)
+	}
+}
+
 func TestCreateVehicleRejectsDuplicateManualInventoryNumber(t *testing.T) {
 	db := testDB(t)
 	service := application.NewVehicleService(db)

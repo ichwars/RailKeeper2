@@ -19,6 +19,11 @@ func TestInventoryNumberSchemeListAndUpdate(t *testing.T) {
 	if len(schemes) == 0 {
 		t.Fatal("expected seeded inventory number schemes")
 	}
+	for _, scheme := range schemes {
+		if scheme.Category == "Zubehoer" {
+			t.Fatal("accessory inventory scheme must not be seeded")
+		}
+	}
 
 	updated, err := service.Update(ctx, "Lokomotive", application.InventoryNumberSchemeInput{
 		Prefix:     "rk-engine",

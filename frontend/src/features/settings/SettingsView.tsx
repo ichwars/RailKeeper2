@@ -141,10 +141,6 @@ function externalLink(entry: MasterDataEntry) {
   return null;
 }
 
-function displayInventoryCategory(category: string) {
-  return category === "Zubehoer" ? "Zubehör" : category;
-}
-
 export function SettingsView() {
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>("general");
   const [activeType, setActiveType] = useState(masterDataTypes[0].type);
@@ -432,7 +428,7 @@ export function SettingsView() {
         <h1>
           Einstellungen <span>0.1.0</span>
         </h1>
-        <p>Inventarverwaltung für Modellbahn und Zubehör</p>
+        <p>Inventarverwaltung für Modellbahnfahrzeuge</p>
       </section>
 
       <nav className="settings-primary-tabs" aria-label="Einstellungen">
@@ -504,7 +500,7 @@ export function SettingsView() {
                   ) : (
                     inventorySchemes.map((scheme) => (
                       <tr key={scheme.id}>
-                        <td><strong>{displayInventoryCategory(scheme.category)}</strong></td>
+                        <td><strong>{scheme.category}</strong></td>
                         <td>
                           <input value={scheme.prefix} onChange={(event) => updateInventoryScheme(scheme.category, { prefix: event.target.value })} />
                         </td>

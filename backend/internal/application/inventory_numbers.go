@@ -51,8 +51,7 @@ ORDER BY
     WHEN 'Fahrzeug' THEN 0
     WHEN 'Lokomotive' THEN 1
     WHEN 'Wagen' THEN 2
-    WHEN 'Zubehoer' THEN 3
-    ELSE 4
+    ELSE 3
   END,
   category ASC
 `)
@@ -168,7 +167,7 @@ func cleanInventoryNumberSchemeInput(input InventoryNumberSchemeInput) Inventory
 func cleanInventoryCategory(category string) string {
 	category = strings.TrimSpace(category)
 	switch strings.ToLower(category) {
-	case "fahrzeug", "lokomotive", "wagen", "zubehoer":
+	case "fahrzeug", "lokomotive", "wagen":
 		return category
 	default:
 		return category
@@ -182,8 +181,6 @@ func inventoryCategoryForVehicle(category string) string {
 		return "Lokomotive"
 	case strings.Contains(value, "wagen"), strings.Contains(value, "waggon"):
 		return "Wagen"
-	case strings.Contains(value, "zub"):
-		return "Zubehoer"
 	default:
 		return "Fahrzeug"
 	}

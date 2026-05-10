@@ -24,6 +24,5 @@ INSERT INTO inventory_number_schemes(id, category, prefix, next_number, padding,
 VALUES
   (lower(hex(randomblob(16))), 'Fahrzeug', 'RK-FAH', 1, 6, 1, datetime('now'), datetime('now')),
   (lower(hex(randomblob(16))), 'Lokomotive', 'RK-LOK', 1, 6, 1, datetime('now'), datetime('now')),
-  (lower(hex(randomblob(16))), 'Wagen', 'RK-WAG', 1, 6, 1, datetime('now'), datetime('now')),
-  (lower(hex(randomblob(16))), 'Zubehoer', 'RK-ZUB', 1, 6, 1, datetime('now'), datetime('now'))
+  (lower(hex(randomblob(16))), 'Wagen', 'RK-WAG', 1, 6, 1, datetime('now'), datetime('now'))
 ON CONFLICT(category) DO NOTHING;
