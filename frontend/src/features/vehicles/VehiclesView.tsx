@@ -127,6 +127,7 @@ type MaintenanceReminder = {
 
 type AttachmentEditState = Record<string, { description: string; category: string; maintenanceId: string }>;
 type FunctionEditState = Record<string, VehicleFunctionInput & { persisted?: boolean }>;
+type FunctionMappingImport = VehicleFunctionInput & { functionKey: string };
 
 const emptyMaintenanceForm: VehicleMaintenanceInput = {
   kind: "Wartung",
@@ -631,6 +632,28 @@ function cvValuesFromImport(text: string): VehicleCVValueInput[] {
         sourceFileId: ""
       };
     });
+}
+
+function functionMappingsFromImport(text: string): FunctionMappingImport[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  const parsed = JSON.parse(trimmed);
+  const rows = Array.isArray(parsed) ? parsed : parsed.functions || parsed.functionMappings || [];
+  return rows.map((row: Partial<FunctionMappingImport>) => ({
+    functionKey: String(row.functionKey || "").toUpperCase(),
+    name: String(row.name || ""),
+    symbolKey: String(row.symbolKey || ""),
+    functionType: String(row.functionType || "standard"),
+    mode: String(row.mode || "dauer"),
+    directionDependent: Boolean(row.directionDependent),
+    notes: String(row.notes || "")
+  }));
+}
+
+function isValidFunctionMapping(value: FunctionMappingImport) {
+  return functionKeys.includes(value.functionKey) &&
+    functionTypes.includes(value.functionType || "standard") &&
+    functionModes.includes(value.mode || "dauer");
 }
 
 function cvValueKey(value: Pick<VehicleCVValueInput, "cvNumber" | "decoderProfile">) {
@@ -1451,6 +1474,7 @@ export function VehiclesView() {
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const cvFileInputRef = useRef<HTMLInputElement | null>(null);
   const cvImportInputRef = useRef<HTMLInputElement | null>(null);
+  const functionImportInputRef = useRef<HTMLInputElement | null>(null);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [qrSvg, setQrSvg] = useState("");
   const [qrError, setQrError] = useState("");
@@ -1984,6 +2008,71 @@ export function VehiclesView() {
       .then(() => refreshSelectedVehicle(selected.id))
       .catch((error: Error) => setMessage(error.message))
       .finally(() => setSaving(false));
+  };
+
+  const exportFunctions = () => {
+    if (!selected) return;
+    const functionMappings = configuredFunctionKeys.map((functionKey) => {
+      const edit = functionEdit(functionKey);
+      return {
+        functionKey,
+        name: edit.name || "",
+        symbolKey: edit.symbolKey || "",
+        functionType: edit.functionType || "standard",
+        mode: edit.mode || "dauer",
+        directionDependent: Boolean(edit.directionDependent),
+        notes: edit.notes || ""
+      };
+    });
+    const payload = {
+      vehicle: {
+        inventoryNumber: selected.inventoryNumber,
+        name: selected.name,
+        decoder: form.digitalDecoderNumber || form.dtDecoderNumber || ""
+      },
+      functions: functionMappings
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${selected.inventoryNumber || "railkeeper"}-funktionen.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importFunctions = (files: FileList | null) => {
+    if (!selected || !files || files.length === 0) return;
+    const [file] = Array.from(files);
+    setSaving(true);
+    setMessage("");
+    file
+      .text()
+      .then(functionMappingsFromImport)
+      .then(async (rows) => {
+        const valid = rows.filter(isValidFunctionMapping);
+        if (valid.length === 0) {
+          throw new Error("Keine gültigen Funktionszuordnungen gefunden.");
+        }
+        for (const row of valid) {
+          await api.updateVehicleFunction(selected.id, row.functionKey, {
+            name: row.name || "",
+            symbolKey: row.symbolKey || "",
+            functionType: row.functionType || "standard",
+            mode: row.mode || "dauer",
+            directionDependent: Boolean(row.directionDependent),
+            notes: row.notes || ""
+          });
+        }
+      })
+      .then(() => refreshSelectedVehicle(selected.id))
+      .catch((error: Error) => setMessage(error.message))
+      .finally(() => {
+        setSaving(false);
+        if (functionImportInputRef.current) {
+          functionImportInputRef.current.value = "";
+        }
+      });
   };
 
   const updateCVForm = (patch: Partial<VehicleCVValueInput>) => {
@@ -2848,6 +2937,24 @@ export function VehiclesView() {
                     <div>
                       <h3>Digitalfunktionen</h3>
                       <p>Funktionstasten F0 bis F31 mit Symbol, Typ, Betriebsart und Richtungsabhängigkeit pflegen.</p>
+                    </div>
+                    <div className="cv-toolbar">
+                      <input
+                        ref={functionImportInputRef}
+                        type="file"
+                        accept="application/json,.json"
+                        className="visually-hidden"
+                        onChange={(event) => importFunctions(event.target.files)}
+                        disabled={readonly || !selected || saving}
+                      />
+                      <button type="button" className="secondary-button" onClick={() => functionImportInputRef.current?.click()} disabled={readonly || !selected || saving}>
+                        <Upload size={15} aria-hidden="true" />
+                        Import
+                      </button>
+                      <button type="button" className="secondary-button" onClick={exportFunctions} disabled={!selected || configuredFunctionKeys.length === 0}>
+                        <Download size={15} aria-hidden="true" />
+                        Export
+                      </button>
                     </div>
                   </div>
                   {!selected && <p className="empty-state compact">Digitalfunktionen können nach dem ersten Speichern gepflegt werden.</p>}

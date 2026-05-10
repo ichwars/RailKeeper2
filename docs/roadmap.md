@@ -26,6 +26,7 @@
 - images and attachments per maintenance entry
 - maintenance radar and dashboard summaries
 - digital function mapping
+- digital function JSON import/export
 - structured CV values and CV files
 - responsive inventory table/card switch
 
@@ -36,7 +37,6 @@
 
 2. Digital functions polish
    - richer icon picker
-   - import/export of function mappings
 
 3. Decoder and CV data polish
    - decoder profiles
