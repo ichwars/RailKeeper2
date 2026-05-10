@@ -1648,6 +1648,7 @@ td {
   display: grid;
   gap: 10px;
   padding: 12px;
+  background: var(--panel);
 }
 
 .inventory-card-title {
@@ -2136,6 +2137,7 @@ td {
   padding: 18px;
   border-radius: 8px;
   background: var(--panel);
+  color: var(--text);
   box-shadow: 0 24px 90px rgba(0, 0, 0, 0.32);
 }
 
@@ -2197,6 +2199,7 @@ td {
 
 .article-result-card header strong {
   font-size: 15px;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 
@@ -2210,6 +2213,7 @@ td {
 
 .article-result-card p {
   margin: 0;
+  color: var(--muted);
   line-height: 1.5;
 }
 
@@ -2358,17 +2362,20 @@ td {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--solid-bg);
+  color: var(--text);
 }
 
 .article-field-group h3 {
   margin: 0;
   padding: 10px 12px 0;
+  color: var(--text);
   font-size: 13px;
 }
 
 .article-field-group table {
   table-layout: fixed;
   background: var(--solid-bg);
+  color: var(--text);
 }
 
 .article-field-group th,
@@ -2385,10 +2392,12 @@ td {
 .article-field-group th {
   background: var(--panel-subtle);
   color: var(--muted);
+  font-weight: 900;
 }
 
 .article-field-group tbody tr {
   background: var(--solid-bg);
+  border-top: 1px solid var(--line);
 }
 
 .article-field-group th:first-child,
@@ -2398,7 +2407,7 @@ td {
 }
 
 .article-field-group tr.conflict {
-  background: color-mix(in srgb, var(--warm) 9%, var(--solid-bg));
+  background: color-mix(in srgb, var(--warm) 12%, var(--solid-bg));
 }
 
 .article-status {
@@ -2527,19 +2536,19 @@ td {
 
 .pending-image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(202px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 10px;
 }
 
 .pending-image-card {
   position: relative;
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 7px;
   align-items: center;
-  min-height: 66px;
+  min-height: 70px;
   margin: 0;
-  padding: 6px;
+  padding: 7px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -2553,8 +2562,8 @@ td {
 
 .image-preview-button {
   display: block;
-  width: 68px;
-  height: 50px;
+  width: 64px;
+  height: 54px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -2562,9 +2571,9 @@ td {
 }
 
 .image-preview-button img {
-  width: 68px;
-  height: 50px;
-  object-fit: contain;
+  width: 64px;
+  height: 54px;
+  object-fit: cover;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #fff;
@@ -2572,7 +2581,7 @@ td {
 
 .pending-image-card figcaption {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -2586,7 +2595,7 @@ td {
 }
 
 .pending-image-card input {
-  min-height: 23px;
+  min-height: 22px;
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 0 7px;
@@ -2630,12 +2639,12 @@ td {
 .attachment-actions {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
 }
 
 .image-card-actions .icon-button {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   color: color-mix(in srgb, var(--muted) 84%, var(--text));
 }
 
