@@ -172,6 +172,7 @@ export function ImportExportView() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [masterDataFile, setMasterDataFile] = useState<File | null>(null);
@@ -212,9 +213,23 @@ export function ImportExportView() {
     }
     setMessage("");
     const extension = file.name.split(".").pop()?.toLowerCase() || "";
-    if (["xlsx", "xls", "ods"].includes(extension)) {
+    if (extension === "xlsx") {
       setRows([]);
-      setMessage("Excel-Dateien sind als Importziel vorgesehen. Aus Sicherheitsgründen wird der Parser backendseitig ergänzt; aktuell bitte als CSV, TSV oder JSON exportieren.");
+      setPreviewLoading(true);
+      try {
+        const preview = await api.previewVehicleImport(file);
+        setRows(importRowsFromTable(preview.rows, vehicles));
+        setMessage(preview.rows.length ? "" : "Die Excel-Datei enthält keine auswertbaren Zeilen.");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Excel-Datei konnte nicht ausgewertet werden.");
+      } finally {
+        setPreviewLoading(false);
+      }
+      return;
+    }
+    if (["xls", "ods"].includes(extension)) {
+      setRows([]);
+      setMessage("XLS und ODS sind als spätere Formate vorgemerkt. Aktuell bitte als XLSX, CSV, TSV oder JSON speichern.");
       return;
     }
 
@@ -288,7 +303,7 @@ export function ImportExportView() {
           <div className="panel-head">
             <div>
               <h2>Import</h2>
-              <p>CSV, TSV und RailKeeper-JSON werden direkt ausgewertet. Excel folgt als sicherer Backend-Import.</p>
+              <p>CSV, TSV, XLSX und RailKeeper-JSON werden ausgewertet. XLS und ODS sind vorgemerkt.</p>
             </div>
             <FileInput size={20} aria-hidden="true" />
           </div>
@@ -299,7 +314,7 @@ export function ImportExportView() {
           </label>
           <div className="import-summary">
             <span>{importSummary.total} Zeilen</span>
-            <span>{importSummary.selected} bereit</span>
+            <span>{previewLoading ? "liest Datei..." : `${importSummary.selected} bereit`}</span>
             <span className={importSummary.errors ? "danger" : ""}>{importSummary.errors} Hinweise</span>
             <span>{importSummary.saved} gespeichert</span>
           </div>

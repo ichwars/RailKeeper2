@@ -361,6 +361,10 @@ export type ArticleSearchResponse = {
   results: ArticleSearchResult[];
 };
 
+export type VehicleImportPreview = {
+  rows: string[][];
+};
+
 export type BackupImportResult = {
   restoredTables: number;
   restoredRows: number;
@@ -635,6 +639,18 @@ export const api = {
       },
       { timeoutMs: 15000 }
     ),
+  previewVehicleImport: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<VehicleImportPreview>(
+      "/vehicle-import/preview",
+      {
+        method: "POST",
+        body: form
+      },
+      { timeoutMs: 60000 }
+    );
+  },
   backupExportUrl: () => "/api/v1/backup/export",
   validateBackup: (file: File) => {
     const form = new FormData();
