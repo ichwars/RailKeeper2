@@ -128,6 +128,19 @@ type MaintenanceReminder = {
 type AttachmentEditState = Record<string, { description: string; category: string; maintenanceId: string }>;
 type FunctionEditState = Record<string, VehicleFunctionInput & { persisted?: boolean }>;
 type FunctionMappingImport = VehicleFunctionInput & { functionKey: string };
+type CVImportStatus = "new" | "changed" | "same" | "invalid";
+type CVImportRow = {
+  id: string;
+  input: VehicleCVValueInput;
+  existing?: VehicleCVValue;
+  status: CVImportStatus;
+  selected: boolean;
+  message: string;
+};
+type CVImportPreview = {
+  fileName: string;
+  rows: CVImportRow[];
+};
 
 const emptyMaintenanceForm: VehicleMaintenanceInput = {
   kind: "Wartung",
@@ -720,6 +733,76 @@ function isValidFunctionMapping(value: FunctionMappingImport) {
 
 function cvValueKey(value: Pick<VehicleCVValueInput, "cvNumber" | "decoderProfile">) {
   return `${Number(value.cvNumber)}::${(value.decoderProfile || "").trim().toLocaleLowerCase("de-DE")}`;
+}
+
+function normalizeCVText(value?: string) {
+  return (value || "").trim();
+}
+
+function cvImportChanges(existing: VehicleCVValue, input: VehicleCVValueInput) {
+  const changes = [];
+  if (Number(existing.value) !== Number(input.value)) changes.push("Wert");
+  if (normalizeCVText(existing.description) !== normalizeCVText(input.description)) changes.push("Beschreibung");
+  if (normalizeCVText(existing.category) !== normalizeCVText(input.category)) changes.push("Kategorie");
+  if (normalizeCVText(existing.sourceFileId) !== normalizeCVText(input.sourceFileId)) changes.push("Quelldatei");
+  return changes;
+}
+
+function buildCVImportPreview(fileName: string, values: VehicleCVValueInput[], existingValues: VehicleCVValue[]): CVImportPreview {
+  const existing = new Map(existingValues.map((entry) => [cvValueKey(entry), entry]));
+  const seen = new Set<string>();
+  const rows = values.map((input, index) => {
+    const key = cvValueKey(input);
+    if (!isValidCVValueInput(input)) {
+      return {
+        id: `${index}-${key}`,
+        input,
+        status: "invalid" as CVImportStatus,
+        selected: false,
+        message: "ungültig"
+      };
+    }
+    if (seen.has(key)) {
+      return {
+        id: `${index}-${key}`,
+        input,
+        status: "invalid" as CVImportStatus,
+        selected: false,
+        message: "doppelt im Import"
+      };
+    }
+    seen.add(key);
+    const match = existing.get(key);
+    if (!match) {
+      return {
+        id: `${index}-${key}`,
+        input,
+        status: "new" as CVImportStatus,
+        selected: true,
+        message: "neu"
+      };
+    }
+    const changes = cvImportChanges(match, input);
+    if (changes.length === 0) {
+      return {
+        id: `${index}-${key}`,
+        input,
+        existing: match,
+        status: "same" as CVImportStatus,
+        selected: false,
+        message: "bereits gleich"
+      };
+    }
+    return {
+      id: `${index}-${key}`,
+      input,
+      existing: match,
+      status: "changed" as CVImportStatus,
+      selected: true,
+      message: `ändert ${changes.join(", ")}`
+    };
+  });
+  return { fileName, rows };
 }
 
 function isValidCVValueInput(value: VehicleCVValueInput) {
@@ -1539,6 +1622,7 @@ export function VehiclesView() {
   const [editingCVID, setEditingCVID] = useState<string | null>(null);
   const [cvFileProfile, setCVFileProfile] = useState("");
   const [cvFileDescription, setCVFileDescription] = useState("");
+  const [cvImportPreview, setCVImportPreview] = useState<CVImportPreview | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const cvFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1661,6 +1745,7 @@ export function VehiclesView() {
     setMaintenanceForm(emptyMaintenanceForm);
     setEditingCVID(null);
     setCVForm(emptyCVForm);
+    setCVImportPreview(null);
   };
 
   const updateCategory = (category: string) => {
@@ -2231,24 +2316,13 @@ export function VehiclesView() {
     file
       .text()
       .then(cvValuesFromImport)
-      .then(async (values) => {
-        const valid = values.filter(isValidCVValueInput);
-        if (valid.length === 0) {
+      .then((values) => {
+        const preview = buildCVImportPreview(file.name, values, selected.cvValues || []);
+        if (!preview.rows.some((row) => row.status !== "invalid")) {
           throw new Error("Keine gültigen CV-Werte gefunden.");
         }
-        const existing = new Map((selected.cvValues || []).map((entry) => [cvValueKey(entry), entry]));
-        for (const value of valid) {
-          const match = existing.get(cvValueKey(value));
-          if (match) {
-            const updated = await api.updateVehicleCVValue(selected.id, match.id, value);
-            existing.set(cvValueKey(updated), updated);
-          } else {
-            const created = await api.createVehicleCVValue(selected.id, value);
-            existing.set(cvValueKey(created), created);
-          }
-        }
+        setCVImportPreview(preview);
       })
-      .then(() => refreshSelectedVehicle(selected.id))
       .catch((error: Error) => setMessage(error.message))
       .finally(() => {
         setSaving(false);
@@ -2256,6 +2330,53 @@ export function VehiclesView() {
           cvImportInputRef.current.value = "";
         }
       });
+  };
+
+  const toggleCVImportRow = (id: string, selectedRow: boolean) => {
+    setCVImportPreview((current) => current ? {
+      ...current,
+      rows: current.rows.map((row) => row.id === id ? { ...row, selected: selectedRow } : row)
+    } : current);
+  };
+
+  const selectCVImportRows = (modeName: "all" | "none" | "empty") => {
+    setCVImportPreview((current) => current ? {
+      ...current,
+      rows: current.rows.map((row) => ({
+        ...row,
+        selected: row.status !== "invalid" && (
+          modeName === "all" ||
+          (modeName === "empty" && row.status === "new")
+        )
+      }))
+    } : current);
+  };
+
+  const applyCVImportPreview = () => {
+    if (!selected || !cvImportPreview) return;
+    const rows = cvImportPreview.rows.filter((row) => row.selected && row.status !== "invalid");
+    if (rows.length === 0) {
+      setMessage("Keine CV-Werte für den Import ausgewählt.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    (async () => {
+      for (const row of rows) {
+        if (row.existing) {
+          await api.updateVehicleCVValue(selected.id, row.existing.id, row.input);
+        } else {
+          await api.createVehicleCVValue(selected.id, row.input);
+        }
+      }
+    })()
+      .then(() => refreshSelectedVehicle(selected.id))
+      .then(() => {
+        setCVImportPreview(null);
+        setMessage(`${rows.length} CV-Wert${rows.length === 1 ? "" : "e"} übernommen.`);
+      })
+      .catch((error: Error) => setMessage(error.message))
+      .finally(() => setSaving(false));
   };
 
   const uploadCVFiles = (files: FileList | null) => {
@@ -2441,6 +2562,7 @@ export function VehiclesView() {
     setFunctionEdits({});
     resetMaintenanceForm();
     resetCVForm();
+    setCVImportPreview(null);
     setActiveTab("model");
     setOpenSections({ model: true, details: false });
     setModalOpen(true);
@@ -2462,6 +2584,7 @@ export function VehiclesView() {
     setFunctionEdits({});
     resetMaintenanceForm();
     resetCVForm();
+    setCVImportPreview(null);
     setPreviewImage(null);
     setMessage("");
   };
@@ -2595,6 +2718,13 @@ export function VehiclesView() {
       ...(selected?.cvValues || []).map((value) => value.decoderProfile).filter((profile): profile is string => Boolean(profile)),
       ...(selected?.cvFiles || []).map((file) => file.decoderProfile).filter((profile): profile is string => Boolean(profile))
     ]).size
+  };
+  const cvImportStats = {
+    selected: cvImportPreview?.rows.filter((row) => row.selected && row.status !== "invalid").length || 0,
+    new: cvImportPreview?.rows.filter((row) => row.status === "new").length || 0,
+    changed: cvImportPreview?.rows.filter((row) => row.status === "changed").length || 0,
+    same: cvImportPreview?.rows.filter((row) => row.status === "same").length || 0,
+    invalid: cvImportPreview?.rows.filter((row) => row.status === "invalid").length || 0
   };
   const storedDecoderProfiles = Array.from(new Set([
     ...(selected?.cvValues || []).map((value) => value.decoderProfile).filter((profile): profile is string => Boolean(profile)),
@@ -3181,6 +3311,74 @@ export function VehiclesView() {
                             <strong>{cvSummary.files}</strong>
                           </div>
                         </div>
+                        {cvImportPreview && (
+                          <section className="cv-import-preview" aria-label="CV-Import Vorschau">
+                            <div className="cv-import-head">
+                              <div>
+                                <h4>Import prüfen</h4>
+                                <p>{cvImportPreview.fileName}</p>
+                              </div>
+                              <div className="cv-import-badges" aria-label="Import Zusammenfassung">
+                                <span>{cvImportStats.new} neu</span>
+                                <span>{cvImportStats.changed} geändert</span>
+                                <span>{cvImportStats.same} gleich</span>
+                                {cvImportStats.invalid > 0 && <span className="danger">{cvImportStats.invalid} ungültig</span>}
+                              </div>
+                            </div>
+                            <div className="cv-import-actions">
+                              <button type="button" className="secondary-button" onClick={() => selectCVImportRows("empty")} disabled={saving}>
+                                Nur neue
+                              </button>
+                              <button type="button" className="secondary-button" onClick={() => selectCVImportRows("all")} disabled={saving}>
+                                Alles auswählen
+                              </button>
+                              <button type="button" className="secondary-button" onClick={() => selectCVImportRows("none")} disabled={saving}>
+                                Nichts auswählen
+                              </button>
+                              <button type="button" className="primary-button" onClick={applyCVImportPreview} disabled={saving || cvImportStats.selected === 0}>
+                                <Check size={15} aria-hidden="true" />
+                                Auswahl übernehmen
+                              </button>
+                              <button type="button" className="secondary-button" onClick={() => setCVImportPreview(null)} disabled={saving}>
+                                Verwerfen
+                              </button>
+                            </div>
+                            <div className="table-wrap compact-table cv-import-table">
+                              <table>
+                                <thead>
+                                  <tr>
+                                    <th>Übernehmen</th>
+                                    <th>CV</th>
+                                    <th>Aktuell</th>
+                                    <th>Import</th>
+                                    <th>Profil</th>
+                                    <th>Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {cvImportPreview.rows.map((row) => (
+                                    <tr key={row.id} className={`cv-import-${row.status}`}>
+                                      <td>
+                                        <input
+                                          type="checkbox"
+                                          checked={row.selected}
+                                          onChange={(event) => toggleCVImportRow(row.id, event.target.checked)}
+                                          disabled={row.status === "invalid" || saving}
+                                          aria-label={`CV ${row.input.cvNumber} übernehmen`}
+                                        />
+                                      </td>
+                                      <td>{row.input.cvNumber || "-"}</td>
+                                      <td>{row.existing ? row.existing.value : "-"}</td>
+                                      <td>{Number.isFinite(Number(row.input.value)) ? row.input.value : "-"}</td>
+                                      <td>{row.input.decoderProfile || row.existing?.decoderProfile || "-"}</td>
+                                      <td>{row.message}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </section>
+                        )}
                         <datalist id="decoder-profile-options">
                           {decoderProfileOptions.map((profile) => (
                             <option key={profile} value={profile} />

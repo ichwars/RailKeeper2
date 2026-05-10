@@ -3223,6 +3223,81 @@ td {
   line-height: 1;
 }
 
+.cv-import-preview {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-bright) 8%, var(--panel));
+}
+
+.cv-import-head,
+.cv-import-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cv-import-head h4 {
+  margin: 0 0 3px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.cv-import-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cv-import-badges,
+.cv-import-actions {
+  flex-wrap: wrap;
+}
+
+.cv-import-badges {
+  display: flex;
+  gap: 6px;
+}
+
+.cv-import-badges span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--panel-subtle);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.cv-import-badges .danger {
+  color: #b42318;
+}
+
+.cv-import-table {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.cv-import-changed td {
+  background: color-mix(in srgb, #fca311 11%, var(--panel));
+}
+
+.cv-import-new td {
+  background: color-mix(in srgb, var(--accent-bright) 10%, var(--panel));
+}
+
+.cv-import-same td {
+  color: var(--muted);
+}
+
+.cv-import-invalid td {
+  color: #b42318;
+  background: color-mix(in srgb, #b42318 8%, var(--panel));
+}
+
 .decoder-profile-list {
   display: flex;
   flex-wrap: wrap;

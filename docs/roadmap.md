@@ -29,23 +29,21 @@
 - digital function icon picker
 - digital function JSON import/export
 - structured CV values and CV files
+- CV import comparison preview
 - decoder profile suggestions for CV values and files
 - visible CV change history
 - responsive inventory table/card switch
 
 ## Next Practical Milestones
 
-1. Decoder and CV data polish
-   - CV comparison helpers for imported decoder files
-
-2. Responsive inventory polish
+1. Responsive inventory polish
    - compact mobile layout
 
-3. Vehicle import polish
+2. Vehicle import polish
    - secure backend import for XLS
    - field-level import preview before updating existing vehicles
 
-4. ESU LokProgrammer import
+3. ESU LokProgrammer import
    - read safe ESUX metadata such as decoder, address, project name and preview image
    - import ESUX files as decoder attachments
    - evaluate LokProgrammer CSV/XML/text exports for CV values and function mappings

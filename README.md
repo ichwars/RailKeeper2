@@ -27,7 +27,7 @@ The application runs as one Go service that serves both the JSON API and the Rea
 - file attachments for vehicles, including category, notes, download and PDF inline view
 - maintenance and condition history per vehicle
 - decoder function mapping from F0 to F31 with icon picker, editable symbol master data and JSON import/export
-- structured CV values with import/export, decoder profile suggestions, change history and stored CV files
+- structured CV values with import/export preview, decoder profile suggestions, change history and stored CV files
 - local JSON backup/restore for app data and upload files with compatibility preflight
 - audit log entries for setup, login/logout and vehicle changes
 - OpenAPI contract in `openapi/railkeeper.yaml`
