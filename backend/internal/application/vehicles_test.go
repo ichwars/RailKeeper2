@@ -712,6 +712,9 @@ func TestVehiclePersistsCVValuesAndFiles(t *testing.T) {
 	if updated.Value != 4 {
 		t.Fatalf("unexpected cv update: %#v", updated)
 	}
+	if len(updated.History) != 1 || updated.History[0].OldValue != 3 || updated.History[0].NewValue != 4 {
+		t.Fatalf("unexpected cv history: %#v", updated.History)
+	}
 
 	var historyCount int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM vehicle_cv_value_history WHERE cv_value_id=? AND old_value=3 AND new_value=4`, value.ID).Scan(&historyCount); err != nil {

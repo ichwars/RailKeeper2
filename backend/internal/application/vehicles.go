@@ -236,16 +236,26 @@ type VehicleFunctionInput struct {
 }
 
 type VehicleCVValue struct {
-	ID             string `json:"id"`
-	VehicleID      string `json:"vehicleId"`
-	CVNumber       int    `json:"cvNumber"`
-	Value          int    `json:"value"`
-	Description    string `json:"description,omitempty"`
-	Category       string `json:"category,omitempty"`
-	DecoderProfile string `json:"decoderProfile,omitempty"`
-	SourceFileID   string `json:"sourceFileId,omitempty"`
-	CreatedAt      string `json:"createdAt"`
-	UpdatedAt      string `json:"updatedAt"`
+	ID             string                  `json:"id"`
+	VehicleID      string                  `json:"vehicleId"`
+	CVNumber       int                     `json:"cvNumber"`
+	Value          int                     `json:"value"`
+	Description    string                  `json:"description,omitempty"`
+	Category       string                  `json:"category,omitempty"`
+	DecoderProfile string                  `json:"decoderProfile,omitempty"`
+	SourceFileID   string                  `json:"sourceFileId,omitempty"`
+	CreatedAt      string                  `json:"createdAt"`
+	UpdatedAt      string                  `json:"updatedAt"`
+	History        []VehicleCVValueHistory `json:"history,omitempty"`
+}
+
+type VehicleCVValueHistory struct {
+	ID        string `json:"id"`
+	CVValueID string `json:"cvValueId"`
+	VehicleID string `json:"vehicleId"`
+	OldValue  int    `json:"oldValue"`
+	NewValue  int    `json:"newValue"`
+	ChangedAt string `json:"changedAt"`
 }
 
 type VehicleCVValueInput struct {
@@ -1746,6 +1756,11 @@ WHERE id=? AND vehicle_id=?
 		}
 		return nil, fmt.Errorf("get vehicle cv value: %w", err)
 	}
+	history, err := s.loadVehicleCVValueHistory(ctx, item.ID)
+	if err != nil {
+		return nil, err
+	}
+	item.History = history
 	return &item, nil
 }
 
@@ -1802,6 +1817,49 @@ ORDER BY decoder_profile ASC, cv_number ASC
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate vehicle cv values: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("close vehicle cv values: %w", err)
+	}
+	for index := range out {
+		history, err := s.loadVehicleCVValueHistory(ctx, out[index].ID)
+		if err != nil {
+			return nil, err
+		}
+		out[index].History = history
+	}
+	return out, nil
+}
+
+func (s *VehicleService) loadVehicleCVValueHistory(ctx context.Context, cvValueID string) ([]VehicleCVValueHistory, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT id, cv_value_id, vehicle_id, old_value, new_value, changed_at
+FROM vehicle_cv_value_history
+WHERE cv_value_id=?
+ORDER BY changed_at DESC
+`, strings.TrimSpace(cvValueID))
+	if err != nil {
+		return nil, fmt.Errorf("list vehicle cv value history: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := []VehicleCVValueHistory{}
+	for rows.Next() {
+		var item VehicleCVValueHistory
+		if err := rows.Scan(
+			&item.ID,
+			&item.CVValueID,
+			&item.VehicleID,
+			&item.OldValue,
+			&item.NewValue,
+			&item.ChangedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan vehicle cv value history: %w", err)
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate vehicle cv value history: %w", err)
 	}
 	return out, nil
 }

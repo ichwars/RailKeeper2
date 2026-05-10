@@ -1,4 +1,4 @@
-import { DragEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DragEvent, FormEvent, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
   AlertTriangle,
@@ -743,6 +743,13 @@ function formatDate(value?: string) {
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("de-DE");
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${date.toLocaleDateString("de-DE")} ${date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 function maintenanceOptionLabel(entry: VehicleMaintenance) {
@@ -3263,23 +3270,41 @@ export function VehiclesView() {
                           </thead>
                           <tbody>
                             {selected.cvValues.map((value) => (
-                              <tr key={value.id}>
-                                <td>{value.cvNumber}</td>
-                                <td>{value.value}</td>
-                                <td>{value.category || "-"}</td>
-                                <td>{value.decoderProfile || "-"}</td>
-                                <td>{value.description || "-"}</td>
-                                <td>
-                                  <div className="table-actions">
-                                    <button type="button" className="icon-button" onClick={() => editCVValue(value)} disabled={readonly || saving} aria-label="CV bearbeiten" title="CV bearbeiten">
-                                      <Pencil size={15} />
-                                    </button>
-                                    <button type="button" className="icon-button danger" onClick={() => deleteCVValue(value)} disabled={readonly || saving} aria-label="CV löschen" title="CV löschen">
-                                      <Trash2 size={15} />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
+                              <Fragment key={value.id}>
+                                <tr>
+                                  <td>{value.cvNumber}</td>
+                                  <td>{value.value}</td>
+                                  <td>{value.category || "-"}</td>
+                                  <td>{value.decoderProfile || "-"}</td>
+                                  <td>{value.description || "-"}</td>
+                                  <td>
+                                    <div className="table-actions">
+                                      <button type="button" className="icon-button" onClick={() => editCVValue(value)} disabled={readonly || saving} aria-label="CV bearbeiten" title="CV bearbeiten">
+                                        <Pencil size={15} />
+                                      </button>
+                                      <button type="button" className="icon-button danger" onClick={() => deleteCVValue(value)} disabled={readonly || saving} aria-label="CV löschen" title="CV löschen">
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                                {value.history && value.history.length > 0 && (
+                                  <tr className="cv-history-row">
+                                    <td colSpan={6}>
+                                      <details>
+                                        <summary>Historie: {value.history.length} Änderung{value.history.length === 1 ? "" : "en"}</summary>
+                                        <div className="cv-history-list">
+                                          {value.history.slice(0, 5).map((entry) => (
+                                            <span key={entry.id}>
+                                              {formatDateTime(entry.changedAt)}: {entry.oldValue} -&gt; {entry.newValue}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </details>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
                             ))}
                           </tbody>
                         </table>

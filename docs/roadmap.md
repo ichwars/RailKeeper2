@@ -30,6 +30,7 @@
 - digital function JSON import/export
 - structured CV values and CV files
 - decoder profile suggestions for CV values and files
+- visible CV change history
 - responsive inventory table/card switch
 
 ## Next Practical Milestones
@@ -38,7 +39,7 @@
    - optional WebP thumbnail generation
 
 2. Decoder and CV data polish
-   - visible CV change history
+   - CV comparison helpers for imported decoder files
 
 3. Responsive inventory polish
    - compact mobile layout

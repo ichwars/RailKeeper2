@@ -184,6 +184,16 @@ export type VehicleCVValue = {
   sourceFileId?: string;
   createdAt: string;
   updatedAt: string;
+  history?: VehicleCVValueHistory[];
+};
+
+export type VehicleCVValueHistory = {
+  id: string;
+  cvValueId: string;
+  vehicleId: string;
+  oldValue: number;
+  newValue: number;
+  changedAt: string;
 };
 
 export type VehicleCVValueInput = {

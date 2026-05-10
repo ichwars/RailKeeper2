@@ -2636,6 +2636,39 @@ td {
   gap: 12px;
 }
 
+.cv-history-row td {
+  background: color-mix(in srgb, var(--accent-bright) 8%, var(--panel));
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cv-history-row details {
+  display: grid;
+  gap: 8px;
+}
+
+.cv-history-row summary {
+  width: max-content;
+  cursor: pointer;
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.cv-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cv-history-list span {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 700;
+}
+
 .empty-tab h3 {
   margin: 0;
 }
