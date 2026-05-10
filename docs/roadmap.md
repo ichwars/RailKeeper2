@@ -22,6 +22,7 @@
 - overview dashboard
 - vehicle CSV/TSV/XLSX/ODS/JSON import and export
 - manual column mapping for unknown vehicle import headers
+- field-level update preview for vehicle imports
 - safe duplicate update mode for vehicle imports
 - maintenance and condition history
 - images and attachments per maintenance entry
@@ -40,7 +41,6 @@
 
 1. Vehicle import polish
    - secure backend import for XLS
-   - field-level import preview before updating existing vehicles
 
 2. ESU LokProgrammer import
    - read safe ESUX metadata such as decoder, address, project name and preview image

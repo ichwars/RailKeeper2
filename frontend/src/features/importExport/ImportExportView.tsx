@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, Fragment, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Database, Download, FileInput, Save, Upload } from "lucide-react";
 import { api, CreateVehicleRequest, Vehicle } from "../../shared/api";
 
@@ -26,6 +26,14 @@ type ImportTablePreview = {
   fileName: string;
   table: string[][];
   mappings: ColumnMapping[];
+};
+
+type ImportChange = {
+  key: VehicleImportField;
+  label: string;
+  current: string;
+  incoming: string;
+  status: "same" | "fill" | "overwrite";
 };
 
 const vehicleImportFields: { key: VehicleImportField; label: string }[] = [
@@ -93,6 +101,8 @@ const booleanImportFields = new Set<VehicleImportField>([
   "smokeGeneratorEnabled",
   "qrCodeEnabled"
 ]);
+
+const importFieldLabels = new Map(vehicleImportFields.map((field) => [field.key, field.label]));
 
 const columnAliases: Record<string, VehicleImportField> = {
   inventar: "inventoryNumber",
@@ -488,6 +498,44 @@ function mergeImportedVehicle(existing: Vehicle, incoming: CreateVehicleRequest,
     }
   });
   return merged;
+}
+
+function displayImportValue(value: unknown) {
+  if (typeof value === "boolean") {
+    return value ? "ja" : "nein";
+  }
+  if (typeof value === "string") {
+    return value.trim() || "-";
+  }
+  return "-";
+}
+
+function valuesEqual(current: unknown, incoming: unknown) {
+  if (typeof current === "boolean" || typeof incoming === "boolean") {
+    return Boolean(current) === Boolean(incoming);
+  }
+  return String(current ?? "").trim() === String(incoming ?? "").trim();
+}
+
+function getImportChanges(row: ImportRow, existing?: Vehicle): ImportChange[] {
+  if (!existing) {
+    return [];
+  }
+  return row.importedKeys
+    .filter((key) => key !== "images")
+    .map((key) => {
+      const current = existing[key as keyof Vehicle];
+      const incoming = row.vehicle[key];
+      const currentText = displayImportValue(current);
+      const incomingText = displayImportValue(incoming);
+      return {
+        key,
+        label: importFieldLabels.get(key) || String(key),
+        current: currentText,
+        incoming: incomingText,
+        status: valuesEqual(current, incoming) ? "same" : currentText === "-" ? "fill" : "overwrite"
+      };
+    });
 }
 
 function vehiclesToCSV(vehicles: Vehicle[]) {
@@ -890,28 +938,70 @@ export function ImportExportView() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className={row.status === "error" ? "import-row-error" : row.status === "warning" ? "import-row-warning" : row.status === "saved" ? "import-row-saved" : ""}>
-                    <td><input type="checkbox" checked={row.selected} disabled={row.status === "saved" || row.status === "error"} onChange={(event) => setRowSelected(row.id, event.target.checked)} /></td>
-                    <td>
-                      <select value={row.mode} disabled={row.status === "saved"} onChange={(event) => setRowMode(row.id, event.target.value as ImportRow["mode"])}>
-                        <option value="create">Neu</option>
-                        <option value="update" disabled={!row.duplicateVehicleId}>Aktualisieren</option>
-                      </select>
-                    </td>
-                    <td><input value={row.vehicle.inventoryNumber || ""} onChange={(event) => updateRow(row.id, { inventoryNumber: event.target.value })} /></td>
-                    <td><input value={row.vehicle.manufacturer} onChange={(event) => updateRow(row.id, { manufacturer: event.target.value })} /></td>
-                    <td><input value={row.vehicle.articleNumber || ""} onChange={(event) => updateRow(row.id, { articleNumber: event.target.value })} /></td>
-                    <td><input value={row.vehicle.name} onChange={(event) => updateRow(row.id, { name: event.target.value })} /></td>
-                    <td><input value={row.vehicle.gauge} onChange={(event) => updateRow(row.id, { gauge: event.target.value })} /></td>
-                    <td>
-                      <span className={`import-status ${row.status}`}>
-                        {row.status === "saved" ? <Check size={14} /> : row.status === "error" || row.status === "warning" ? <AlertTriangle size={14} /> : <Check size={14} />}
-                        {row.status === "saved" ? "gespeichert" : row.issues[0] || "bereit"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row) => {
+                  const existing = row.duplicateVehicleId ? vehicles.find((vehicle) => vehicle.id === row.duplicateVehicleId) : undefined;
+                  const changes = getImportChanges(row, existing);
+                  return (
+                    <Fragment key={row.id}>
+                      <tr className={row.status === "error" ? "import-row-error" : row.status === "warning" ? "import-row-warning" : row.status === "saved" ? "import-row-saved" : ""}>
+                        <td><input type="checkbox" checked={row.selected} disabled={row.status === "saved" || row.status === "error"} onChange={(event) => setRowSelected(row.id, event.target.checked)} /></td>
+                        <td>
+                          <select value={row.mode} disabled={row.status === "saved"} onChange={(event) => setRowMode(row.id, event.target.value as ImportRow["mode"])}>
+                            <option value="create">Neu</option>
+                            <option value="update" disabled={!row.duplicateVehicleId}>Aktualisieren</option>
+                          </select>
+                        </td>
+                        <td><input value={row.vehicle.inventoryNumber || ""} onChange={(event) => updateRow(row.id, { inventoryNumber: event.target.value })} /></td>
+                        <td><input value={row.vehicle.manufacturer} onChange={(event) => updateRow(row.id, { manufacturer: event.target.value })} /></td>
+                        <td><input value={row.vehicle.articleNumber || ""} onChange={(event) => updateRow(row.id, { articleNumber: event.target.value })} /></td>
+                        <td><input value={row.vehicle.name} onChange={(event) => updateRow(row.id, { name: event.target.value })} /></td>
+                        <td><input value={row.vehicle.gauge} onChange={(event) => updateRow(row.id, { gauge: event.target.value })} /></td>
+                        <td>
+                          <span className={`import-status ${row.status}`}>
+                            {row.status === "saved" ? <Check size={14} /> : row.status === "error" || row.status === "warning" ? <AlertTriangle size={14} /> : <Check size={14} />}
+                            {row.status === "saved" ? "gespeichert" : row.issues[0] || "bereit"}
+                          </span>
+                        </td>
+                      </tr>
+                      {existing && row.mode === "update" && (
+                        <tr className="import-change-row">
+                          <td colSpan={8}>
+                            <div className="import-change-panel">
+                              <div>
+                                <strong>Feldvorschau für Update</strong>
+                                <span>{changes.filter((change) => change.status === "overwrite").length} Überschreibungen, {changes.filter((change) => change.status === "fill").length} Ergänzungen</span>
+                              </div>
+                              {changes.length === 0 ? (
+                                <p>Keine importierten Feldwerte für diese Update-Zeile.</p>
+                              ) : (
+                                <table>
+                                  <thead>
+                                    <tr>
+                                      <th>Feld</th>
+                                      <th>Aktuell</th>
+                                      <th>Import</th>
+                                      <th>Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {changes.map((change) => (
+                                      <tr key={change.key} className={`change-${change.status}`}>
+                                        <td>{change.label}</td>
+                                        <td>{change.current}</td>
+                                        <td>{change.incoming}</td>
+                                        <td>{change.status === "same" ? "gleich" : change.status === "fill" ? "ergänzt leeres Feld" : "überschreibt"}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

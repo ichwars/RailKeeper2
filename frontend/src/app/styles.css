@@ -1408,6 +1408,80 @@ h1 {
   background: color-mix(in srgb, var(--accent-bright) 10%, var(--panel));
 }
 
+.import-change-row > td {
+  padding: 0 12px 12px;
+  background: color-mix(in srgb, var(--accent) 4%, var(--panel));
+}
+
+.import-change-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+}
+
+.import-change-panel > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.import-change-panel strong {
+  font-size: 13px;
+}
+
+.import-change-panel span,
+.import-change-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.import-change-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.import-change-panel th,
+.import-change-panel td {
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.import-change-panel th {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.import-change-panel .change-overwrite {
+  background: color-mix(in srgb, var(--warm) 10%, transparent);
+}
+
+.import-change-panel .change-fill {
+  background: color-mix(in srgb, var(--accent-bright) 7%, transparent);
+}
+
+.import-change-panel .change-same td:last-child {
+  color: var(--accent-strong);
+}
+
+.import-change-panel .change-fill td:last-child {
+  color: var(--accent-strong);
+}
+
+.import-change-panel .change-overwrite td:last-child {
+  color: var(--warm);
+}
+
 .import-status {
   display: inline-flex;
   align-items: center;

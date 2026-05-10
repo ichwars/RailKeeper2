@@ -12,7 +12,7 @@ The application runs as one Go service that serves both the JSON API and the Rea
 - vehicle list with search and sortable columns
 - table/card inventory view with responsive navigation and compact mobile list
 - printable/PDF inventory report with summary and vehicle detail cards
-- vehicle CSV, TSV, XLSX, ODS and JSON import/export with row-by-row review, manual column mapping and safe duplicate update mode
+- vehicle CSV, TSV, XLSX, ODS and JSON import/export with row-by-row review, manual column mapping, field-level update preview and safe duplicate update mode
 - vehicle create, detail, edit and delete dialogs
 - configurable inventory number schemes with collision checks
 - inventory number change history
