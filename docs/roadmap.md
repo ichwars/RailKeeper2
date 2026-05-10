@@ -21,6 +21,7 @@
 - backup compatibility preflight
 - overview dashboard
 - vehicle CSV/TSV/XLSX/JSON import and export
+- safe duplicate update mode for vehicle imports
 - maintenance and condition history
 - images and attachments per maintenance entry
 - digital function mapping
@@ -49,7 +50,7 @@
 
 6. Vehicle import polish
    - secure backend import for XLS/ODS
-   - duplicate matching and update mode for existing vehicles
+   - field-level import preview before updating existing vehicles
 
 7. ESU LokProgrammer import
    - read safe ESUX metadata such as decoder, address, project name and preview image
