@@ -338,23 +338,23 @@ export function ImportExportView() {
     }
     setMessage("");
     const extension = file.name.split(".").pop()?.toLowerCase() || "";
-    if (extension === "xlsx") {
+    if (extension === "xlsx" || extension === "ods") {
       setRows([]);
       setPreviewLoading(true);
       try {
         const preview = await api.previewVehicleImport(file);
         setRows(importRowsFromTable(preview.rows, vehicles));
-        setMessage(preview.rows.length ? "" : "Die Excel-Datei enthält keine auswertbaren Zeilen.");
+        setMessage(preview.rows.length ? "" : "Die Tabellendatei enthält keine auswertbaren Zeilen.");
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Excel-Datei konnte nicht ausgewertet werden.");
+        setMessage(error instanceof Error ? error.message : "Tabellendatei konnte nicht ausgewertet werden.");
       } finally {
         setPreviewLoading(false);
       }
       return;
     }
-    if (["xls", "ods"].includes(extension)) {
+    if (extension === "xls") {
       setRows([]);
-      setMessage("XLS und ODS sind als spätere Formate vorgemerkt. Aktuell bitte als XLSX, CSV, TSV oder JSON speichern.");
+      setMessage("XLS ist als altes Excel-Binärformat vorgemerkt. Aktuell bitte als XLSX, ODS, CSV, TSV oder JSON speichern.");
       return;
     }
 
@@ -436,7 +436,7 @@ export function ImportExportView() {
           <div className="panel-head">
             <div>
               <h2>Import</h2>
-              <p>CSV, TSV, XLSX und RailKeeper-JSON werden ausgewertet. XLS und ODS sind vorgemerkt.</p>
+              <p>CSV, TSV, XLSX, ODS und RailKeeper-JSON werden ausgewertet. XLS ist vorgemerkt.</p>
             </div>
             <FileInput size={20} aria-hidden="true" />
           </div>

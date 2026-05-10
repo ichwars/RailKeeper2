@@ -715,7 +715,7 @@ paths:
     post:
       tags: [Vehicles]
       summary: Preview a vehicle import file
-      description: Reads a supported import file and returns table rows for client-side review. Currently supports XLSX.
+      description: Reads a supported import file and returns table rows for client-side review. Currently supports XLSX and ODS.
       requestBody:
         required: true
         content:

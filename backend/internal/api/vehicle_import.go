@@ -35,10 +35,17 @@ func (a *App) previewVehicleImport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		respondJSON(w, http.StatusOK, vehicleImportPreviewResponse{Rows: rows})
-	case ".xls", ".ods":
-		respondProblem(w, http.StatusBadRequest, "vehicle_import_unsupported", "Dieses Tabellenformat wird noch nicht unterstützt. Bitte als XLSX, CSV, TSV oder JSON speichern.")
+	case ".ods":
+		rows, err := parseODSRows(data)
+		if err != nil {
+			respondProblem(w, http.StatusBadRequest, "vehicle_import_invalid", "ODS-Datei konnte nicht ausgewertet werden.")
+			return
+		}
+		respondJSON(w, http.StatusOK, vehicleImportPreviewResponse{Rows: rows})
+	case ".xls":
+		respondProblem(w, http.StatusBadRequest, "vehicle_import_unsupported", "Dieses Excel-Binärformat wird noch nicht unterstützt. Bitte als XLSX, ODS, CSV, TSV oder JSON speichern.")
 	default:
-		respondProblem(w, http.StatusBadRequest, "vehicle_import_unsupported", "Bitte eine XLSX-Datei hochladen.")
+		respondProblem(w, http.StatusBadRequest, "vehicle_import_unsupported", "Bitte eine XLSX- oder ODS-Datei hochladen.")
 	}
 }
 
@@ -334,6 +341,135 @@ func readXLSXCell(decoder *xml.Decoder, cellType string, sharedStrings []string)
 	}
 }
 
+func parseODSRows(data []byte) ([][]string, error) {
+	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return nil, err
+	}
+	content, err := openZipFile(reader, "content.xml")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = content.Close() }()
+	return parseODSContent(content)
+}
+
+func parseODSContent(reader io.Reader) ([][]string, error) {
+	decoder := xml.NewDecoder(reader)
+	var rows [][]string
+	inFirstTable := false
+	for {
+		token, err := decoder.Token()
+		if errors.Is(err, io.EOF) {
+			return trimEmptyImportRows(rows), nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		switch value := token.(type) {
+		case xml.StartElement:
+			if value.Name.Local == "table" && !inFirstTable {
+				inFirstTable = true
+				continue
+			}
+			if !inFirstTable || value.Name.Local != "table-row" {
+				continue
+			}
+			row, err := readODSRow(decoder)
+			if err != nil {
+				return nil, err
+			}
+			repeated := boundedRepeat(attrInt(value, "number-rows-repeated", 1), maxImportRows-len(rows))
+			for i := 0; i < repeated; i++ {
+				rows = append(rows, row)
+			}
+		case xml.EndElement:
+			if inFirstTable && value.Name.Local == "table" {
+				return trimEmptyImportRows(rows), nil
+			}
+		}
+	}
+}
+
+func readODSRow(decoder *xml.Decoder) ([]string, error) {
+	var row []string
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		switch value := token.(type) {
+		case xml.StartElement:
+			if value.Name.Local != "table-cell" && value.Name.Local != "covered-table-cell" {
+				continue
+			}
+			cellValue := ""
+			if value.Name.Local == "table-cell" {
+				var err error
+				cellValue, err = readODSCell(decoder, value)
+				if err != nil {
+					return nil, err
+				}
+			}
+			repeated := boundedRepeat(attrInt(value, "number-columns-repeated", 1), maxImportColumns-len(row))
+			for i := 0; i < repeated; i++ {
+				row = append(row, cellValue)
+			}
+		case xml.EndElement:
+			if value.Name.Local == "table-row" {
+				return trimTrailingCells(row), nil
+			}
+		}
+	}
+}
+
+func readODSCell(decoder *xml.Decoder, start xml.StartElement) (string, error) {
+	for _, attrName := range []string{"string-value", "value", "date-value", "time-value", "boolean-value"} {
+		if value := strings.TrimSpace(attrValue(start, attrName)); value != "" {
+			if err := skipUntilEnd(decoder, "table-cell"); err != nil {
+				return "", err
+			}
+			return value, nil
+		}
+	}
+	var builder strings.Builder
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return "", err
+		}
+		switch value := token.(type) {
+		case xml.CharData:
+			builder.Write([]byte(value))
+		case xml.EndElement:
+			if value.Name.Local == "table-cell" {
+				return strings.Join(strings.Fields(builder.String()), " "), nil
+			}
+		}
+	}
+}
+
+func skipUntilEnd(decoder *xml.Decoder, endName string) error {
+	depth := 1
+	for depth > 0 {
+		token, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		switch value := token.(type) {
+		case xml.StartElement:
+			if value.Name.Local == endName {
+				depth++
+			}
+		case xml.EndElement:
+			if value.Name.Local == endName {
+				depth--
+			}
+		}
+	}
+	return nil
+}
+
 func readElementText(decoder *xml.Decoder, endName string) (string, error) {
 	var builder strings.Builder
 	for {
@@ -350,6 +486,28 @@ func readElementText(decoder *xml.Decoder, endName string) (string, error) {
 			}
 		}
 	}
+}
+
+func attrInt(start xml.StartElement, name string, fallback int) int {
+	raw := strings.TrimSpace(attrValue(start, name))
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value
+}
+
+func boundedRepeat(repeated int, remaining int) int {
+	if remaining <= 0 {
+		return 0
+	}
+	if repeated > remaining {
+		return remaining
+	}
+	return repeated
 }
 
 func attrValue(start xml.StartElement, name string) string {

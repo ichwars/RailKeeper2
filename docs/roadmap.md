@@ -20,7 +20,7 @@
 - backup and restore
 - backup compatibility preflight
 - overview dashboard
-- vehicle CSV/TSV/XLSX/JSON import and export
+- vehicle CSV/TSV/XLSX/ODS/JSON import and export
 - safe duplicate update mode for vehicle imports
 - maintenance and condition history
 - images and attachments per maintenance entry
@@ -46,7 +46,7 @@
    - compact mobile layout
 
 5. Vehicle import polish
-   - secure backend import for XLS/ODS
+   - secure backend import for XLS
    - field-level import preview before updating existing vehicles
 
 6. ESU LokProgrammer import
