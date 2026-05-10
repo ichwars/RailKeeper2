@@ -33,17 +33,15 @@
 - decoder profile suggestions for CV values and files
 - visible CV change history
 - responsive inventory table/card switch
+- compact mobile inventory layout
 
 ## Next Practical Milestones
 
-1. Responsive inventory polish
-   - compact mobile layout
-
-2. Vehicle import polish
+1. Vehicle import polish
    - secure backend import for XLS
    - field-level import preview before updating existing vehicles
 
-3. ESU LokProgrammer import
+2. ESU LokProgrammer import
    - read safe ESUX metadata such as decoder, address, project name and preview image
    - import ESUX files as decoder attachments
    - evaluate LokProgrammer CSV/XML/text exports for CV values and function mappings

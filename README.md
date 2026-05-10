@@ -10,7 +10,7 @@ The application runs as one Go service that serves both the JSON API and the Rea
 - login, logout, server-side sessions, roles and CSRF protection
 - overview dashboard with inventory, value, digital/analog, maintenance and data-quality indicators
 - vehicle list with search and sortable columns
-- table/card inventory view with responsive navigation
+- table/card inventory view with responsive navigation and compact mobile list
 - printable/PDF inventory report with summary and vehicle detail cards
 - vehicle CSV, TSV, XLSX, ODS and JSON import/export with row-by-row review and safe duplicate update mode
 - vehicle create, detail, edit and delete dialogs

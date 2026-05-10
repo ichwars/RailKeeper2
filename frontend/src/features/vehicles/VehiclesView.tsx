@@ -2813,11 +2813,49 @@ export function VehiclesView() {
 
         {message && <p className="form-message">{message}</p>}
 
+        {!loading && vehicles.length > 0 && (
+          <div className="inventory-mobile-list" aria-label="Kompakte Fahrzeugliste">
+            {sortedVehicles.map((vehicle) => {
+              const image = primaryImage(vehicle.images);
+              return (
+                <article key={vehicle.id} className="inventory-mobile-item">
+                  <button type="button" className="inventory-mobile-media" onClick={() => openDetail(vehicle)} aria-label={`${vehicle.inventoryNumber} anzeigen`}>
+                    {image ? (
+                      <img src={previewImageUrl(image)} alt="" />
+                    ) : (
+                      <div className="image-placeholder">Keine Vorschau</div>
+                    )}
+                  </button>
+                  <button type="button" className="inventory-mobile-main" onClick={() => openDetail(vehicle)}>
+                    <span>{vehicle.inventoryNumber}</span>
+                    <strong>{vehicle.name}</strong>
+                    <small>{vehicle.manufacturer || "-"} · {vehicle.articleNumber || "-"} · {vehicle.category || "-"}</small>
+                  </button>
+                  <div className="inventory-mobile-meta">
+                    <span>{vehicle.gauge || "-"}</span>
+                    <small>{vehicle.epoch || "-"}</small>
+                  </div>
+                  <div className="inventory-mobile-actions">
+                    <button type="button" className="icon-button" onClick={() => openEdit(vehicle)} aria-label="Bearbeiten" title="Bearbeiten">
+                      <Pencil size={16} />
+                    </button>
+                    <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label="Löschen" title="Löschen">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
         {loading && vehicles.length === 0 ? (
           <p className="empty-state">Lade Fahrzeuge aus lokaler Datenbank...</p>
         ) : vehicles.length === 0 ? (
           <p className="empty-state">Noch keine Fahrzeuge vorhanden.</p>
-        ) : inventoryView === "cards" ? (
+        ) : (
+          <div className="inventory-desktop-content">
+            {inventoryView === "cards" ? (
           <div className="inventory-card-grid">
             {sortedVehicles.map((vehicle) => {
               const image = primaryImage(vehicle.images);
@@ -2919,6 +2957,8 @@ export function VehiclesView() {
                 ))}
               </tbody>
             </table>
+          </div>
+            )}
           </div>
         )}
       </section>
