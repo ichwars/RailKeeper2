@@ -113,6 +113,7 @@ type ModalTab = "model" | "control" | "cv" | "uploads" | "maintenance";
 type SortKey = "inventoryNumber" | "manufacturer" | "articleNumber" | "name" | "gauge" | "epoch" | "category";
 type SortDirection = "asc" | "desc";
 type InventoryViewMode = "table" | "cards";
+type InventoryReportMode = "summary" | "details";
 type ArticleFieldKey = keyof CreateVehicleRequest;
 type PendingArticleImage = ArticleSearchImage & {
   id: string;
@@ -881,7 +882,7 @@ function reportImage(vehicle: Vehicle) {
   return `<img class="vehicle-image" src="${escapeHtml(image.url)}" alt="">`;
 }
 
-function inventoryReportHtml(vehicles: Vehicle[], query: string, sort: { key: SortKey; direction: SortDirection }) {
+function inventoryReportHtml(vehicles: Vehicle[], query: string, sort: { key: SortKey; direction: SortDirection }, mode: InventoryReportMode) {
   const now = new Date();
   const totalAttachments = vehicles.reduce((sum, vehicle) => sum + (vehicle.attachments || []).length, 0);
   const totalImages = vehicles.reduce((sum, vehicle) => sum + (vehicle.images || []).length, 0);
@@ -944,6 +945,11 @@ function inventoryReportHtml(vehicles: Vehicle[], query: string, sort: { key: So
     })
     .join("");
 
+  const detailSection = mode === "details" ? `
+    <h2>Details</h2>
+    ${details}
+  ` : "";
+
   return `
 <!doctype html>
 <html lang="de">
@@ -991,7 +997,7 @@ function inventoryReportHtml(vehicles: Vehicle[], query: string, sort: { key: So
     <header>
       <div>
         <h1>RailKeeper2 Bestand</h1>
-        <p>${query.trim() ? `Filter: ${escapeHtml(query.trim())}` : "Alle Fahrzeuge"}</p>
+        <p>${query.trim() ? `Filter: ${escapeHtml(query.trim())}` : "Alle Fahrzeuge"} · ${mode === "details" ? "Detailreport" : "Kurzliste"}</p>
       </div>
       <div class="meta">
         <strong>${escapeHtml(now.toLocaleDateString("de-DE"))}</strong><br>
@@ -1020,8 +1026,7 @@ function inventoryReportHtml(vehicles: Vehicle[], query: string, sort: { key: So
       </thead>
       <tbody>${rows}</tbody>
     </table>
-    <h2>Details</h2>
-    ${details}
+    ${detailSection}
   </body>
 </html>
 `;
@@ -2644,17 +2649,17 @@ export function VehiclesView() {
     printWindow.print();
   };
 
-  const printInventoryReport = () => {
+  const printInventoryReport = (reportMode: InventoryReportMode) => {
     if (sortedVehicles.length === 0) {
       setMessage("Es gibt keine Fahrzeuge für den PDF-Report.");
       return;
     }
-    const printWindow = window.open("", "railkeeper-inventory-report", "width=1180,height=860");
+    const printWindow = window.open("", `railkeeper-inventory-${reportMode}`, "width=1180,height=860");
     if (!printWindow) {
       setMessage("Druckfenster konnte nicht geöffnet werden.");
       return;
     }
-    printWindow.document.write(inventoryReportHtml(sortedVehicles, query, sort));
+    printWindow.document.write(inventoryReportHtml(sortedVehicles, query, sort, reportMode));
     printWindow.document.close();
     printWindow.focus();
   };
@@ -2927,8 +2932,11 @@ export function VehiclesView() {
                 <Grid2X2 size={15} />
               </button>
             </div>
-            <button type="button" className="icon-button" onClick={printInventoryReport} aria-label="Bestand als PDF drucken" title="Bestand als PDF drucken" disabled={loading || vehicles.length === 0}>
+            <button type="button" className="icon-button" onClick={() => printInventoryReport("summary")} aria-label="Kurzliste als PDF drucken" title="Kurzliste als PDF drucken" disabled={loading || vehicles.length === 0}>
               <Printer size={16} />
+            </button>
+            <button type="button" className="icon-button" onClick={() => printInventoryReport("details")} aria-label="Detailreport als PDF drucken" title="Detailreport als PDF drucken" disabled={loading || vehicles.length === 0}>
+              <FileText size={16} />
             </button>
             <button type="button" className="icon-button" onClick={load} aria-label="Aktualisieren" title="Aktualisieren" disabled={loading}>
               <RefreshCw size={16} />
