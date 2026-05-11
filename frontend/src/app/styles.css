@@ -192,7 +192,7 @@ a {
 .sidebar-footer-actions button:hover,
 .sidebar-footer-actions a:focus-visible,
 .sidebar-footer-actions button:focus-visible {
-  background: var(--accent-soft);
+  background: transparent;
   color: var(--accent-strong);
   outline: none;
 }
@@ -1047,6 +1047,12 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.overview-hero.panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .overview-hero > div {
@@ -2324,12 +2330,21 @@ td {
 }
 
 .auth-card {
+  display: grid;
   width: min(430px, 100%);
   padding: 30px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
+}
+
+.auth-logo {
+  width: 146px;
+  height: 106px;
+  justify-self: center;
+  margin-bottom: 16px;
+  object-fit: contain;
 }
 
 .auth-mark {
@@ -2346,17 +2361,20 @@ td {
 .auth-card h1 {
   margin-bottom: 10px;
   font-size: 30px;
+  text-align: center;
 }
 
 .auth-card p {
   margin: 0 0 22px;
   color: var(--muted);
   line-height: 1.5;
+  text-align: center;
 }
 
 .auth-form {
   display: grid;
   gap: 14px;
+  text-align: left;
 }
 
 .auth-form label {
@@ -2381,6 +2399,32 @@ td {
 .auth-form input:focus {
   border-color: var(--accent);
   outline: 2px solid color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.forgot-password-button {
+  justify-self: end;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.forgot-password-button:hover,
+.forgot-password-button:focus-visible {
+  color: var(--accent-strong);
+  outline: none;
+}
+
+.auth-card .auth-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .primary-button {
@@ -2444,7 +2488,7 @@ td {
 }
 
 .icon-button:hover {
-  background: var(--accent-soft);
+  background: transparent;
   color: var(--accent-strong);
 }
 
@@ -3270,6 +3314,9 @@ td {
 .image-card-actions .icon-button:hover,
 .image-card-actions .icon-button.active {
   color: var(--accent-strong);
+}
+
+.image-card-actions .icon-button.active {
   background: var(--accent-soft);
 }
 

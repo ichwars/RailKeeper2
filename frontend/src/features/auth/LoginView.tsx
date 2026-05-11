@@ -1,17 +1,18 @@
 import { FormEvent, useState } from "react";
-import { LogIn } from "lucide-react";
 import { api, Session } from "../../shared/api";
 
 export function LoginView({ onLogin }: { onLogin: (session: Session) => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [recoveryMessage, setRecoveryMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setSaving(true);
     setMessage("");
+    setRecoveryMessage("");
 
     api
       .login({ username, password })
@@ -23,11 +24,9 @@ export function LoginView({ onLogin }: { onLogin: (session: Session) => void }) 
   return (
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="login-title">
-        <div className="auth-mark">
-          <LogIn size={30} aria-hidden="true" />
-        </div>
-        <h1 id="login-title">Anmelden</h1>
-        <p>Melde dich an, um RailKeeper2 zu öffnen.</p>
+        <img className="auth-logo" src="/brand/railkeeper-logo.png" alt="RailKeeper" />
+        <h1 id="login-title">RailKeeper Anmelden</h1>
+        <p>Melden Sie sich an Ihrem Konto an</p>
 
         <form className="auth-form" onSubmit={submit}>
           <label>
@@ -51,10 +50,19 @@ export function LoginView({ onLogin }: { onLogin: (session: Session) => void }) 
             />
           </label>
 
+          <button
+            type="button"
+            className="forgot-password-button"
+            onClick={() => setRecoveryMessage("Bitte wenden Sie sich an den Administrator, um das Passwort zurückzusetzen.")}
+          >
+            Passwort vergessen?
+          </button>
+
           <button className="primary-button" disabled={saving}>
             {saving ? "Wird angemeldet..." : "Anmelden"}
           </button>
 
+          {recoveryMessage && <p className="auth-hint">{recoveryMessage}</p>}
           {message && <p className="form-message">{message}</p>}
         </form>
       </section>
