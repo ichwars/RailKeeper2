@@ -114,6 +114,7 @@ type ModalTab = "model" | "control" | "cv" | "uploads" | "maintenance";
 type SortKey = "inventoryNumber" | "manufacturer" | "articleNumber" | "name" | "gauge" | "epoch" | "category";
 type SortDirection = "asc" | "desc";
 type InventoryViewMode = "table" | "cards";
+type InventoryFilter = "all" | "digital" | "analog" | "withImages" | "withoutImages" | "maintenanceDue";
 type InventoryReportMode = "summary" | "details";
 type ArticleFieldKey = keyof CreateVehicleRequest;
 type PendingArticleImage = ArticleSearchImage & {
@@ -1710,6 +1711,7 @@ export function VehiclesView() {
   const [qrSvg, setQrSvg] = useState("");
   const [qrError, setQrError] = useState("");
   const [inventoryView, setInventoryView] = useState<InventoryViewMode>(inventoryViewMode);
+  const [inventoryFilter, setInventoryFilter] = useState<InventoryFilter>("all");
   const [quickMenuVehicleID, setQuickMenuVehicleID] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "inventoryNumber",
@@ -1768,15 +1770,41 @@ export function VehiclesView() {
       .catch((error: Error) => setMessage(error.message));
   }, []);
 
+  const inventoryFilterCounts = useMemo(() => {
+    const withImages = vehicles.filter((vehicle) => (vehicle.images || []).length > 0).length;
+    const digital = vehicles.filter((vehicle) => vehicle.digital).length;
+    const maintenanceDue = vehicles.filter((vehicle) => (vehicle.maintenance || []).some(maintenanceIsDue)).length;
+
+    return {
+      all: vehicles.length,
+      digital,
+      analog: vehicles.length - digital,
+      withImages,
+      withoutImages: vehicles.length - withImages,
+      maintenanceDue
+    };
+  }, [vehicles]);
+
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter((vehicle) => {
+      if (inventoryFilter === "digital") return vehicle.digital;
+      if (inventoryFilter === "analog") return !vehicle.digital;
+      if (inventoryFilter === "withImages") return (vehicle.images || []).length > 0;
+      if (inventoryFilter === "withoutImages") return (vehicle.images || []).length === 0;
+      if (inventoryFilter === "maintenanceDue") return (vehicle.maintenance || []).some(maintenanceIsDue);
+      return true;
+    });
+  }, [inventoryFilter, vehicles]);
+
   const sortedVehicles = useMemo(() => {
-    return [...vehicles].sort((left, right) => {
+    return [...filteredVehicles].sort((left, right) => {
       const result = valueForSort(left, sort.key).localeCompare(valueForSort(right, sort.key), "de-DE", {
         numeric: true,
         sensitivity: "base"
       });
       return sort.direction === "asc" ? result : -result;
     });
-  }, [vehicles, sort]);
+  }, [filteredVehicles, sort]);
 
   const maintenanceReminders = useMemo<MaintenanceReminder[]>(() => {
     return vehicles
@@ -1806,6 +1834,15 @@ export function VehiclesView() {
       withImages
     };
   }, [vehicles]);
+
+  const inventoryFilters: { key: InventoryFilter; label: string; count: number }[] = [
+    { key: "all", label: "Alle", count: inventoryFilterCounts.all },
+    { key: "digital", label: "Digital", count: inventoryFilterCounts.digital },
+    { key: "analog", label: "Analog", count: inventoryFilterCounts.analog },
+    { key: "withImages", label: "Mit Bild", count: inventoryFilterCounts.withImages },
+    { key: "withoutImages", label: "Ohne Bild", count: inventoryFilterCounts.withoutImages },
+    { key: "maintenanceDue", label: "Wartung fällig", count: inventoryFilterCounts.maintenanceDue }
+  ];
 
   const filteredGattungen = useMemo(() => {
     const categoryKey = options.categories.find((entry) => optionValue(entry) === form.category)?.key;
@@ -2994,11 +3031,25 @@ export function VehiclesView() {
               </button>
             </div>
           </div>
+          <div className="inventory-filter-row" aria-label="Bestand filtern">
+            {inventoryFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={inventoryFilter === filter.key ? "inventory-filter-pill active" : "inventory-filter-pill"}
+                onClick={() => setInventoryFilter(filter.key)}
+                aria-pressed={inventoryFilter === filter.key}
+              >
+                <span>{filter.label}</span>
+                <strong>{filter.count}</strong>
+              </button>
+            ))}
+          </div>
         </div>
 
         {message && <p className="form-message">{message}</p>}
 
-        {!loading && vehicles.length > 0 && (
+        {!loading && sortedVehicles.length > 0 && (
           <div className="inventory-mobile-list" aria-label="Kompakte Fahrzeugliste">
             {sortedVehicles.map((vehicle) => {
               const image = primaryImage(vehicle.images);
@@ -3039,6 +3090,8 @@ export function VehiclesView() {
           <p className="empty-state">Lade Fahrzeuge aus lokaler Datenbank...</p>
         ) : vehicles.length === 0 ? (
           <p className="empty-state">Noch keine Fahrzeuge vorhanden.</p>
+        ) : sortedVehicles.length === 0 ? (
+          <p className="empty-state">Keine Fahrzeuge für diesen Filter gefunden.</p>
         ) : (
           <div className="inventory-desktop-content">
             {inventoryView === "cards" ? (

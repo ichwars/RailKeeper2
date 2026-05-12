@@ -2353,6 +2353,7 @@ h1 {
   display: flex;
   align-items: end;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 18px;
   min-height: 0;
   margin: 0 0 12px;
@@ -2379,6 +2380,55 @@ h1 {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.inventory-filter-row {
+  display: flex;
+  flex: 1 0 100%;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
+.inventory-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.inventory-filter-pill strong {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  color: var(--text);
+  font-size: 11px;
+}
+
+.inventory-filter-pill:hover,
+.inventory-filter-pill:focus-visible {
+  color: var(--accent-strong);
+  outline: none;
+}
+
+.inventory-filter-pill.active {
+  border-color: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .inventory-toolbar {
