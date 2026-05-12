@@ -1520,6 +1520,47 @@ h1 {
   white-space: nowrap;
 }
 
+.overview-widget .panel-head {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.widget-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-bright);
+}
+
+.widget-hide-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.widget-hide-button:hover,
+.widget-hide-button:focus-visible {
+  color: var(--accent-strong);
+  outline: none;
+}
+
+.overview-reset-card {
+  justify-items: start;
+  align-content: center;
+  min-height: 190px;
+}
+
+.overview-reset-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .overview-hero {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

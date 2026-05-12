@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, BarChart3, Box, CalendarClock, Database, FileInput, Gauge, Image, ListChecks, Printer, RefreshCw, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowRight, BarChart3, Box, CalendarClock, Database, EyeOff, FileInput, Gauge, Image, ListChecks, Printer, RefreshCw, RotateCcw, Wrench } from "lucide-react";
 import { api, Vehicle, VehicleMaintenance } from "../../shared/api";
+
+type OverviewWidgetID = "mix" | "quality" | "actions" | "manufacturers" | "quickActions" | "maintenance" | "recommendation";
+
+const overviewHiddenWidgetsKey = "railkeeper.overview.hiddenWidgets";
+
+function readHiddenWidgets(): OverviewWidgetID[] {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(overviewHiddenWidgetsKey) || "[]") as OverviewWidgetID[];
+    return Array.isArray(stored) ? stored : [];
+  } catch {
+    return [];
+  }
+}
 
 function numberValue(value?: string) {
   if (!value) {
@@ -56,6 +69,7 @@ export function OverviewView() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [hiddenWidgets, setHiddenWidgets] = useState<OverviewWidgetID[]>(readHiddenWidgets);
 
   const loadVehicles = useCallback(() => {
     setLoading(true);
@@ -74,6 +88,21 @@ export function OverviewView() {
   const printDashboard = () => {
     window.print();
   };
+
+  const hideWidget = (widget: OverviewWidgetID) => {
+    setHiddenWidgets((current) => {
+      const next = [...new Set([...current, widget])];
+      window.localStorage.setItem(overviewHiddenWidgetsKey, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const resetWidgets = () => {
+    window.localStorage.removeItem(overviewHiddenWidgetsKey);
+    setHiddenWidgets([]);
+  };
+
+  const widgetVisible = (widget: OverviewWidgetID) => !hiddenWidgets.includes(widget);
 
   const stats = useMemo(() => {
     const totalValue = vehicles.reduce((sum, vehicle) => sum + numberValue(vehicle.listPrice), 0);
@@ -150,6 +179,12 @@ export function OverviewView() {
             <Printer size={15} aria-hidden="true" />
             Drucken
           </button>
+          {hiddenWidgets.length > 0 && (
+            <button type="button" className="secondary-button" onClick={resetWidgets}>
+              <RotateCcw size={15} aria-hidden="true" />
+              Layout zurücksetzen
+            </button>
+          )}
           <a className="secondary-button" href="/import-export">
             <FileInput size={15} aria-hidden="true" />
             Import/Export
@@ -187,12 +222,15 @@ export function OverviewView() {
       </section>
 
       <section className="overview-grid">
-        <article className="panel insight-card">
+        <article className="panel insight-card overview-widget" hidden={!widgetVisible("mix")}>
           <div className="panel-head">
             <div>
               <h2>Bestandsmix</h2>
               <p>Kategorien mit den meisten Fahrzeugen.</p>
             </div>
+            <button type="button" className="widget-hide-button" onClick={() => hideWidget("mix")} aria-label="Bestandsmix ausblenden" title="Bestandsmix ausblenden">
+              <EyeOff size={15} aria-hidden="true" />
+            </button>
           </div>
           <div className="bar-list">
             {stats.categories.map(([label, count]) => (
@@ -205,12 +243,15 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card">
+        <article className="panel insight-card overview-widget" hidden={!widgetVisible("quality")}>
           <div className="panel-head">
             <div>
               <h2>Datenqualität</h2>
               <p>Was schon gut gepflegt ist.</p>
             </div>
+            <button type="button" className="widget-hide-button" onClick={() => hideWidget("quality")} aria-label="Datenqualität ausblenden" title="Datenqualität ausblenden">
+              <EyeOff size={15} aria-hidden="true" />
+            </button>
           </div>
           <div className="quality-list">
             <div><span>Bilder</span><strong>{imageShare}%</strong><i style={{ width: `${imageShare}%` }} /></div>
@@ -221,13 +262,18 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card action-card">
+        <article className="panel insight-card action-card overview-widget" hidden={!widgetVisible("actions")}>
           <div className="panel-head">
             <div>
               <h2>Handlungsbedarf</h2>
               <p>Die größten Pflegepunkte im Bestand.</p>
             </div>
-            <ListChecks size={18} aria-hidden="true" />
+            <span className="widget-head-actions">
+              <ListChecks size={18} aria-hidden="true" />
+              <button type="button" className="widget-hide-button" onClick={() => hideWidget("actions")} aria-label="Handlungsbedarf ausblenden" title="Handlungsbedarf ausblenden">
+                <EyeOff size={15} aria-hidden="true" />
+              </button>
+            </span>
           </div>
           {stats.dataGaps.length === 0 ? (
             <p className="empty-mini">Keine größeren Datenlücken erkannt.</p>
@@ -247,12 +293,15 @@ export function OverviewView() {
           )}
         </article>
 
-        <article className="panel insight-card">
+        <article className="panel insight-card overview-widget" hidden={!widgetVisible("manufacturers")}>
           <div className="panel-head">
             <div>
               <h2>Hersteller</h2>
               <p>Die stärksten Hersteller im Bestand.</p>
             </div>
+            <button type="button" className="widget-hide-button" onClick={() => hideWidget("manufacturers")} aria-label="Hersteller ausblenden" title="Hersteller ausblenden">
+              <EyeOff size={15} aria-hidden="true" />
+            </button>
           </div>
           <div className="rank-list">
             {stats.manufacturers.map(([label, count], index) => (
@@ -261,13 +310,18 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card quick-actions-card">
+        <article className="panel insight-card quick-actions-card overview-widget" hidden={!widgetVisible("quickActions")}>
           <div className="panel-head">
             <div>
               <h2>Schnellaktionen</h2>
               <p>Direkt zu den nächsten Arbeitsbereichen.</p>
             </div>
-            <Database size={18} aria-hidden="true" />
+            <span className="widget-head-actions">
+              <Database size={18} aria-hidden="true" />
+              <button type="button" className="widget-hide-button" onClick={() => hideWidget("quickActions")} aria-label="Schnellaktionen ausblenden" title="Schnellaktionen ausblenden">
+                <EyeOff size={15} aria-hidden="true" />
+              </button>
+            </span>
           </div>
           <div className="quick-action-list">
             <a href="/">
@@ -288,13 +342,18 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card maintenance-insight-card">
+        <article className="panel insight-card maintenance-insight-card overview-widget" hidden={!widgetVisible("maintenance")}>
           <div className="panel-head">
             <div>
               <h2>Wartungsradar</h2>
               <p>Die nächsten fälligen Arbeiten im Blick.</p>
             </div>
-            <CalendarClock size={18} aria-hidden="true" />
+            <span className="widget-head-actions">
+              <CalendarClock size={18} aria-hidden="true" />
+              <button type="button" className="widget-hide-button" onClick={() => hideWidget("maintenance")} aria-label="Wartungsradar ausblenden" title="Wartungsradar ausblenden">
+                <EyeOff size={15} aria-hidden="true" />
+              </button>
+            </span>
           </div>
           {stats.nextMaintenance.length === 0 ? (
             <p className="empty-mini">Keine geplanten Wartungen mit Fälligkeitsdatum.</p>
@@ -320,13 +379,18 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card">
+        <article className="panel insight-card overview-widget" hidden={!widgetVisible("recommendation")}>
           <div className="panel-head">
             <div>
               <h2>Nächster Mehrwert</h2>
               <p>Automatisch aus deinen Daten abgeleitet.</p>
             </div>
-            <Image size={18} aria-hidden="true" />
+            <span className="widget-head-actions">
+              <Image size={18} aria-hidden="true" />
+              <button type="button" className="widget-hide-button" onClick={() => hideWidget("recommendation")} aria-label="Nächster Mehrwert ausblenden" title="Nächster Mehrwert ausblenden">
+                <EyeOff size={15} aria-hidden="true" />
+              </button>
+            </span>
           </div>
           <p className="recommendation">
             {vehicles.length === 0
@@ -335,9 +399,20 @@ export function OverviewView() {
                 ? "Mehr Hauptbilder würden Kartenansicht, Drucklisten und QR-Etiketten deutlich nützlicher machen."
                 : stats.due > 0
                   ? "Die fälligen Wartungen sind der beste nächste Arbeitspunkt."
-                  : "Der Bestand wirkt stabil. Als nächstes lohnen sich Ersatzteile und strukturierte Preis-/Wertpflege."}
+            : "Der Bestand wirkt stabil. Als nächstes lohnen sich Ersatzteile und strukturierte Preis-/Wertpflege."}
           </p>
         </article>
+
+        {hiddenWidgets.length === 7 && (
+          <article className="panel insight-card overview-reset-card">
+            <h2>Dashboard leer</h2>
+            <p>Alle Kacheln sind ausgeblendet. Das Layout kann jederzeit zurückgesetzt werden.</p>
+            <button type="button" className="secondary-button" onClick={resetWidgets}>
+              <RotateCcw size={15} aria-hidden="true" />
+              Layout zurücksetzen
+            </button>
+          </article>
+        )}
       </section>
     </>
   );
