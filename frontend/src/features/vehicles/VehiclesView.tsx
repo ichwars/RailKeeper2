@@ -1770,6 +1770,29 @@ export function VehiclesView() {
       .catch((error: Error) => setMessage(error.message));
   }, []);
 
+  useEffect(() => {
+    if (!quickMenuVehicleID) return;
+
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest(".quick-menu-wrap")) {
+        return;
+      }
+      setQuickMenuVehicleID("");
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setQuickMenuVehicleID("");
+      }
+    };
+
+    window.addEventListener("pointerdown", closeOnPointerDown);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnPointerDown);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [quickMenuVehicleID]);
+
   const inventoryFilterCounts = useMemo(() => {
     const withImages = vehicles.filter((vehicle) => (vehicle.images || []).length > 0).length;
     const digital = vehicles.filter((vehicle) => vehicle.digital).length;
