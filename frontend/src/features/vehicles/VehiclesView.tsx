@@ -19,6 +19,7 @@ import {
   Lightbulb,
   Link,
   Megaphone,
+  MoreVertical,
   PackageSearch,
   Pencil,
   Plus,
@@ -1709,6 +1710,7 @@ export function VehiclesView() {
   const [qrSvg, setQrSvg] = useState("");
   const [qrError, setQrError] = useState("");
   const [inventoryView, setInventoryView] = useState<InventoryViewMode>(inventoryViewMode);
+  const [quickMenuVehicleID, setQuickMenuVehicleID] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "inventoryNumber",
     direction: "asc"
@@ -2826,6 +2828,29 @@ export function VehiclesView() {
     </button>
   );
 
+  const vehicleQuickMenu = (vehicle: Vehicle) => (
+    <div className="quick-menu-wrap">
+      <button
+        type="button"
+        className={quickMenuVehicleID === vehicle.id ? "icon-button active" : "icon-button"}
+        onClick={() => setQuickMenuVehicleID((current) => current === vehicle.id ? "" : vehicle.id)}
+        aria-label="Kurzmenü"
+        title="Kurzmenü"
+      >
+        <MoreVertical size={16} />
+      </button>
+      {quickMenuVehicleID === vehicle.id && (
+        <div className="quick-menu" role="menu">
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle); }}>Anzeigen</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openEdit(vehicle); }}>Bearbeiten</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle, "uploads"); }}>Uploads</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle, "maintenance"); }}>Wartung</button>
+          <button type="button" role="menuitem" className="danger" onClick={() => { setQuickMenuVehicleID(""); setDeleteCandidate(vehicle); }}>Löschen</button>
+        </div>
+      )}
+    </div>
+  );
+
   const selectOptions = (items: MasterDataEntry[], emptyLabel = "Keine Auswahl") => (
     <>
       <option value="">{emptyLabel}</option>
@@ -3002,6 +3027,7 @@ export function VehiclesView() {
                     <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label="Löschen" title="Löschen">
                       <Trash2 size={16} />
                     </button>
+                    {vehicleQuickMenu(vehicle)}
                   </div>
                 </article>
               );
@@ -3061,6 +3087,7 @@ export function VehiclesView() {
                       <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label="Löschen" title="Löschen">
                         <Trash2 size={16} />
                       </button>
+                      {vehicleQuickMenu(vehicle)}
                     </div>
                   </div>
                 </article>
@@ -3111,6 +3138,7 @@ export function VehiclesView() {
                         <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label="Löschen" title="Löschen">
                           <Trash2 size={16} />
                         </button>
+                        {vehicleQuickMenu(vehicle)}
                       </div>
                     </td>
                   </tr>

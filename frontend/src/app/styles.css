@@ -2501,6 +2501,50 @@ td {
   gap: 4px;
 }
 
+.quick-menu-wrap {
+  position: relative;
+  display: inline-grid;
+}
+
+.quick-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 25;
+  display: grid;
+  min-width: 150px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 18px 38px rgba(11, 30, 38, 0.18);
+}
+
+.quick-menu button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.quick-menu button:hover,
+.quick-menu button:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  outline: none;
+}
+
+.quick-menu button.danger {
+  color: var(--danger);
+}
+
 .inventory-toolbar-actions .icon-button {
   width: 30px;
   height: 30px;
