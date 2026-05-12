@@ -575,6 +575,55 @@ h1 {
   flex: 0 0 auto;
 }
 
+.sidebar-order-box {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+}
+
+.sidebar-order-list {
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar-order-list div {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px 28px;
+  gap: 7px;
+  align-items: center;
+  min-height: 36px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+}
+
+.sidebar-order-list span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.sidebar-order-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-order-list .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
 .settings-toggle-row > span:first-child {
   display: grid;
   gap: 3px;

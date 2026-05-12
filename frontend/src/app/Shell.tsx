@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BarChart3, Box, Bug, ChevronLeft, ChevronRight, Code2, FileInput, Info, LogOut, Menu, Monitor, Moon, Settings, Sun, X } from "lucide-react";
 import type { AppView } from "./App";
 import { applyThemePreference, readThemePreference, type ThemePreference } from "../shared/theme";
@@ -12,9 +12,24 @@ const navItems = [
 ] as const;
 
 const sidebarCollapsedKey = "railkeeper.sidebarCollapsed";
+const sidebarOrderKey = "railkeeper.settings.sidebarOrder";
+const sidebarOrderChangedEvent = "railkeeper-sidebar-order-changed";
 
 function readSidebarCollapsed() {
   return window.localStorage.getItem(sidebarCollapsedKey) === "true";
+}
+
+function readNavItems() {
+  try {
+    const order = JSON.parse(window.localStorage.getItem(sidebarOrderKey) || "[]") as AppView[];
+    const ordered = order
+      .map((view) => navItems.find((item) => item.view === view))
+      .filter((item): item is (typeof navItems)[number] => Boolean(item));
+    const missing = navItems.filter((item) => !ordered.some((orderedItem) => orderedItem.view === item.view));
+    return [...ordered, ...missing];
+  } catch {
+    return [...navItems];
+  }
 }
 
 export function Shell({
@@ -31,7 +46,19 @@ export function Shell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [theme, setTheme] = useState<ThemePreference>(readThemePreference);
+  const [orderedNavItems, setOrderedNavItems] = useState(readNavItems);
   const ThemeIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
+
+  useEffect(() => {
+    const syncOrder = () => setOrderedNavItems(readNavItems());
+
+    window.addEventListener(sidebarOrderChangedEvent, syncOrder);
+    window.addEventListener("storage", syncOrder);
+    return () => {
+      window.removeEventListener(sidebarOrderChangedEvent, syncOrder);
+      window.removeEventListener("storage", syncOrder);
+    };
+  }, []);
 
   function toggleTheme() {
     const nextTheme: ThemePreference = theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
@@ -67,7 +94,7 @@ export function Shell({
         </div>
 
         <nav id="main-navigation" className="nav" aria-label="Hauptnavigation">
-          {navItems.map((item) => {
+          {orderedNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <a key={item.view} className={activeView === item.view ? "active" : ""} href={item.href} onClick={() => setMobileMenuOpen(false)}>

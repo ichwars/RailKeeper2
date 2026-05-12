@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Database,
   Download,
   ExternalLink,
@@ -19,6 +21,7 @@ import {
   Users,
   X
 } from "lucide-react";
+import type { AppView } from "../../app/App";
 import {
   api,
   BackupValidationResult,
@@ -101,7 +104,17 @@ const localSettingKeys = {
   lightBackground: "railkeeper.settings.lightBackground",
   lightAccent: "railkeeper.settings.lightAccent",
   lightStyle: "railkeeper.settings.lightStyle",
+  sidebarOrder: "railkeeper.settings.sidebarOrder",
   twoFactorPrepared: "railkeeper.settings.twoFactorPrepared"
+};
+
+const sidebarOrderChangedEvent = "railkeeper-sidebar-order-changed";
+const defaultSidebarOrder: AppView[] = ["overview", "vehicles", "importExport", "settings"];
+const sidebarLabels: Record<AppView, string> = {
+  overview: "Übersicht",
+  vehicles: "Bestand",
+  importExport: "Import/Export",
+  settings: "Einstellungen"
 };
 
 function formatBytes(value: number) {
@@ -118,6 +131,17 @@ function readLocalBool(key: string, fallback: boolean) {
   const value = window.localStorage.getItem(key);
   if (value === null) return fallback;
   return value === "true";
+}
+
+function readSidebarOrder() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(localSettingKeys.sidebarOrder) || "[]") as AppView[];
+    const ordered = stored.filter((view): view is AppView => defaultSidebarOrder.includes(view));
+    const missing = defaultSidebarOrder.filter((view) => !ordered.includes(view));
+    return [...ordered, ...missing];
+  } catch {
+    return defaultSidebarOrder;
+  }
 }
 
 function formatDateTime(value: string) {
@@ -232,6 +256,7 @@ export function SettingsView() {
   const [masterDataSaving, setMasterDataSaving] = useState(false);
   const [language, setLanguage] = useState(() => readLocalSetting(localSettingKeys.language, "de"));
   const [defaultView, setDefaultView] = useState(() => readLocalSetting(localSettingKeys.defaultView, "overview"));
+  const [sidebarOrder, setSidebarOrder] = useState<AppView[]>(readSidebarOrder);
   const [dateFormat, setDateFormat] = useState(() => readLocalSetting(localSettingKeys.dateFormat, "system"));
   const [timeFormat, setTimeFormat] = useState(() => readLocalSetting(localSettingKeys.timeFormat, "system"));
   const [defaultPrinter, setDefaultPrinter] = useState(() => readLocalSetting(localSettingKeys.defaultPrinter, "system-dialog"));
@@ -361,6 +386,25 @@ export function SettingsView() {
   const setLocalBool = (key: string, value: boolean, setter: (value: boolean) => void) => {
     setter(value);
     window.localStorage.setItem(key, String(value));
+  };
+
+  const saveSidebarOrder = (nextOrder: AppView[]) => {
+    setSidebarOrder(nextOrder);
+    window.localStorage.setItem(localSettingKeys.sidebarOrder, JSON.stringify(nextOrder));
+    window.dispatchEvent(new Event(sidebarOrderChangedEvent));
+  };
+
+  const moveSidebarItem = (view: AppView, direction: -1 | 1) => {
+    const index = sidebarOrder.indexOf(view);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= sidebarOrder.length) return;
+    const nextOrder = [...sidebarOrder];
+    [nextOrder[index], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[index]];
+    saveSidebarOrder(nextOrder);
+  };
+
+  const resetSidebarOrder = () => {
+    saveSidebarOrder(defaultSidebarOrder);
   };
 
   const updateArticleSearchEnabled = (enabled: boolean) => {
@@ -640,6 +684,29 @@ export function SettingsView() {
                   Systemdrucker öffnen
                 </button>
               </div>
+              <section className="sidebar-order-box" aria-label="Seitenleisten-Reihenfolge">
+                <div>
+                  <h3>Seitenleisten-Reihenfolge</h3>
+                  <p>Ordnet die Hauptnavigation lokal für diesen Browser.</p>
+                </div>
+                <div className="sidebar-order-list">
+                  {sidebarOrder.map((view, index) => (
+                    <div key={view}>
+                      <span>{index + 1}</span>
+                      <strong>{sidebarLabels[view]}</strong>
+                      <button type="button" className="icon-button" onClick={() => moveSidebarItem(view, -1)} disabled={index === 0} aria-label={sidebarLabels[view] + " nach oben"} title="Nach oben">
+                        <ChevronUp size={15} />
+                      </button>
+                      <button type="button" className="icon-button" onClick={() => moveSidebarItem(view, 1)} disabled={index === sidebarOrder.length - 1} aria-label={sidebarLabels[view] + " nach unten"} title="Nach unten">
+                        <ChevronDown size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" className="secondary-button compact-action" onClick={resetSidebarOrder}>
+                  Zurücksetzen
+                </button>
+              </section>
             </section>
 
             <section className="panel settings-card settings-tool-card">
