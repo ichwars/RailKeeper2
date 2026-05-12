@@ -2594,20 +2594,25 @@ export function VehiclesView() {
       .finally(() => setSaving(false));
   };
 
+  const buildQrSvg = async (vehicle: Vehicle | null, formData: CreateVehicleRequest) => {
+    const svg = await QRCode.toString(qrPayload(vehicle, formData), {
+      type: "svg",
+      width: 256,
+      margin: 2,
+      color: {
+        dark: "#0b1e26",
+        light: "#ffffff"
+      }
+    });
+    return composeBrandedQrSvg(svg);
+  };
+
   const generateQr = async () => {
     setQrDialogOpen(true);
+    setQrSvg("");
     setQrError("");
     try {
-      const svg = await QRCode.toString(qrPayload(selected, form), {
-        type: "svg",
-        width: 256,
-        margin: 2,
-        color: {
-          dark: "#0b1e26",
-          light: "#ffffff"
-        }
-      });
-      setQrSvg(composeBrandedQrSvg(svg));
+      setQrSvg(await buildQrSvg(selected, form));
     } catch (error) {
       setQrError(error instanceof Error ? error.message : "QR-Code konnte nicht erstellt werden.");
     }
@@ -2715,6 +2720,17 @@ export function VehiclesView() {
     printWindow.focus();
   };
 
+  const printVehicleReport = (vehicle: Vehicle) => {
+    const printWindow = window.open("", `railkeeper-vehicle-${vehicle.id}`, "width=1180,height=860");
+    if (!printWindow) {
+      setMessage("Druckfenster konnte nicht geöffnet werden.");
+      return;
+    }
+    printWindow.document.write(inventoryReportHtml([vehicle], vehicle.inventoryNumber || vehicle.name, sort, "details"));
+    printWindow.document.close();
+    printWindow.focus();
+  };
+
   const toggleSort = (key: SortKey) => {
     setSort((current) => ({
       key,
@@ -2796,6 +2812,23 @@ export function VehiclesView() {
         setMessage("");
       })
       .catch((error: Error) => setMessage(error.message));
+  };
+
+  const openQrForVehicle = (vehicle: Vehicle) => {
+    setQrDialogOpen(true);
+    setQrSvg("");
+    setQrError("");
+    api
+      .vehicle(vehicle.id)
+      .then(async (detail) => {
+        setSelectedDetail(detail);
+        setMode("view");
+        setActiveTab("model");
+        setOpenSections({ model: true, details: false });
+        setModalOpen(true);
+        setQrSvg(await buildQrSvg(detail, vehicleToForm(detail)));
+      })
+      .catch((error: Error) => setQrError(error.message));
   };
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -2880,6 +2913,8 @@ export function VehiclesView() {
         <div className="quick-menu" role="menu">
           <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle); }}>Anzeigen</button>
           <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openEdit(vehicle); }}>Bearbeiten</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openQrForVehicle(vehicle); }}>QR-Code</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); printVehicleReport(vehicle); }}>Drucken</button>
           <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle, "uploads"); }}>Uploads</button>
           <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle, "maintenance"); }}>Wartung</button>
           <button type="button" role="menuitem" className="danger" onClick={() => { setQuickMenuVehicleID(""); setDeleteCandidate(vehicle); }}>Löschen</button>
