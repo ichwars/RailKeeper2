@@ -38,7 +38,11 @@
 - responsive inventory table/card switch
 - compact mobile inventory layout
 - compact vehicle quick menu for rows/cards/mobile entries
+- icon-supported vehicle quick menu actions
 - configurable overview dashboard with hide, reorder and reset controls
+- overview statistics export
+- login redirect to the overview dashboard
+- configurable update-check endpoint with offline-safe UI status
 
 ## Next Practical Milestones
 
@@ -48,7 +52,7 @@
    - only reverse-engineer proprietary ESUX blocks if no supported export path exists
 2. Settings and system integration
    - wire default printer selection to real system printers where the host platform allows it
-   - turn update checks from UI scaffolding into a real version check
+   - decide on the final GitHub release/update endpoint and set `RAILKEEPER_UPDATE_CHECK_URL`
    - decide which authentication options should become functional instead of informational
    - keep storage usage, backup and restore visible without making settings feel overloaded
 3. Ongoing Bambuddy-inspired design polish
@@ -57,8 +61,9 @@
    - review mobile navigation after the collapsible desktop sidebar work
    - continue checking table, card and modal readability in dark mode
    - refine maintenance placement and visual hierarchy in the inventory area
+   - adapt Bambuddy-style row context menus further where they add clear value
 4. Vehicle action depth
-   - extend the quick menu with QR code, printable detail sheet and direct upload shortcuts where useful
+   - evaluate direct upload shortcuts in the quick menu where useful
    - keep destructive actions separated and confirmed
 
 ## Explicitly Deferred

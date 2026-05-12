@@ -1,6 +1,6 @@
 # RailKeeper2 Designrichtung
 
-Stand: 11. Mai 2026
+Stand: 12. Mai 2026
 
 ## Bambuddy-Übernahmen
 
@@ -15,6 +15,24 @@ Stand: 11. Mai 2026
 - Bestandswerkzeuge wie Suche, Filter, Ansicht, Druck und Refresh in einer kompakten Werkzeugzeile führen.
 - Übersichtskacheln dürfen lokal ausgeblendet und sortiert werden, solange das Dashboard informativ bleibt.
 - Kontextmenüs passen zu RailKeeper, wenn sie direkte Fahrzeugaktionen bündeln und nicht jede Aktion als Textbutton sichtbar machen.
+- Dashboard-Aktionen dürfen drucken, aktualisieren und Kennzahlen exportieren, solange sie als ruhige Werkzeugleiste erscheinen.
+- Login führt standardmäßig auf die Übersicht, damit der erste Blick immer Status und offene Aufgaben zeigt.
+
+## Stand 12. Mai 2026
+
+- Logo, Sidebar-Footer und Fehler-melden-Button sind in RailKeeper übernommen.
+- Desktop-Sidebar ist einklappbar, mobile Navigation bleibt als Hamburger-Menü.
+- Bestandsliste hat Tabelle/Karten, Druck, Refresh, Filterpills und transparente Icon-Werkzeuge.
+- Fahrzeug-Kurzmenü bündelt Anzeigen, Bearbeiten, QR-Code, Drucken, Uploads, Wartung und Löschen mit Icons.
+- Übersicht enthält sortier-/ausblendbare Widgets, Druck und JSON-Kennzahlenexport.
+- Update-Prüfung ist als konfigurierbarer, offline-sicherer Systemstatus vorbereitet.
+
+## Offen im Design
+
+- Wartungsbereich im Bestand weiter an Bambuddy-Top-Karten orientieren.
+- Tabellenkopf und Zeilen-Hover nach realer Nutzung weiter feinjustieren.
+- Einstellungen noch kompakter machen, sobald Authentifizierung/Update/Standarddrucker funktional klarer sind.
+- RailKeeper-passendes erweitertes Kurzmenü für zukünftige Aktionen wie Ersatzteile und direkte Uploads entwerfen.
 
 ## Bewusst nicht übernommen
 
