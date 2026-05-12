@@ -3248,7 +3248,11 @@ export function VehiclesView() {
                     <td>{vehicle.inventoryNumber}</td>
                     <td>{vehicle.manufacturer}</td>
                     <td>{vehicle.articleNumber || "-"}</td>
-                    <td>{vehicle.name}</td>
+                    <td>
+                      <button type="button" className="inventory-name-link" onClick={() => openDetail(vehicle)}>
+                        {vehicle.name}
+                      </button>
+                    </td>
                     <td>{vehicle.gauge}</td>
                     <td>{vehicle.epoch || "-"}</td>
                     <td>{vehicle.category || "-"}</td>

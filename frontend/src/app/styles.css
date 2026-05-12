@@ -2595,11 +2595,6 @@ th {
   padding-left: 16px;
 }
 
-.inventory-table tbody tr:hover,
-.master-data-table tbody tr:hover {
-  background: color-mix(in srgb, var(--accent) 3%, var(--panel));
-}
-
 .sort-button {
   display: inline-flex;
   align-items: center;
@@ -2634,6 +2629,27 @@ th:hover .sort-button {
 th .sort-button:hover,
 th .sort-button:focus-visible {
   color: var(--accent-strong);
+}
+
+.inventory-name-link {
+  display: inline;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.inventory-name-link:hover,
+.inventory-name-link:focus-visible {
+  color: var(--accent-strong);
+}
+
+.inventory-name-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  outline-offset: 3px;
 }
 
 td {
