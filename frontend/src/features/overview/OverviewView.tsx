@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, BarChart3, Box, CalendarClock, Database, EyeOff, FileInput, Gauge, Image, ListChecks, Printer, RefreshCw, RotateCcw, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, BarChart3, Box, EyeOff, FileInput, Gauge, Printer, RefreshCw, RotateCcw, Wrench } from "lucide-react";
 import { api, Vehicle, VehicleMaintenance } from "../../shared/api";
 
 type OverviewWidgetID = "mix" | "quality" | "actions" | "manufacturers" | "quickActions" | "maintenance" | "recommendation";
 
 const overviewHiddenWidgetsKey = "railkeeper.overview.hiddenWidgets";
+const overviewWidgetOrderKey = "railkeeper.overview.widgetOrder";
+const defaultWidgetOrder: OverviewWidgetID[] = ["mix", "quality", "actions", "manufacturers", "quickActions", "maintenance", "recommendation"];
 
 function readHiddenWidgets(): OverviewWidgetID[] {
   try {
@@ -12,6 +14,17 @@ function readHiddenWidgets(): OverviewWidgetID[] {
     return Array.isArray(stored) ? stored : [];
   } catch {
     return [];
+  }
+}
+
+function readWidgetOrder(): OverviewWidgetID[] {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(overviewWidgetOrderKey) || "[]") as OverviewWidgetID[];
+    const ordered = stored.filter((item): item is OverviewWidgetID => defaultWidgetOrder.includes(item));
+    const missing = defaultWidgetOrder.filter((item) => !ordered.includes(item));
+    return [...ordered, ...missing];
+  } catch {
+    return defaultWidgetOrder;
   }
 }
 
@@ -70,6 +83,7 @@ export function OverviewView() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [hiddenWidgets, setHiddenWidgets] = useState<OverviewWidgetID[]>(readHiddenWidgets);
+  const [widgetOrder, setWidgetOrder] = useState<OverviewWidgetID[]>(readWidgetOrder);
 
   const loadVehicles = useCallback(() => {
     setLoading(true);
@@ -99,10 +113,40 @@ export function OverviewView() {
 
   const resetWidgets = () => {
     window.localStorage.removeItem(overviewHiddenWidgetsKey);
+    window.localStorage.removeItem(overviewWidgetOrderKey);
     setHiddenWidgets([]);
+    setWidgetOrder(defaultWidgetOrder);
   };
 
   const widgetVisible = (widget: OverviewWidgetID) => !hiddenWidgets.includes(widget);
+
+  const widgetOrderIndex = (widget: OverviewWidgetID) => widgetOrder.indexOf(widget);
+
+  const moveWidget = (widget: OverviewWidgetID, direction: -1 | 1) => {
+    setWidgetOrder((current) => {
+      const index = current.indexOf(widget);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      window.localStorage.setItem(overviewWidgetOrderKey, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const widgetControls = (widget: OverviewWidgetID, label: string) => (
+    <span className="widget-head-actions">
+      <button type="button" className="widget-hide-button" onClick={() => moveWidget(widget, -1)} disabled={widgetOrderIndex(widget) <= 0} aria-label={`${label} nach vorn`} title="Nach vorn">
+        <ArrowUp size={15} aria-hidden="true" />
+      </button>
+      <button type="button" className="widget-hide-button" onClick={() => moveWidget(widget, 1)} disabled={widgetOrderIndex(widget) >= defaultWidgetOrder.length - 1} aria-label={`${label} nach hinten`} title="Nach hinten">
+        <ArrowDown size={15} aria-hidden="true" />
+      </button>
+      <button type="button" className="widget-hide-button" onClick={() => hideWidget(widget)} aria-label={`${label} ausblenden`} title="Ausblenden">
+        <EyeOff size={15} aria-hidden="true" />
+      </button>
+    </span>
+  );
 
   const stats = useMemo(() => {
     const totalValue = vehicles.reduce((sum, vehicle) => sum + numberValue(vehicle.listPrice), 0);
@@ -222,15 +266,13 @@ export function OverviewView() {
       </section>
 
       <section className="overview-grid">
-        <article className="panel insight-card overview-widget" hidden={!widgetVisible("mix")}>
+        <article className="panel insight-card overview-widget" hidden={!widgetVisible("mix")} style={{ order: widgetOrderIndex("mix") }}>
           <div className="panel-head">
             <div>
               <h2>Bestandsmix</h2>
               <p>Kategorien mit den meisten Fahrzeugen.</p>
             </div>
-            <button type="button" className="widget-hide-button" onClick={() => hideWidget("mix")} aria-label="Bestandsmix ausblenden" title="Bestandsmix ausblenden">
-              <EyeOff size={15} aria-hidden="true" />
-            </button>
+            {widgetControls("mix", "Bestandsmix")}
           </div>
           <div className="bar-list">
             {stats.categories.map(([label, count]) => (
@@ -243,15 +285,13 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card overview-widget" hidden={!widgetVisible("quality")}>
+        <article className="panel insight-card overview-widget" hidden={!widgetVisible("quality")} style={{ order: widgetOrderIndex("quality") }}>
           <div className="panel-head">
             <div>
               <h2>Datenqualität</h2>
               <p>Was schon gut gepflegt ist.</p>
             </div>
-            <button type="button" className="widget-hide-button" onClick={() => hideWidget("quality")} aria-label="Datenqualität ausblenden" title="Datenqualität ausblenden">
-              <EyeOff size={15} aria-hidden="true" />
-            </button>
+            {widgetControls("quality", "Datenqualität")}
           </div>
           <div className="quality-list">
             <div><span>Bilder</span><strong>{imageShare}%</strong><i style={{ width: `${imageShare}%` }} /></div>
@@ -262,18 +302,13 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card action-card overview-widget" hidden={!widgetVisible("actions")}>
+        <article className="panel insight-card action-card overview-widget" hidden={!widgetVisible("actions")} style={{ order: widgetOrderIndex("actions") }}>
           <div className="panel-head">
             <div>
               <h2>Handlungsbedarf</h2>
               <p>Die größten Pflegepunkte im Bestand.</p>
             </div>
-            <span className="widget-head-actions">
-              <ListChecks size={18} aria-hidden="true" />
-              <button type="button" className="widget-hide-button" onClick={() => hideWidget("actions")} aria-label="Handlungsbedarf ausblenden" title="Handlungsbedarf ausblenden">
-                <EyeOff size={15} aria-hidden="true" />
-              </button>
-            </span>
+            {widgetControls("actions", "Handlungsbedarf")}
           </div>
           {stats.dataGaps.length === 0 ? (
             <p className="empty-mini">Keine größeren Datenlücken erkannt.</p>
@@ -293,15 +328,13 @@ export function OverviewView() {
           )}
         </article>
 
-        <article className="panel insight-card overview-widget" hidden={!widgetVisible("manufacturers")}>
+        <article className="panel insight-card overview-widget" hidden={!widgetVisible("manufacturers")} style={{ order: widgetOrderIndex("manufacturers") }}>
           <div className="panel-head">
             <div>
               <h2>Hersteller</h2>
               <p>Die stärksten Hersteller im Bestand.</p>
             </div>
-            <button type="button" className="widget-hide-button" onClick={() => hideWidget("manufacturers")} aria-label="Hersteller ausblenden" title="Hersteller ausblenden">
-              <EyeOff size={15} aria-hidden="true" />
-            </button>
+            {widgetControls("manufacturers", "Hersteller")}
           </div>
           <div className="rank-list">
             {stats.manufacturers.map(([label, count], index) => (
@@ -310,18 +343,13 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card quick-actions-card overview-widget" hidden={!widgetVisible("quickActions")}>
+        <article className="panel insight-card quick-actions-card overview-widget" hidden={!widgetVisible("quickActions")} style={{ order: widgetOrderIndex("quickActions") }}>
           <div className="panel-head">
             <div>
               <h2>Schnellaktionen</h2>
               <p>Direkt zu den nächsten Arbeitsbereichen.</p>
             </div>
-            <span className="widget-head-actions">
-              <Database size={18} aria-hidden="true" />
-              <button type="button" className="widget-hide-button" onClick={() => hideWidget("quickActions")} aria-label="Schnellaktionen ausblenden" title="Schnellaktionen ausblenden">
-                <EyeOff size={15} aria-hidden="true" />
-              </button>
-            </span>
+            {widgetControls("quickActions", "Schnellaktionen")}
           </div>
           <div className="quick-action-list">
             <a href="/">
@@ -342,18 +370,13 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card maintenance-insight-card overview-widget" hidden={!widgetVisible("maintenance")}>
+        <article className="panel insight-card maintenance-insight-card overview-widget" hidden={!widgetVisible("maintenance")} style={{ order: widgetOrderIndex("maintenance") }}>
           <div className="panel-head">
             <div>
               <h2>Wartungsradar</h2>
               <p>Die nächsten fälligen Arbeiten im Blick.</p>
             </div>
-            <span className="widget-head-actions">
-              <CalendarClock size={18} aria-hidden="true" />
-              <button type="button" className="widget-hide-button" onClick={() => hideWidget("maintenance")} aria-label="Wartungsradar ausblenden" title="Wartungsradar ausblenden">
-                <EyeOff size={15} aria-hidden="true" />
-              </button>
-            </span>
+            {widgetControls("maintenance", "Wartungsradar")}
           </div>
           {stats.nextMaintenance.length === 0 ? (
             <p className="empty-mini">Keine geplanten Wartungen mit Fälligkeitsdatum.</p>
@@ -379,18 +402,13 @@ export function OverviewView() {
           </div>
         </article>
 
-        <article className="panel insight-card overview-widget" hidden={!widgetVisible("recommendation")}>
+        <article className="panel insight-card overview-widget" hidden={!widgetVisible("recommendation")} style={{ order: widgetOrderIndex("recommendation") }}>
           <div className="panel-head">
             <div>
               <h2>Nächster Mehrwert</h2>
               <p>Automatisch aus deinen Daten abgeleitet.</p>
             </div>
-            <span className="widget-head-actions">
-              <Image size={18} aria-hidden="true" />
-              <button type="button" className="widget-hide-button" onClick={() => hideWidget("recommendation")} aria-label="Nächster Mehrwert ausblenden" title="Nächster Mehrwert ausblenden">
-                <EyeOff size={15} aria-hidden="true" />
-              </button>
-            </span>
+            {widgetControls("recommendation", "Nächster Mehrwert")}
           </div>
           <p className="recommendation">
             {vehicles.length === 0
