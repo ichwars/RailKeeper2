@@ -885,6 +885,35 @@ h1 {
   opacity: 0.62;
 }
 
+.auth-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.auth-status-grid article {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 104px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+}
+
+.auth-status-grid strong,
+.auth-status-grid small {
+  min-width: 0;
+}
+
+.auth-status-grid small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
 .current-user-card,
 .role-list,
 .integration-list {
@@ -5090,7 +5119,8 @@ td {
   .appearance-grid,
   .appearance-mode-row,
   .settings-field-grid,
-  .settings-field-grid.compact {
+  .settings-field-grid.compact,
+  .auth-status-grid {
     grid-template-columns: 1fr;
   }
 

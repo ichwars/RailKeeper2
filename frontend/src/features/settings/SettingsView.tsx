@@ -1269,6 +1269,23 @@ export function SettingsView() {
               <button type="button" disabled><KeyRound size={15} /> Zwei-Faktor-Auth</button>
               <button type="button" disabled><UserCog size={15} /> SSO / OIDC</button>
             </div>
+            <div className="auth-status-grid" aria-label="Authentifizierungsstatus">
+              <article>
+                <span className="settings-pill active">aktiv</span>
+                <strong>Lokale Anmeldung</strong>
+                <small>Benutzername, Passwort und CSRF-Schutz sind aktiv.</small>
+              </article>
+              <article>
+                <span className="settings-pill">{currentSession?.roles.length || 0} Rollen</span>
+                <strong>Aktuelle Sitzung</strong>
+                <small>{currentSession?.username ? `Angemeldet als ${currentSession.username}` : "Sitzung wird geladen."}</small>
+              </article>
+              <article>
+                <span className={twoFactorPrepared ? "settings-pill active" : "settings-pill muted"}>{twoFactorPrepared ? "vorgemerkt" : "offen"}</span>
+                <strong>Zwei-Faktor-Auth</strong>
+                <small>Vorbereitung sichtbar, Backend-Erzwingung noch nicht aktiv.</small>
+              </article>
+            </div>
             <label className="settings-toggle-row">
               <span>
                 <strong>Lokale Anmeldung</strong>
