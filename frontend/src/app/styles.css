@@ -1443,7 +1443,32 @@ h1 {
 }
 
 .overview-head {
+  display: flex;
+  max-width: none;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.overview-head > div:first-child {
   max-width: 860px;
+}
+
+.overview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.overview-actions .secondary-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .overview-hero {
@@ -4754,6 +4779,15 @@ td {
 
   .work-grid {
     grid-template-columns: 1fr;
+  }
+
+  .overview-head {
+    display: grid;
+    align-items: start;
+  }
+
+  .overview-actions {
+    justify-content: flex-start;
   }
 
   .inventory-head {

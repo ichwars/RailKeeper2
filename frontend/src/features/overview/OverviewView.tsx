@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, BarChart3, Box, CalendarClock, Database, Gauge, Image, ListChecks, Wrench } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ArrowRight, BarChart3, Box, CalendarClock, Database, FileInput, Gauge, Image, ListChecks, Printer, RefreshCw, Wrench } from "lucide-react";
 import { api, Vehicle, VehicleMaintenance } from "../../shared/api";
 
 function numberValue(value?: string) {
@@ -57,13 +57,23 @@ export function OverviewView() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
+  const loadVehicles = useCallback(() => {
+    setLoading(true);
+    setMessage("");
     api
       .vehicles()
       .then(setVehicles)
       .catch((error: Error) => setMessage(error.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadVehicles();
+  }, [loadVehicles]);
+
+  const printDashboard = () => {
+    window.print();
+  };
 
   const stats = useMemo(() => {
     const totalValue = vehicles.reduce((sum, vehicle) => sum + numberValue(vehicle.listPrice), 0);
@@ -126,9 +136,25 @@ export function OverviewView() {
   return (
     <>
       <section className="page-head overview-head">
-        <p className="eyebrow">RailKeeper Cockpit</p>
-        <h1>Übersicht</h1>
-        <p>Der schnelle Blick auf Bestand, Wert, Digitalisierung und offene Aufgaben.</p>
+        <div>
+          <p className="eyebrow">RailKeeper Cockpit</p>
+          <h1>Übersicht</h1>
+          <p>Der schnelle Blick auf Bestand, Wert, Digitalisierung und offene Aufgaben.</p>
+        </div>
+        <div className="overview-actions" aria-label="Dashboard-Werkzeuge">
+          <button type="button" className="secondary-button" onClick={loadVehicles} disabled={loading}>
+            <RefreshCw size={15} aria-hidden="true" />
+            Aktualisieren
+          </button>
+          <button type="button" className="secondary-button" onClick={printDashboard}>
+            <Printer size={15} aria-hidden="true" />
+            Drucken
+          </button>
+          <a className="secondary-button" href="/import-export">
+            <FileInput size={15} aria-hidden="true" />
+            Import/Export
+          </a>
+        </div>
       </section>
 
       {message && <p className="form-message">{message}</p>}
