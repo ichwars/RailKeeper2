@@ -76,9 +76,8 @@ export function App() {
   }, []);
 
   function handleLogin(nextSession: Session) {
-    const startView = configuredStartView();
-    window.history.replaceState(null, "", pathForView(startView));
-    setView(startView);
+    window.history.replaceState(null, "", pathForView("overview"));
+    setView("overview");
     setSession(nextSession);
   }
 
