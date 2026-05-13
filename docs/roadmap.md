@@ -19,6 +19,7 @@
 - vehicle attachments
 - backup and restore
 - backup compatibility preflight
+- typed restore confirmation before destructive backup import
 - overview dashboard
 - vehicle CSV/TSV/XLSX/XLS/ODS/JSON import and export
 - manual column mapping for unknown vehicle import headers

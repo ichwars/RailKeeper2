@@ -292,6 +292,7 @@ export function SettingsView() {
   const [backupFile, setBackupFile] = useState<File | null>(null);
   const [backupValidation, setBackupValidation] = useState<BackupValidationResult | null>(null);
   const [backupMessage, setBackupMessage] = useState("");
+  const [backupRestoreConfirm, setBackupRestoreConfirm] = useState("");
   const [backupSaving, setBackupSaving] = useState(false);
   const [backupValidating, setBackupValidating] = useState(false);
   const [masterDataFile, setMasterDataFile] = useState<File | null>(null);
@@ -336,6 +337,7 @@ export function SettingsView() {
   const [userSaving, setUserSaving] = useState(false);
   const [twoFactorPrepared, setTwoFactorPrepared] = useState(() => readLocalBool(localSettingKeys.twoFactorPrepared, false));
   const canManageUsers = Boolean(currentSession?.roles.includes("Admin"));
+  const backupRestoreConfirmed = backupRestoreConfirm.trim().toLocaleUpperCase("de-DE") === "WIEDERHERSTELLEN";
 
   const activeDataType = useMemo(
     () => masterDataTypes.find((item) => item.type === activeType) || masterDataTypes[0],
@@ -716,6 +718,7 @@ export function SettingsView() {
     setBackupFile(file);
     setBackupValidation(null);
     setBackupMessage("");
+    setBackupRestoreConfirm("");
     if (!file) return;
 
     setBackupValidating(true);
@@ -735,6 +738,10 @@ export function SettingsView() {
       setBackupMessage("Backup bitte zuerst erfolgreich prüfen.");
       return;
     }
+    if (!backupRestoreConfirmed) {
+      setBackupMessage("Bitte WIEDERHERSTELLEN eingeben, um den Restore freizugeben.");
+      return;
+    }
     if (!window.confirm("Backup wirklich wiederherstellen? Bestand, Stammdaten, Wartung, CVs und Uploads werden durch den Inhalt der Datei ersetzt.")) {
       return;
     }
@@ -746,6 +753,7 @@ export function SettingsView() {
         setBackupMessage(`Backup wiederhergestellt: ${result.restoredRows} Datensätze, ${result.restoredFiles} Dateien.`);
         setLoadedTypes({});
         setItemsByType({});
+        setBackupRestoreConfirm("");
       })
       .catch((error: Error) => setBackupMessage(error.message))
       .finally(() => setBackupSaving(false));
@@ -1309,7 +1317,19 @@ export function SettingsView() {
                   )}
                 </div>
               )}
-              <button type="button" className="secondary-button danger" onClick={restoreBackup} disabled={backupSaving || backupValidating || !backupValidation?.compatible}>
+              {backupValidation?.compatible && (
+                <label className="backup-confirm-field">
+                  Restore freigeben
+                  <span>Zum Einspielen bitte WIEDERHERSTELLEN eingeben.</span>
+                  <input
+                    value={backupRestoreConfirm}
+                    onChange={(event) => setBackupRestoreConfirm(event.target.value)}
+                    placeholder="WIEDERHERSTELLEN"
+                    autoComplete="off"
+                  />
+                </label>
+              )}
+              <button type="button" className="secondary-button danger" onClick={restoreBackup} disabled={backupSaving || backupValidating || !backupValidation?.compatible || !backupRestoreConfirmed}>
                 {backupSaving ? (
                   "Wird wiederhergestellt..."
                 ) : (

@@ -1265,6 +1265,34 @@ h1 {
   width: 100%;
 }
 
+.backup-confirm-field {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 6%, var(--panel));
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.backup-confirm-field span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.backup-confirm-field input {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+}
+
 .backup-validation-status {
   color: var(--muted);
   margin: 0;
