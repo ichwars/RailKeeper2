@@ -442,6 +442,14 @@ func (s *AuthService) UpdateUser(ctx context.Context, actorUserID, userID string
 			return nil, err
 		}
 		_, err = tx.ExecContext(ctx, `UPDATE users SET username=?, password_hash=? WHERE id=?`, username, hash, userID)
+		if err == nil {
+			_, err = tx.ExecContext(
+				ctx,
+				`UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL`,
+				time.Now().UTC().Format(time.RFC3339),
+				userID,
+			)
+		}
 	} else {
 		_, err = tx.ExecContext(ctx, `UPDATE users SET username=? WHERE id=?`, username, userID)
 	}

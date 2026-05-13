@@ -348,6 +348,52 @@ func TestUpdateUserProtectsLastAdmin(t *testing.T) {
 	}
 }
 
+func TestUpdateUserPasswordRevokesExistingSessions(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	setup := application.NewSetupService(db)
+	auth := application.NewAuthService(db)
+
+	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	user, err := auth.CreateUser(ctx, "", application.CreateUserInput{
+		Username: "viewer",
+		Password: "very-secure-password",
+		Roles:    []string{"Viewer"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	viewerSession, err := auth.Login(ctx, application.LoginInput{
+		Username: "viewer",
+		Password: "very-secure-password",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := auth.UpdateUser(ctx, "", user.ID, application.UpdateUserInput{
+		Username: "viewer",
+		Password: "new-secure-password",
+		Roles:    []string{"Viewer"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.CurrentSession(ctx, viewerSession.SessionToken); !errors.Is(err, application.ErrUnauthorized) {
+		t.Fatalf("expected old session to be revoked, got %v", err)
+	}
+	if _, err := auth.Login(ctx, application.LoginInput{Username: "viewer", Password: "very-secure-password"}); !errors.Is(err, application.ErrInvalidLogin) {
+		t.Fatalf("old password should fail, got %v", err)
+	}
+	if _, err := auth.Login(ctx, application.LoginInput{Username: "viewer", Password: "new-secure-password"}); err != nil {
+		t.Fatalf("new password should work, got %v", err)
+	}
+}
+
 func TestDeleteUserAllowsRemovingSecondAdmin(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()

@@ -54,6 +54,7 @@
 - admin user management for local accounts and Admin, Editor, Viewer and Messe role assignment
 - admin session management with targeted local session revocation
 - current-user password change with automatic revocation of other sessions
+- admin password resets revoke affected user sessions
 - settings security event review for audit logs
 - compact backup export storage summary in settings
 

@@ -12,6 +12,7 @@ RailKeeper2 is intended for local-first and small self-hosted installations. Thi
 - HTTP-only session cookie
 - SameSite cookies
 - current-user password change with automatic revocation of other sessions
+- admin password resets revoke the affected user's active sessions
 - optional secure cookies via `RAILKEEPER_COOKIE_SECURE=true`
 - CSRF validation for API write requests
 - role enforcement with Admin, Editor, Viewer and Messe roles
