@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -75,6 +75,7 @@ const localSettingKeys = {
   defaultPrinter: "railkeeper.settings.defaultPrinter",
   updateChecks: "railkeeper.settings.updateChecks",
   betaUpdates: "railkeeper.settings.betaUpdates",
+  ignoredUpdate: "railkeeper.settings.ignoredUpdate",
   darkBackground: "railkeeper.settings.darkBackground",
   darkAccent: "railkeeper.settings.darkAccent",
   darkStyle: "railkeeper.settings.darkStyle",
@@ -137,6 +138,7 @@ type FormState = typeof emptyForm;
 
 const emptyUserForm = {
   username: "",
+  email: "",
   password: "",
   roles: ["Viewer"]
 };
@@ -287,6 +289,7 @@ export function SettingsView() {
   const [defaultPrinter, setDefaultPrinter] = useState(() => readLocalSetting(localSettingKeys.defaultPrinter, "system-dialog"));
   const [updateChecks, setUpdateChecks] = useState(() => readLocalBool(localSettingKeys.updateChecks, true));
   const [betaUpdates, setBetaUpdates] = useState(() => readLocalBool(localSettingKeys.betaUpdates, false));
+  const [ignoredUpdate, setIgnoredUpdate] = useState(() => readLocalSetting(localSettingKeys.ignoredUpdate, ""));
   const [darkBackground, setDarkBackground] = useState(() => readLocalSetting(localSettingKeys.darkBackground, "neutral"));
   const [darkAccent, setDarkAccent] = useState(() => readLocalSetting(localSettingKeys.darkAccent, "green"));
   const [darkStyle, setDarkStyle] = useState(() => readLocalSetting(localSettingKeys.darkStyle, "classic"));
@@ -359,6 +362,7 @@ export function SettingsView() {
       size: formatBytes(bytes)
     });
   const versionStatusLabel = (info: VersionInfo) => {
+    if (info.updateAvailable && info.latestVersion === ignoredUpdate) return t("settings.updates.status.ignored");
     if (info.updateAvailable) return t("settings.updates.status.updateAvailable");
     if (info.status === "current") return betaUpdates ? t("settings.updates.status.currentBeta") : t("settings.updates.status.current");
     if (info.status === "no_release") return t("settings.updates.status.noRelease");
@@ -370,6 +374,7 @@ export function SettingsView() {
     if (message.includes("Keine Release-Information")) return t("settings.updates.message.noRelease");
     return message;
   };
+  const updateIgnored = Boolean(versionInfo?.updateAvailable && versionInfo.latestVersion && versionInfo.latestVersion === ignoredUpdate);
   const activeDataLabel = masterLabel(activeDataType.type);
   const activeDataDescription = masterDescription(activeDataType.type);
   const storageFileCount = useMemo(
@@ -493,7 +498,7 @@ export function SettingsView() {
 
     const isAccepted = file.type.startsWith("image/") || file.name.toLocaleLowerCase("de-DE").endsWith(".svg");
     if (!isAccepted) {
-      setMessage("Bitte SVG, PNG, JPG oder WebP als Symbolbild auswÃ¤hlen.");
+      setMessage("Bitte SVG, PNG, JPG oder WebP als Symbolbild auswählen.");
       return;
     }
     if (file.size > 1024 * 1024) {
@@ -572,6 +577,25 @@ export function SettingsView() {
     if (updateChecks) {
       loadVersionInfo(true, enabled);
     }
+  };
+
+  const installUpdate = () => {
+    const target = versionInfo?.assetUrl || versionInfo?.releaseUrl;
+    if (!target) {
+      setVersionMessage(t("settings.updates.message.noInstallTarget"));
+      return;
+    }
+    window.open(target, "_blank", "noopener,noreferrer");
+    setVersionMessage(t("settings.updates.message.installOpened"));
+  };
+
+  const ignoreUpdate = () => {
+    if (!versionInfo?.latestVersion) {
+      return;
+    }
+    window.localStorage.setItem(localSettingKeys.ignoredUpdate, versionInfo.latestVersion);
+    setIgnoredUpdate(versionInfo.latestVersion);
+    setVersionMessage(t("settings.updates.message.ignored", { version: versionInfo.latestVersion }));
   };
 
   const loadStorageUsage = () => {
@@ -690,6 +714,7 @@ export function SettingsView() {
     setEditingUser(user);
     setUserForm({
       username: user.username,
+      email: user.email || "",
       password: "",
       roles: user.roles.length > 0 ? user.roles : ["Viewer"]
     });
@@ -712,6 +737,7 @@ export function SettingsView() {
 
     const input = {
       username: userForm.username,
+      email: userForm.email,
       password: userForm.password || undefined,
       roles: userForm.roles
     };
@@ -720,7 +746,7 @@ export function SettingsView() {
     action
       .then((user) => {
         setEditingUser(user);
-        setUserForm({ username: user.username, password: "", roles: user.roles });
+        setUserForm({ username: user.username, email: user.email || "", password: "", roles: user.roles });
         loadUsersAndRoles();
         loadAuditLog();
         loadCurrentSession();
@@ -909,7 +935,7 @@ export function SettingsView() {
     <>
       <section className="settings-head">
         <h1>
-          {t("settings.title")} <span>0.1.1</span>
+          {t("settings.title")} <span>0.1.2</span>
         </h1>
         <p>{t("settings.subtitle")}</p>
       </section>
@@ -1137,7 +1163,7 @@ export function SettingsView() {
                   {versionInfo?.latestVersion && <> · {t("settings.updates.latestVersion")}: <strong>{versionInfo.latestVersion}</strong></>}
                 </p>
                 {versionInfo?.status && (
-                  <span className={`settings-pill ${versionInfo.updateAvailable ? "active" : ["unavailable", "no_release"].includes(versionInfo.status) ? "muted" : ""}`}>
+                  <span className={`settings-pill ${versionInfo.updateAvailable && !updateIgnored ? "active" : ["unavailable", "no_release"].includes(versionInfo.status) || updateIgnored ? "muted" : ""}`}>
                     {versionStatusLabel(versionInfo)}
                   </span>
                 )}
@@ -1151,6 +1177,25 @@ export function SettingsView() {
                   <ExternalLink size={15} />
                   {t("settings.updates.openRelease")}
                 </a>
+              )}
+              {versionInfo?.updateAvailable && !updateIgnored && (
+                <div className="update-decision-panel">
+                  <div>
+                    <strong>{t("settings.updates.decisionTitle", { version: versionInfo.latestVersion || "" })}</strong>
+                    <span>{versionInfo.assetName ? t("settings.updates.asset", { name: versionInfo.assetName }) : t("settings.updates.noAsset")}</span>
+                  </div>
+                  {versionInfo.releaseNotes && <pre>{versionInfo.releaseNotes}</pre>}
+                  <div className="settings-action-row">
+                    <button type="button" className="primary-button" onClick={installUpdate}>
+                      <Download size={15} />
+                      {t("settings.updates.install")}
+                    </button>
+                    <button type="button" className="secondary-button" onClick={ignoreUpdate}>
+                      <X size={15} />
+                      {t("settings.updates.ignore")}
+                    </button>
+                  </div>
+                </div>
               )}
               {versionMessage && <p className="form-message">{localizedStatusMessage(versionMessage)}</p>}
             </section>
@@ -1794,6 +1839,15 @@ export function SettingsView() {
                     />
                   </label>
                   <label>
+                    {t("auth.email")}
+                    <input
+                      type="email"
+                      value={userForm.email}
+                      onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))}
+                      placeholder={t("settings.users.emailPlaceholder")}
+                    />
+                  </label>
+                  <label>
                     {t("auth.password")}
                     <input
                       type="password"
@@ -1832,6 +1886,7 @@ export function SettingsView() {
                     <thead>
                       <tr>
                         <th>{t("settings.users.username")}</th>
+                        <th>{t("auth.email")}</th>
                         <th>{t("settings.users.roles")}</th>
                         <th>{t("settings.users.created")}</th>
                         <th>{t("settings.sessions.actions")}</th>
@@ -1839,13 +1894,14 @@ export function SettingsView() {
                     </thead>
                     <tbody>
                       {usersLoading ? (
-                        <tr><td colSpan={4} className="loading-cell">{t("settings.users.loading")}</td></tr>
+                        <tr><td colSpan={5} className="loading-cell">{t("settings.users.loading")}</td></tr>
                       ) : users.length === 0 ? (
-                        <tr><td colSpan={4} className="loading-cell">{t("settings.users.empty")}</td></tr>
+                        <tr><td colSpan={5} className="loading-cell">{t("settings.users.empty")}</td></tr>
                       ) : (
                         users.map((user) => (
                           <tr key={user.id} className={editingUser?.id === user.id ? "selected-row" : ""}>
                             <td><strong>{user.username}</strong></td>
+                            <td>{user.email || "-"}</td>
                             <td>
                               <div className="role-chip-row">
                                 {user.roles.map((role) => <span className="settings-pill" key={role}>{role}</span>)}

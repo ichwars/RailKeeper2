@@ -26,6 +26,7 @@ func TestCreateAdminCompletesSetup(t *testing.T) {
 
 	err = service.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	})
 	if err != nil {
@@ -74,6 +75,7 @@ func TestCreateAdminRejectsSecondSetup(t *testing.T) {
 
 	if err := service.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -81,6 +83,7 @@ func TestCreateAdminRejectsSecondSetup(t *testing.T) {
 
 	err := service.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "other-admin",
+		Email:    "other-admin@example.test",
 		Password: "another-secure-password",
 	})
 	if !errors.Is(err, application.ErrAlreadySetup) {

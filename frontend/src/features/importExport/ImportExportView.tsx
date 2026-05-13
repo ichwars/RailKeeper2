@@ -519,7 +519,12 @@ function findECoSMatch(locomotive: ECoSLocomotive, vehicles: Vehicle[]) {
     }
     const vehicleName = comparableECoSName(vehicle.name || "");
     const vehicleNumber = comparableECoSName(vehicle.vehicleNumber || "");
-    return Boolean(name && (vehicleName === name || vehicleNumber === name));
+    return Boolean(name && (
+      vehicleName === name ||
+      vehicleNumber === name ||
+      (vehicleName.length > 5 && name.includes(vehicleName)) ||
+      (vehicleNumber.length > 5 && name.includes(vehicleNumber))
+    ));
   });
 }
 

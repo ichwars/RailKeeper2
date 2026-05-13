@@ -5,6 +5,7 @@ import { useI18n } from "../../shared/i18n";
 
 export function SetupView({ onComplete }: { onComplete: () => void }) {
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -16,7 +17,7 @@ export function SetupView({ onComplete }: { onComplete: () => void }) {
     setMessage("");
 
     api
-      .createAdmin({ username, password })
+      .createAdmin({ username, email, password })
       .then(onComplete)
       .catch((error: Error) => setMessage(error.message))
       .finally(() => setSaving(false));
@@ -39,6 +40,17 @@ export function SetupView({ onComplete }: { onComplete: () => void }) {
               minLength={3}
               autoComplete="username"
               onChange={(event) => setUsername(event.target.value)}
+              required
+            />
+          </label>
+
+          <label>
+            {t("auth.email")}
+            <input
+              type="email"
+              value={email}
+              autoComplete="email"
+              onChange={(event) => setEmail(event.target.value)}
               required
             />
           </label>

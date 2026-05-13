@@ -4,6 +4,7 @@ export type SetupStatus = {
 
 export type CreateAdminRequest = {
   username: string;
+  email: string;
   password: string;
 };
 
@@ -26,14 +27,25 @@ export type Role = {
 export type UserAccount = {
   id: string;
   username: string;
+  email?: string;
   roles: string[];
   createdAt: string;
 };
 
 export type UserAccountInput = {
   username: string;
+  email?: string;
   password?: string;
   roles: string[];
+};
+
+export type PasswordResetRequest = {
+  email: string;
+};
+
+export type PasswordResetResult = {
+  status: string;
+  message: string;
 };
 
 export type ChangePasswordInput = {
@@ -507,6 +519,9 @@ export type VersionInfo = {
   updateAvailable: boolean;
   sourceUrl?: string;
   releaseUrl?: string;
+  releaseNotes?: string;
+  assetUrl?: string;
+  assetName?: string;
   checkedAt: string;
   status: "local" | "not_configured" | "current" | "update_available" | "unavailable" | "no_release";
   message: string;
@@ -687,6 +702,11 @@ export const api = {
     csrfToken = session.csrfToken || readCookie("rk_csrf");
     return session;
   },
+  requestPasswordReset: (input: PasswordResetRequest) =>
+    request<PasswordResetResult>("/auth/password-reset", {
+      method: "POST",
+      body: JSON.stringify(input)
+    }),
   session: async () => {
     const session = await request<Session>("/auth/session");
     csrfToken = session.csrfToken || readCookie("rk_csrf");

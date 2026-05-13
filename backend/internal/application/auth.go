@@ -55,6 +55,7 @@ type RoleView struct {
 type UserView struct {
 	ID        string   `json:"id"`
 	Username  string   `json:"username"`
+	Email     string   `json:"email,omitempty"`
 	Roles     []string `json:"roles"`
 	CreatedAt string   `json:"createdAt"`
 }
@@ -82,14 +83,25 @@ type SessionRecord struct {
 
 type CreateUserInput struct {
 	Username string   `json:"username"`
+	Email    string   `json:"email"`
 	Password string   `json:"password"`
 	Roles    []string `json:"roles"`
 }
 
 type UpdateUserInput struct {
 	Username string   `json:"username"`
+	Email    string   `json:"email"`
 	Password string   `json:"password"`
 	Roles    []string `json:"roles"`
+}
+
+type PasswordResetRequestInput struct {
+	Email string `json:"email"`
+}
+
+type PasswordResetRequestResult struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
 }
 
 type LoginResult struct {
@@ -106,7 +118,7 @@ func NewAuthService(db *sql.DB) *AuthService {
 func (s *AuthService) ListUsers(ctx context.Context) ([]UserView, error) {
 	rows, err := s.db.QueryContext(
 		ctx,
-		`SELECT id, username, created_at FROM users ORDER BY lower(username)`,
+		`SELECT id, username, COALESCE(email, ''), created_at FROM users ORDER BY lower(username)`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
@@ -116,7 +128,7 @@ func (s *AuthService) ListUsers(ctx context.Context) ([]UserView, error) {
 	users := []UserView{}
 	for rows.Next() {
 		var user UserView
-		if err := rows.Scan(&user.ID, &user.Username, &user.CreatedAt); err != nil {
+		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt); err != nil {
 			_ = rows.Close()
 			return nil, fmt.Errorf("scan user: %w", err)
 		}
@@ -337,8 +349,9 @@ func (s *AuthService) ChangeOwnPassword(ctx context.Context, userID, sessionToke
 
 func (s *AuthService) CreateUser(ctx context.Context, actorUserID string, input CreateUserInput) (*UserView, error) {
 	username := strings.TrimSpace(input.Username)
+	email := strings.TrimSpace(input.Email)
 	roleNames := cleanRoleNames(input.Roles)
-	if len(username) < 3 || len(input.Password) < 12 || len(roleNames) == 0 {
+	if len(username) < 3 || len(input.Password) < 12 || len(roleNames) == 0 || (email != "" && !isValidEmail(email)) {
 		return nil, ErrUserValidation
 	}
 
@@ -365,9 +378,10 @@ func (s *AuthService) CreateUser(ctx context.Context, actorUserID string, input 
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO users(id, username, password_hash, created_at) VALUES(?, ?, ?, ?)`,
+		`INSERT INTO users(id, username, email, password_hash, created_at) VALUES(?, ?, ?, ?, ?)`,
 		userID,
 		username,
+		nullableString(email),
 		hash,
 		now,
 	); err != nil {
@@ -394,9 +408,9 @@ func (s *AuthService) GetUser(ctx context.Context, userID string) (*UserView, er
 	var user UserView
 	if err := s.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, created_at FROM users WHERE id=?`,
+		`SELECT id, username, COALESCE(email, ''), created_at FROM users WHERE id=?`,
 		userID,
-	).Scan(&user.ID, &user.Username, &user.CreatedAt); err != nil {
+	).Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrUserNotFound
 		}
@@ -412,8 +426,9 @@ func (s *AuthService) GetUser(ctx context.Context, userID string) (*UserView, er
 
 func (s *AuthService) UpdateUser(ctx context.Context, actorUserID, userID string, input UpdateUserInput) (*UserView, error) {
 	username := strings.TrimSpace(input.Username)
+	email := strings.TrimSpace(input.Email)
 	roleNames := cleanRoleNames(input.Roles)
-	if len(username) < 3 || len(roleNames) == 0 {
+	if len(username) < 3 || len(roleNames) == 0 || (email != "" && !isValidEmail(email)) {
 		return nil, ErrUserValidation
 	}
 	if input.Password != "" && len(input.Password) < 12 {
@@ -452,7 +467,7 @@ func (s *AuthService) UpdateUser(ctx context.Context, actorUserID, userID string
 			err = fmt.Errorf("hash password: %w", hashErr)
 			return nil, err
 		}
-		_, err = tx.ExecContext(ctx, `UPDATE users SET username=?, password_hash=? WHERE id=?`, username, hash, userID)
+		_, err = tx.ExecContext(ctx, `UPDATE users SET username=?, email=?, password_hash=? WHERE id=?`, username, nullableString(email), hash, userID)
 		if err == nil {
 			_, err = tx.ExecContext(
 				ctx,
@@ -462,7 +477,7 @@ func (s *AuthService) UpdateUser(ctx context.Context, actorUserID, userID string
 			)
 		}
 	} else {
-		_, err = tx.ExecContext(ctx, `UPDATE users SET username=? WHERE id=?`, username, userID)
+		_, err = tx.ExecContext(ctx, `UPDATE users SET username=?, email=? WHERE id=?`, username, nullableString(email), userID)
 	}
 	if err != nil {
 		if isUniqueConstraint(err) {
@@ -521,6 +536,43 @@ func (s *AuthService) DeleteUser(ctx context.Context, actorUserID, userID string
 		return fmt.Errorf("commit user delete: %w", err)
 	}
 	return nil
+}
+
+func (s *AuthService) RequestPasswordReset(ctx context.Context, input PasswordResetRequestInput) (*PasswordResetRequestResult, error) {
+	email := strings.TrimSpace(strings.ToLower(input.Email))
+	if !isValidEmail(email) {
+		return nil, ErrUserValidation
+	}
+
+	var userID string
+	err := s.db.QueryRowContext(ctx, `SELECT id FROM users WHERE lower(email)=lower(?)`, email).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		userID = ""
+	} else if err != nil {
+		return nil, fmt.Errorf("read reset user: %w", err)
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	if _, err := s.db.ExecContext(
+		ctx,
+		`INSERT INTO password_reset_requests(id, user_id, email, created_at) VALUES(?, ?, ?, ?)`,
+		randomID(),
+		nullableString(userID),
+		email,
+		now,
+	); err != nil {
+		return nil, fmt.Errorf("create password reset request: %w", err)
+	}
+	targetID := userID
+	if targetID == "" {
+		targetID = email
+	}
+	_ = s.audit(ctx, "", "PasswordResetRequested", "user", targetID, "{}")
+
+	return &PasswordResetRequestResult{
+		Status:  "queued",
+		Message: "Wenn die E-Mail-Adresse bekannt ist, wurde eine Passwort-Ruecksetzung vorgemerkt.",
+	}, nil
 }
 
 func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginResult, error) {
@@ -823,6 +875,19 @@ func (s *AuthService) ensureAnotherAdmin(ctx context.Context, tx *sql.Tx, userID
 
 func isUniqueConstraint(err error) bool {
 	return strings.Contains(strings.ToLower(err.Error()), "unique")
+}
+
+func isValidEmail(value string) bool {
+	value = strings.TrimSpace(value)
+	at := strings.Index(value, "@")
+	return at > 0 && at < len(value)-3 && strings.Contains(value[at+1:], ".")
+}
+
+func nullableString(value string) any {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return value
 }
 
 func (s *AuthService) audit(ctx context.Context, actorUserID, action, targetType, targetID, detailsJSON string) error {

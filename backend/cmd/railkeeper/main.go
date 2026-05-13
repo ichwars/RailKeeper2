@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	version               = "0.1.1"
+	version               = "0.1.2"
 	defaultUpdateCheckURL = "https://api.github.com/repos/ichwars/RailKeeper2/releases/latest"
 )
 

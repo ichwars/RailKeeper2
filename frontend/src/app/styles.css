@@ -250,13 +250,13 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 116px;
-  padding: 0 4px;
+  min-height: 148px;
+  padding: 0 10px;
 }
 
 .brand-logo {
-  width: 104px;
-  height: 104px;
+  width: 132px;
+  height: 132px;
   border-radius: 6px;
   object-fit: contain;
 }
@@ -2204,6 +2204,26 @@ h1 {
   gap: 14px;
 }
 
+.transfer-panel {
+  align-content: start;
+}
+
+.transfer-panel .panel-head {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.transfer-panel .panel-head > svg {
+  order: -1;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.transfer-panel .panel-head p {
+  margin-top: 3px;
+  max-width: 70ch;
+}
+
 .bar-list,
 .quality-list,
 .rank-list,
@@ -2618,6 +2638,39 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.update-decision-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+
+.update-decision-panel > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.update-decision-panel span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.update-decision-panel pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  white-space: pre-wrap;
 }
 
 .column-mapping-panel {
@@ -3731,11 +3784,20 @@ td {
 }
 
 .auth-logo {
-  width: 146px;
-  height: 106px;
+  width: 250px;
+  height: 188px;
   justify-self: center;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   object-fit: contain;
+}
+
+.password-reset-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
 }
 
 .auth-mark {
@@ -5645,7 +5707,21 @@ td {
   cursor: pointer;
 }
 
+.exhibition-table thead th {
+  height: 52px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .exhibition-table th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border: 0;
   padding: 0;
   background: transparent;

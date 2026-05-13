@@ -1,4 +1,4 @@
-import { DragEvent, FormEvent, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { DragEvent, FormEvent, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
   AlertTriangle,
@@ -2527,11 +2527,11 @@ export function VehiclesView() {
     );
     const preview = buildCVImportPreview("Decoder-Datei-Vorschau", values, selected.cvValues || []);
     if (!preview.rows.some((row) => row.status !== "invalid")) {
-      setMessage("Keine gÃ¼ltigen CV-Werte in der Decoder-Vorschau gefunden.");
+      setMessage("Keine gültigen CV-Werte in der Decoder-Vorschau gefunden.");
       return;
     }
     setCVImportPreview(preview);
-    setMessage(`${values.length} erkannte CV-Werte in die ImportprÃ¼fung Ã¼bernommen.`);
+    setMessage(`${values.length} erkannte CV-Werte in die Importprüfung übernommen.`);
   };
 
   const applyCVFileFunctionSuggestions = () => {
@@ -2549,7 +2549,7 @@ export function VehiclesView() {
     );
     const valid = Array.from(new Map(mappings.filter(isValidFunctionMapping).map((mapping) => [mapping.functionKey, mapping])).values());
     if (valid.length === 0) {
-      setMessage("Keine gÃ¼ltigen Funktionstasten in der Decoder-Vorschau gefunden.");
+      setMessage("Keine gültigen Funktionstasten in der Decoder-Vorschau gefunden.");
       return;
     }
     setSaving(true);
@@ -2567,7 +2567,7 @@ export function VehiclesView() {
       }
     })()
       .then(() => refreshSelectedVehicle(selected.id))
-      .then(() => setMessage(`${valid.length} Funktionstaste${valid.length === 1 ? "" : "n"} aus der Decoder-Vorschau Ã¼bernommen.`))
+      .then(() => setMessage(`${valid.length} Funktionstaste${valid.length === 1 ? "" : "n"} aus der Decoder-Vorschau übernommen.`))
       .catch((error: Error) => setMessage(error.message))
       .finally(() => setSaving(false));
   };

@@ -183,6 +183,7 @@ func TestChangePasswordEndpoint(t *testing.T) {
 	auth := application.NewAuthService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -233,6 +234,7 @@ func TestSessionListAndRevokeEndpoints(t *testing.T) {
 	auth := application.NewAuthService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -296,6 +298,7 @@ func TestSessionListEndpointHonorsLimit(t *testing.T) {
 	auth := application.NewAuthService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -333,6 +336,7 @@ func TestBackupValidateEndpoint(t *testing.T) {
 	backupService := application.NewBackupService(db, dataDir)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -389,12 +393,14 @@ func TestExhibitionEndpointsAllowMesseRole(t *testing.T) {
 	masterData := application.NewMasterDataService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := auth.CreateUser(t.Context(), "", application.CreateUserInput{
 		Username: "messe",
+		Email:    "messe@example.test",
 		Password: "messe-secure-password",
 		Roles:    []string{"Messe"},
 	}); err != nil {
@@ -517,12 +523,14 @@ func TestExhibitionLockedListRejectsEntryWrites(t *testing.T) {
 	exhibition := application.NewExhibitionService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := auth.CreateUser(t.Context(), "", application.CreateUserInput{
 		Username: "messe",
+		Email:    "messe@example.test",
 		Password: "messe-secure-password",
 		Roles:    []string{"Messe"},
 	}); err != nil {
@@ -562,6 +570,7 @@ func TestExhibitionListCreateWritesAuditLog(t *testing.T) {
 	exhibition := application.NewExhibitionService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -600,6 +609,7 @@ func TestExhibitionListChangesWriteAuditLog(t *testing.T) {
 	exhibition := application.NewExhibitionService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -690,6 +700,7 @@ func TestExhibitionEntryChangesWriteAuditLog(t *testing.T) {
 	exhibition := application.NewExhibitionService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)

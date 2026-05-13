@@ -32,7 +32,7 @@ func TestVersionInfoWithoutConfiguredUpdateSource(t *testing.T) {
 func TestVersionInfoDetectsUpdate(t *testing.T) {
 	updateServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"tag_name":"v0.2.0","html_url":"https://example.test/releases/v0.2.0"}`))
+		_, _ = w.Write([]byte(`{"tag_name":"v0.2.0","html_url":"https://example.test/releases/v0.2.0","body":"Release notes","assets":[{"name":"railkeeper.zip","browser_download_url":"https://example.test/railkeeper.zip"}]}`))
 	}))
 	defer updateServer.Close()
 
@@ -57,6 +57,9 @@ func TestVersionInfoDetectsUpdate(t *testing.T) {
 	}
 	if body.LatestVersion != "v0.2.0" {
 		t.Fatalf("expected latest version v0.2.0, got %q", body.LatestVersion)
+	}
+	if body.ReleaseNotes != "Release notes" || body.AssetURL != "https://example.test/railkeeper.zip" {
+		t.Fatalf("expected release notes and asset URL, got %#v", body)
 	}
 }
 

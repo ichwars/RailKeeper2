@@ -132,6 +132,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/setup/status", app.setupStatus)
 	mux.HandleFunc("POST /api/v1/setup/admin", app.createAdmin)
 	mux.HandleFunc("POST /api/v1/auth/login", app.login)
+	mux.HandleFunc("POST /api/v1/auth/password-reset", app.requestPasswordReset)
 	mux.HandleFunc("POST /api/v1/auth/logout", app.logout)
 	mux.HandleFunc("GET /api/v1/auth/session", app.session)
 	mux.HandleFunc("PUT /api/v1/auth/password", app.require("Viewer", app.changePassword))
@@ -235,18 +236,28 @@ type versionInfoResponse struct {
 	UpdateAvailable bool   `json:"updateAvailable"`
 	SourceURL       string `json:"sourceUrl,omitempty"`
 	ReleaseURL      string `json:"releaseUrl,omitempty"`
+	ReleaseNotes    string `json:"releaseNotes,omitempty"`
+	AssetURL        string `json:"assetUrl,omitempty"`
+	AssetName       string `json:"assetName,omitempty"`
 	CheckedAt       string `json:"checkedAt"`
 	Status          string `json:"status"`
 	Message         string `json:"message"`
 }
 
 type updateReleaseResponse struct {
-	Version    string `json:"version"`
-	TagName    string `json:"tag_name"`
-	Name       string `json:"name"`
-	HTMLURL    string `json:"html_url"`
-	Prerelease bool   `json:"prerelease"`
-	Draft      bool   `json:"draft"`
+	Version    string               `json:"version"`
+	TagName    string               `json:"tag_name"`
+	Name       string               `json:"name"`
+	Body       string               `json:"body"`
+	HTMLURL    string               `json:"html_url"`
+	Assets     []updateReleaseAsset `json:"assets"`
+	Prerelease bool                 `json:"prerelease"`
+	Draft      bool                 `json:"draft"`
+}
+
+type updateReleaseAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
 var errNoUpdateRelease = errors.New("no update release available")
@@ -298,6 +309,8 @@ func (a *App) versionInfo(w http.ResponseWriter, r *http.Request) {
 
 	response.LatestVersion = firstUpdateVersion(release.Version, release.TagName, release.Name)
 	response.ReleaseURL = release.HTMLURL
+	response.ReleaseNotes = strings.TrimSpace(release.Body)
+	response.AssetName, response.AssetURL = firstReleaseAsset(release.Assets)
 	if response.LatestVersion == "" {
 		response.Status = "unavailable"
 		response.Message = "Updatequelle enthielt keine auswertbare Version."
@@ -407,6 +420,15 @@ func firstUpdateVersion(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func firstReleaseAsset(assets []updateReleaseAsset) (string, string) {
+	for _, asset := range assets {
+		if trimmed := strings.TrimSpace(asset.BrowserDownloadURL); trimmed != "" {
+			return strings.TrimSpace(asset.Name), trimmed
+		}
+	}
+	return "", ""
 }
 
 func compareVersionStrings(latest, current string) int {
@@ -776,7 +798,7 @@ func (a *App) createAdmin(w http.ResponseWriter, r *http.Request) {
 	if err := a.setupService.CreateAdmin(r.Context(), input); err != nil {
 		switch {
 		case errors.Is(err, application.ErrWeakSetup):
-			respondProblem(w, http.StatusBadRequest, "weak_setup", "Username must have at least 3 characters and password at least 12 characters.")
+			respondProblem(w, http.StatusBadRequest, "weak_setup", "Username, valid email and password with at least 12 characters are required.")
 		case errors.Is(err, application.ErrAlreadySetup):
 			respondProblem(w, http.StatusConflict, "already_setup", "Setup has already been completed.")
 		default:
@@ -819,6 +841,34 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, "rk_session", result.SessionToken, int(timeUntil(result.ExpiresAt).Seconds()), true, a.cookieSecure)
 	setCookie(w, "rk_csrf", result.CSRFToken, int(timeUntil(result.ExpiresAt).Seconds()), false, a.cookieSecure)
 	respondJSON(w, http.StatusOK, result.Session)
+}
+
+func (a *App) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	allowed, ok := a.allowRequest(w, r, "password-reset", clientIP(r), 5, 10*time.Minute)
+	if !ok {
+		return
+	}
+	if !allowed {
+		respondProblem(w, http.StatusTooManyRequests, "rate_limited", "Too many reset attempts. Please try again later.")
+		return
+	}
+
+	var input application.PasswordResetRequestInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+	result, err := a.authService.RequestPasswordReset(r.Context(), input)
+	if err != nil {
+		if errors.Is(err, application.ErrUserValidation) {
+			respondProblem(w, http.StatusBadRequest, "invalid_email", "Bitte eine gueltige E-Mail-Adresse angeben.")
+			return
+		}
+		a.logger.Error("password reset request failed", "error", err)
+		respondProblem(w, http.StatusInternalServerError, "password_reset_failed", "Passwort-Ruecksetzung konnte nicht vorgemerkt werden.")
+		return
+	}
+	respondJSON(w, http.StatusAccepted, result)
 }
 
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
@@ -2402,6 +2452,7 @@ func (a *App) csrf(next http.Handler) http.Handler {
 		}
 		if r.URL.Path == "/api/v1/setup/admin" ||
 			r.URL.Path == "/api/v1/auth/login" ||
+			r.URL.Path == "/api/v1/auth/password-reset" ||
 			r.URL.Path == "/api/v1/auth/logout" {
 			next.ServeHTTP(w, r)
 			return

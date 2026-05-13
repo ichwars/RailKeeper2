@@ -67,7 +67,7 @@ func (a *App) deleteUser(w http.ResponseWriter, r *http.Request) {
 func handleUserError(a *App, w http.ResponseWriter, err error, code, message string) {
 	switch {
 	case errors.Is(err, application.ErrUserValidation):
-		respondProblem(w, http.StatusBadRequest, "user_validation", "Benutzername, Rollen und ein Passwort mit mindestens 12 Zeichen sind erforderlich.")
+		respondProblem(w, http.StatusBadRequest, "user_validation", "Benutzername, gueltige E-Mail, Rollen und ein Passwort mit mindestens 12 Zeichen sind erforderlich.")
 	case errors.Is(err, application.ErrDuplicateUser):
 		respondProblem(w, http.StatusConflict, "user_duplicate", "Dieser Benutzername ist bereits vergeben.")
 	case errors.Is(err, application.ErrUserNotFound):

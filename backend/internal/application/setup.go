@@ -25,6 +25,7 @@ type SetupService struct {
 
 type CreateAdminInput struct {
 	Username string
+	Email    string
 	Password string
 }
 
@@ -42,7 +43,8 @@ func (s *SetupService) SetupRequired(ctx context.Context) (bool, error) {
 
 func (s *SetupService) CreateAdmin(ctx context.Context, input CreateAdminInput) error {
 	username := strings.TrimSpace(input.Username)
-	if len(username) < 3 || len(input.Password) < 12 {
+	email := strings.TrimSpace(input.Email)
+	if len(username) < 3 || len(input.Password) < 12 || !isValidEmail(email) {
 		return ErrWeakSetup
 	}
 
@@ -73,9 +75,10 @@ func (s *SetupService) CreateAdmin(ctx context.Context, input CreateAdminInput) 
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO users(id, username, password_hash, created_at) VALUES(?, ?, ?, ?)`,
+		`INSERT INTO users(id, username, email, password_hash, created_at) VALUES(?, ?, ?, ?, ?)`,
 		userID,
 		username,
+		email,
 		hash,
 		now,
 	); err != nil {

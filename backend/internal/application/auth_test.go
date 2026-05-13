@@ -16,6 +16,7 @@ func TestLoginCreatesReadableSession(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -55,6 +56,7 @@ func TestLoginRejectsInvalidPassword(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -69,6 +71,36 @@ func TestLoginRejectsInvalidPassword(t *testing.T) {
 	}
 }
 
+func TestPasswordResetRequestIsRecorded(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	setup := application.NewSetupService(db)
+	auth := application.NewAuthService(db)
+
+	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
+		Username: "admin",
+		Email:    "admin@example.test",
+		Password: "very-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := auth.RequestPasswordReset(ctx, application.PasswordResetRequestInput{Email: "admin@example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "queued" {
+		t.Fatalf("expected queued reset, got %#v", result)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM password_reset_requests WHERE email='admin@example.test'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected one reset request, got %d", count)
+	}
+}
+
 func TestLogoutRevokesSession(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
@@ -77,6 +109,7 @@ func TestLogoutRevokesSession(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -112,6 +145,7 @@ func TestListAndRevokeSessions(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -146,6 +180,7 @@ func TestListSessionsHonorsLimit(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -176,6 +211,7 @@ func TestChangeOwnPasswordKeepsCurrentSessionAndRevokesOthers(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -230,6 +266,7 @@ func TestListAuditLogReturnsRecentSecurityEvents(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -274,6 +311,7 @@ func TestValidateCSRFRejectsWrongToken(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -301,6 +339,7 @@ func TestRequireRoleAllowsEditorForViewerEndpoints(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -338,12 +377,14 @@ func TestRequireRoleDoesNotTreatMesseAsViewer(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := auth.CreateUser(ctx, "", application.CreateUserInput{
 		Username: "messe",
+		Email:    "messe@example.test",
 		Password: "messe-secure-password",
 		Roles:    []string{"Messe"},
 	}); err != nil {
@@ -374,6 +415,7 @@ func TestCreateUserAssignsMesseRole(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -381,6 +423,7 @@ func TestCreateUserAssignsMesseRole(t *testing.T) {
 
 	user, err := auth.CreateUser(ctx, "", application.CreateUserInput{
 		Username: "messe",
+		Email:    "messe@example.test",
 		Password: "very-secure-password",
 		Roles:    []string{"Messe"},
 	})
@@ -400,6 +443,7 @@ func TestUpdateUserProtectsLastAdmin(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -429,6 +473,7 @@ func TestUpdateUserPasswordRevokesExistingSessions(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -475,6 +520,7 @@ func TestDeleteUserAllowsRemovingSecondAdmin(t *testing.T) {
 
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)

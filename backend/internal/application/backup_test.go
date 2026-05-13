@@ -137,6 +137,7 @@ func TestBackupExcludesAuthenticationTables(t *testing.T) {
 	auth := application.NewAuthService(db)
 	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
 		Username: "admin",
+		Email:    "admin@example.test",
 		Password: "very-secure-password",
 	}); err != nil {
 		t.Fatal(err)
@@ -189,13 +190,14 @@ ORDER BY name
 	defer func() { _ = rows.Close() }()
 
 	excluded := map[string]bool{
-		"audit_logs":          true,
-		"rate_limit_attempts": true,
-		"roles":               true,
-		"schema_migrations":   true,
-		"sessions":            true,
-		"user_roles":          true,
-		"users":               true,
+		"audit_logs":              true,
+		"password_reset_requests": true,
+		"rate_limit_attempts":     true,
+		"roles":                   true,
+		"schema_migrations":       true,
+		"sessions":                true,
+		"user_roles":              true,
+		"users":                   true,
 	}
 	for rows.Next() {
 		var table string
