@@ -167,6 +167,53 @@ func TestBackupExcludesAuthenticationTables(t *testing.T) {
 	}
 }
 
+func TestBackupCoversAllApplicationDataTables(t *testing.T) {
+	dataDir := t.TempDir()
+	db := backupTestDB(t, dataDir)
+	backupService := application.NewBackupService(db, dataDir)
+	backup, err := backupService.Export(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := db.Query(`
+SELECT name
+FROM sqlite_master
+WHERE type='table'
+  AND name NOT LIKE 'sqlite_%'
+ORDER BY name
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	excluded := map[string]bool{
+		"audit_logs":          true,
+		"rate_limit_attempts": true,
+		"roles":               true,
+		"schema_migrations":   true,
+		"sessions":            true,
+		"user_roles":          true,
+		"users":               true,
+	}
+	for rows.Next() {
+		var table string
+		if err := rows.Scan(&table); err != nil {
+			t.Fatal(err)
+		}
+		if excluded[table] {
+			continue
+		}
+		if _, ok := backup.Tables[table]; !ok {
+			t.Fatalf("application data table %q is missing from backup export", table)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestBackupValidationWarnsAboutIgnoredAuthenticationTables(t *testing.T) {
 	db := backupTestDB(t, t.TempDir())
 	service := application.NewBackupService(db, t.TempDir())
