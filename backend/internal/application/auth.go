@@ -590,12 +590,16 @@ func (s *AuthService) CurrentSession(ctx context.Context, sessionToken string) (
 }
 
 func (s *AuthService) RequireRole(ctx context.Context, sessionToken, role string) (string, error) {
+	return s.RequireAnyRole(ctx, sessionToken, role)
+}
+
+func (s *AuthService) RequireAnyRole(ctx context.Context, sessionToken string, requiredRoles ...string) (string, error) {
 	userID, _, err := s.sessionUser(ctx, sessionToken)
 	if err != nil {
 		return "", err
 	}
 
-	if role == "" {
+	if len(requiredRoles) == 0 {
 		return userID, nil
 	}
 
@@ -604,8 +608,10 @@ func (s *AuthService) RequireRole(ctx context.Context, sessionToken, role string
 		return "", err
 	}
 
-	if hasRole(roles, role) || hasRole(roles, "Admin") {
-		return userID, nil
+	for _, role := range requiredRoles {
+		if role == "" || hasRole(roles, role) || hasRole(roles, "Admin") {
+			return userID, nil
+		}
 	}
 
 	return "", ErrForbidden
@@ -623,9 +629,13 @@ func (s *AuthService) ValidateCSRF(ctx context.Context, sessionToken, csrfToken 
 }
 
 func hasRole(roles []string, role string) bool {
-	if role == "Viewer" && len(roles) > 0 {
-		return true
+	if role == "Viewer" {
+		return hasExactRole(roles, "Viewer") || hasExactRole(roles, "Editor") || hasExactRole(roles, "Admin")
 	}
+	return hasExactRole(roles, role)
+}
+
+func hasExactRole(roles []string, role string) bool {
 	for _, current := range roles {
 		if current == role {
 			return true

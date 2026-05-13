@@ -280,6 +280,7 @@ func TestExhibitionEndpointsAllowMesseRole(t *testing.T) {
 	setup := application.NewSetupService(db)
 	auth := application.NewAuthService(db)
 	exhibition := application.NewExhibitionService(db)
+	masterData := application.NewMasterDataService(db)
 	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
 		Username: "admin",
 		Password: "very-secure-password",
@@ -294,7 +295,7 @@ func TestExhibitionEndpointsAllowMesseRole(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	router := NewRouter(Config{SetupService: setup, AuthService: auth, ExhibitionService: exhibition})
+	router := NewRouter(Config{SetupService: setup, AuthService: auth, ExhibitionService: exhibition, MasterDataService: masterData})
 	session, cookies := loginTestUser(t, router, "messe", "messe-secure-password")
 
 	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/exhibition-lists", nil)
@@ -317,6 +318,26 @@ func TestExhibitionEndpointsAllowMesseRole(t *testing.T) {
 	router.ServeHTTP(createResponse, createRequest)
 	if createResponse.Code != http.StatusForbidden {
 		t.Fatalf("expected messe user to be forbidden from creating lists, got %d", createResponse.Code)
+	}
+
+	vehicleRequest := httptest.NewRequest(http.MethodGet, "/api/v1/vehicles", nil)
+	for _, cookie := range cookies {
+		vehicleRequest.AddCookie(cookie)
+	}
+	vehicleResponse := httptest.NewRecorder()
+	router.ServeHTTP(vehicleResponse, vehicleRequest)
+	if vehicleResponse.Code != http.StatusForbidden {
+		t.Fatalf("expected messe user to be forbidden from viewer inventory endpoints, got %d", vehicleResponse.Code)
+	}
+
+	symbolRequest := httptest.NewRequest(http.MethodGet, "/api/v1/master-data/symbols?active=true", nil)
+	for _, cookie := range cookies {
+		symbolRequest.AddCookie(cookie)
+	}
+	symbolResponse := httptest.NewRecorder()
+	router.ServeHTTP(symbolResponse, symbolRequest)
+	if symbolResponse.Code != http.StatusOK {
+		t.Fatalf("expected messe user to read symbols for exhibition picker, got %d: %s", symbolResponse.Code, symbolResponse.Body.String())
 	}
 }
 

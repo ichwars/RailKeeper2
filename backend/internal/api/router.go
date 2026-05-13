@@ -171,7 +171,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/master-data-all", app.require("Viewer", app.listAllMasterData))
 	mux.HandleFunc("GET /api/v1/master-data/export", app.require("Admin", app.exportMasterData))
 	mux.HandleFunc("POST /api/v1/master-data/import", app.require("Admin", app.importMasterData))
-	mux.HandleFunc("GET /api/v1/master-data/{type}", app.require("Viewer", app.listMasterData))
+	mux.HandleFunc("GET /api/v1/master-data/{type}", app.requireMasterDataRead(app.listMasterData))
 	mux.HandleFunc("POST /api/v1/master-data/{type}", app.require("Editor", app.createMasterData))
 	mux.HandleFunc("PUT /api/v1/master-data/{type}/{key}", app.require("Editor", app.updateMasterData))
 	mux.HandleFunc("DELETE /api/v1/master-data/{type}/{key}", app.require("Editor", app.deleteMasterData))
@@ -2381,8 +2381,22 @@ func (a *App) csrf(next http.Handler) http.Handler {
 }
 
 func (a *App) require(role string, next http.HandlerFunc) http.HandlerFunc {
+	return a.requireAny([]string{role}, next)
+}
+
+func (a *App) requireMasterDataRead(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, err := a.authService.RequireRole(r.Context(), cookieValue(r, "rk_session"), role)
+		roles := []string{"Viewer"}
+		if r.PathValue("type") == "symbols" {
+			roles = append(roles, "Messe")
+		}
+		a.requireAny(roles, next)(w, r)
+	}
+}
+
+func (a *App) requireAny(roles []string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := a.authService.RequireAnyRole(r.Context(), cookieValue(r, "rk_session"), roles...)
 		if err != nil {
 			if errors.Is(err, application.ErrUnauthorized) {
 				respondProblem(w, http.StatusUnauthorized, "unauthorized", "Not logged in.")

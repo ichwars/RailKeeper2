@@ -263,7 +263,7 @@ func TestValidateCSRFRejectsWrongToken(t *testing.T) {
 	}
 }
 
-func TestRequireRoleAllowsViewerForAnyAssignedRole(t *testing.T) {
+func TestRequireRoleAllowsEditorForViewerEndpoints(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
 	setup := application.NewSetupService(db)
@@ -275,10 +275,17 @@ func TestRequireRoleAllowsViewerForAnyAssignedRole(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := auth.CreateUser(ctx, "", application.CreateUserInput{
+		Username: "editor",
+		Password: "editor-secure-password",
+		Roles:    []string{"Editor"},
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	result, err := auth.Login(ctx, application.LoginInput{
-		Username: "admin",
-		Password: "very-secure-password",
+		Username: "editor",
+		Password: "editor-secure-password",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -290,6 +297,42 @@ func TestRequireRoleAllowsViewerForAnyAssignedRole(t *testing.T) {
 	}
 	if userID == "" {
 		t.Fatal("expected actor user id")
+	}
+}
+
+func TestRequireRoleDoesNotTreatMesseAsViewer(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	setup := application.NewSetupService(db)
+	auth := application.NewAuthService(db)
+
+	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.CreateUser(ctx, "", application.CreateUserInput{
+		Username: "messe",
+		Password: "messe-secure-password",
+		Roles:    []string{"Messe"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := auth.Login(ctx, application.LoginInput{
+		Username: "messe",
+		Password: "messe-secure-password",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := auth.RequireRole(ctx, result.SessionToken, "Viewer"); !errors.Is(err, application.ErrForbidden) {
+		t.Fatalf("expected messe user to be forbidden from viewer role, got %v", err)
+	}
+	if userID, err := auth.RequireAnyRole(ctx, result.SessionToken, "Viewer", "Messe"); err != nil || userID == "" {
+		t.Fatalf("expected messe user to pass explicit messe fallback, userID=%q err=%v", userID, err)
 	}
 }
 
