@@ -2598,6 +2598,28 @@ h1 {
   max-height: 340px;
 }
 
+.ecos-preview-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.ecos-preview-toolbar .secondary-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .column-mapping-panel {
   display: grid;
   gap: 14px;

@@ -1,6 +1,6 @@
 import { ChangeEvent, Fragment, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Database, Download, FileInput, Printer, Save, Upload } from "lucide-react";
-import { api, CreateVehicleRequest, ECoSConnectionResult, ECoSLocomotivePreview, Vehicle } from "../../shared/api";
+import { api, CreateVehicleRequest, ECoSConnectionResult, ECoSLocomotive, ECoSLocomotivePreview, Vehicle } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 
 type ImportRow = {
@@ -313,6 +313,18 @@ function parseBoolean(value: string) {
   return ["1", "ja", "yes", "true", "wahr", "digital", "d", "x", "vorhanden"].includes(value.trim().toLowerCase());
 }
 
+function comparableECoSName(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/Ã¤/g, "ae")
+    .replace(/Ã¶/g, "oe")
+    .replace(/Ã¼/g, "ue")
+    .replace(/ÃŸ/g, "ss")
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/^(br|v)(?=\d)/, "");
+}
+
 function defaultColumnMappings(table: string[][]): ColumnMapping[] {
   return (table[0] || []).map((header, index) => {
     const normalized = normalizeHeader(header);
@@ -496,6 +508,69 @@ function vehicleToRequest(vehicle: Vehicle): CreateVehicleRequest {
       sortOrder: image.sortOrder
     }))
   };
+}
+
+function findECoSMatch(locomotive: ECoSLocomotive, vehicles: Vehicle[]) {
+  const address = locomotive.address ? String(locomotive.address) : "";
+  const name = comparableECoSName(locomotive.name || "");
+  return vehicles.find((vehicle) => {
+    if (address && vehicle.digitalDecoderNumber === address) {
+      return true;
+    }
+    const vehicleName = comparableECoSName(vehicle.name || "");
+    const vehicleNumber = comparableECoSName(vehicle.vehicleNumber || "");
+    return Boolean(name && (vehicleName === name || vehicleNumber === name));
+  });
+}
+
+function ecosImportRowsFromPreview(
+  preview: ECoSLocomotivePreview,
+  vehicles: Vehicle[],
+  labels: {
+    matched: string;
+    missingManufacturer: string;
+    missingGauge: string;
+  }
+): ImportRow[] {
+  return preview.locomotives.map((locomotive) => {
+    const match = findECoSMatch(locomotive, vehicles);
+    if (match) {
+      const vehicle = vehicleToRequest(match);
+      vehicle.digital = true;
+      if (locomotive.address) {
+        vehicle.digitalDecoderNumber = String(locomotive.address);
+      }
+      return {
+        id: `ecos-${locomotive.objectId}`,
+        selected: true,
+        mode: "update" as const,
+        status: "warning" as const,
+        issues: [labels.matched],
+        importedKeys: ["digital", "digitalDecoderNumber"],
+        duplicateVehicleId: match.id,
+        vehicle
+      };
+    }
+
+    const vehicle: CreateVehicleRequest = {
+      manufacturer: "",
+      name: locomotive.name || `ECoS ${locomotive.objectId}`,
+      gauge: "",
+      category: "Lokomotive",
+      digital: true,
+      digitalDecoderNumber: locomotive.address ? String(locomotive.address) : "",
+      description: `ECoS-ID ${locomotive.objectId}${locomotive.protocol ? `, Protokoll ${locomotive.protocol}` : ""}`
+    };
+    return {
+      id: `ecos-${locomotive.objectId}`,
+      selected: false,
+      mode: "create" as const,
+      status: "error" as const,
+      issues: [labels.missingManufacturer, labels.missingGauge],
+      importedKeys: ["name", "category", "digital", "digitalDecoderNumber", "description"],
+      vehicle
+    };
+  });
 }
 
 function mergeImportedVehicle(existing: Vehicle, incoming: CreateVehicleRequest, importedKeys: (keyof CreateVehicleRequest)[]) {
@@ -693,7 +768,8 @@ export function ImportExportView() {
     missingManufacturer: t("importExport.issue.missingManufacturer"),
     missingName: t("importExport.issue.missingName"),
     missingGauge: t("importExport.issue.missingGauge"),
-    duplicate: t("importExport.issue.duplicate")
+    duplicate: t("importExport.issue.duplicate"),
+    ecosMatched: t("importExport.ecos.matched")
   };
 
   useEffect(() => {
@@ -930,6 +1006,22 @@ export function ImportExportView() {
     }
   };
 
+  const addECoSToImportReview = () => {
+    if (!ecosPreview) {
+      return;
+    }
+    const ecosRows = ecosImportRowsFromPreview(ecosPreview, vehicles, {
+      matched: issueLabels.ecosMatched,
+      missingManufacturer: issueLabels.missingManufacturer,
+      missingGauge: issueLabels.missingGauge
+    });
+    setImportTable(null);
+    setRows(ecosRows);
+    const matched = ecosRows.filter((row) => row.mode === "update").length;
+    const open = ecosRows.filter((row) => row.status === "error").length;
+    setMessage(t("importExport.ecos.reviewReady", { count: ecosRows.length, matched, open }));
+  };
+
   const importMasterData = async () => {
     if (!masterDataFile) {
       setMasterDataMessage(t("importExport.error.masterMissing"));
@@ -1051,6 +1143,13 @@ export function ImportExportView() {
         <p className="source-note backup-note">{t("importExport.ecos.note")}</p>
         {ecosPreview && (
           <div className="table-wrap ecos-loco-preview">
+            <div className="ecos-preview-toolbar">
+              <span>{t("importExport.ecos.previewHint")}</span>
+              <button type="button" className="secondary-button" onClick={addECoSToImportReview} disabled={ecosPreview.locomotives.length === 0}>
+                <Upload size={15} aria-hidden="true" />
+                {t("importExport.ecos.toReview")}
+              </button>
+            </div>
             <table>
               <thead>
                 <tr>
@@ -1065,7 +1164,7 @@ export function ImportExportView() {
                 {ecosPreview.locomotives.length === 0 ? (
                   <tr><td colSpan={5}>{t("importExport.ecos.empty")}</td></tr>
                 ) : ecosPreview.locomotives.map((locomotive) => {
-                  const match = vehicles.find((vehicle) => vehicle.name.toLowerCase() === (locomotive.name || "").toLowerCase() || vehicle.digitalDecoderNumber === String(locomotive.address || ""));
+                  const match = findECoSMatch(locomotive, vehicles);
                   return (
                     <tr key={locomotive.objectId}>
                       <td>{locomotive.objectId}</td>
