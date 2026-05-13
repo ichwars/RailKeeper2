@@ -441,6 +441,39 @@ export type VehicleImportPreview = {
   rows: string[][];
 };
 
+export type ECoSConnectionInput = {
+  host: string;
+  port?: number;
+};
+
+export type ECoSConnectionResult = {
+  connected: boolean;
+  host: string;
+  port: number;
+  status?: string;
+  protocolVersion?: string;
+  applicationVersion?: string;
+  hardwareVersion?: string;
+  message: string;
+  rawLines?: string[];
+  fields?: Record<string, string>;
+};
+
+export type ECoSLocomotive = {
+  objectId: number;
+  name?: string;
+  address?: number;
+  protocol?: string;
+};
+
+export type ECoSLocomotivePreview = {
+  host: string;
+  port: number;
+  locomotives: ECoSLocomotive[];
+  rawLines?: string[];
+  message: string;
+};
+
 export type BackupImportResult = {
   restoredTables: number;
   restoredRows: number;
@@ -904,6 +937,24 @@ export const api = {
       { timeoutMs: 60000 }
     );
   },
+  testECoSConnection: (input: ECoSConnectionInput) =>
+    request<ECoSConnectionResult>(
+      "/ecos/test",
+      {
+        method: "POST",
+        body: JSON.stringify(input)
+      },
+      { timeoutMs: 10000 }
+    ),
+  previewECoSLocomotives: (input: ECoSConnectionInput) =>
+    request<ECoSLocomotivePreview>(
+      "/ecos/locomotives/preview",
+      {
+        method: "POST",
+        body: JSON.stringify(input)
+      },
+      { timeoutMs: 15000 }
+    ),
   backupExportUrl: () => "/api/v1/backup/export",
   validateBackup: (file: File) => {
     const form = new FormData();

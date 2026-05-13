@@ -38,15 +38,15 @@ function numberValue(value?: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function currency(value: number) {
-  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
+function currency(value: number, language: string) {
+  return new Intl.NumberFormat(language === "en" ? "en-US" : "de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
 }
 
-function formatDate(value?: string) {
+function formatDate(value: string | undefined, language: string) {
   if (!value) {
     return "-";
   }
-  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T00:00:00`));
 }
 
 function dateDistance(entry: VehicleMaintenance) {
@@ -66,21 +66,21 @@ function topEntries(values: string[]) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 5);
 }
 
-function maintenanceDistanceText(days: number) {
+function maintenanceDistanceText(days: number, t: (key: string, values?: Record<string, string | number>) => string) {
   if (days < 0) {
-    return `${Math.abs(days)} Tage überfällig`;
+    return t("overview.daysOverdue", { days: Math.abs(days) });
   }
   if (days === 0) {
-    return "heute fällig";
+    return t("overview.dueToday");
   }
   if (days === 1) {
-    return "morgen fällig";
+    return t("overview.dueTomorrow");
   }
-  return `in ${days} Tagen`;
+  return t("overview.dueInDays", { days });
 }
 
 export function OverviewView() {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -138,13 +138,13 @@ export function OverviewView() {
 
   const widgetControls = (widget: OverviewWidgetID, label: string) => (
     <span className="widget-head-actions">
-      <button type="button" className="widget-hide-button" onClick={() => moveWidget(widget, -1)} disabled={widgetOrderIndex(widget) <= 0} aria-label={`${label} nach vorn`} title="Nach vorn">
+      <button type="button" className="widget-hide-button" onClick={() => moveWidget(widget, -1)} disabled={widgetOrderIndex(widget) <= 0} aria-label={t("overview.widget.forward", { label })} title={t("overview.moveForward")}>
         <ArrowUp size={15} aria-hidden="true" />
       </button>
-      <button type="button" className="widget-hide-button" onClick={() => moveWidget(widget, 1)} disabled={widgetOrderIndex(widget) >= defaultWidgetOrder.length - 1} aria-label={`${label} nach hinten`} title="Nach hinten">
+      <button type="button" className="widget-hide-button" onClick={() => moveWidget(widget, 1)} disabled={widgetOrderIndex(widget) >= defaultWidgetOrder.length - 1} aria-label={t("overview.widget.backward", { label })} title={t("overview.moveBackward")}>
         <ArrowDown size={15} aria-hidden="true" />
       </button>
-      <button type="button" className="widget-hide-button" onClick={() => hideWidget(widget)} aria-label={`${label} ausblenden`} title="Ausblenden">
+      <button type="button" className="widget-hide-button" onClick={() => hideWidget(widget)} aria-label={t("overview.widget.hide", { label })} title={t("overview.hide")}>
         <EyeOff size={15} aria-hidden="true" />
       </button>
     </span>
@@ -164,19 +164,19 @@ export function OverviewView() {
     const maintenanceCost = allMaintenance.reduce((sum, item) => sum + numberValue(item.entry.cost), 0);
     const nextMaintenance = [...scheduledMaintenance].sort((a, b) => a.days - b.days).slice(0, 4);
     const conditions = topEntries(allMaintenance.map((item) => item.entry.conditionRating || "").filter(Boolean));
-    const categories = topEntries(vehicles.map((vehicle) => vehicle.category || "Ohne Kategorie"));
-    const gauges = topEntries(vehicles.map((vehicle) => vehicle.gauge || "Ohne Spur"));
-    const manufacturers = topEntries(vehicles.map((vehicle) => vehicle.manufacturer || "Ohne Hersteller"));
+    const categories = topEntries(vehicles.map((vehicle) => vehicle.category || t("overview.noCategory")));
+    const gauges = topEntries(vehicles.map((vehicle) => vehicle.gauge || t("overview.noGauge")));
+    const manufacturers = topEntries(vehicles.map((vehicle) => vehicle.manufacturer || t("overview.noManufacturer")));
     const withArticleNumbers = vehicles.filter((vehicle) => vehicle.articleNumber).length;
     const withEAN = vehicles.filter((vehicle) => vehicle.ean).length;
     const withDecoderNumbers = vehicles.filter((vehicle) => vehicle.digitalDecoderNumber || vehicle.dtDecoderNumber).length;
     const digitalWithoutDecoder = vehicles.filter((vehicle) => vehicle.digital && !vehicle.digitalDecoderNumber && !vehicle.dtDecoderNumber).length;
     const documentedVehicles = vehicles.filter((vehicle) => vehicle.articleNumber && vehicle.ean && (vehicle.images || []).length > 0).length;
     const dataGaps = [
-      { label: "Ohne Hauptbild", count: vehicles.length - withImages, detail: "Kartenansicht und PDF-Ausdruck profitieren sofort." },
-      { label: "Ohne Artikel-Nr.", count: vehicles.length - withArticleNumbers, detail: "Wichtig für Suche, Webabgleich und Ersatzteile." },
-      { label: "Ohne EAN", count: vehicles.length - withEAN, detail: "Hilft besonders bei Barcode- und Packungssuche." },
-      { label: "Digital ohne Decoder-Nr.", count: digitalWithoutDecoder, detail: "Relevant für Service, CVs und Decoder-Dateien." }
+      { label: t("overview.gap.noMainImage"), count: vehicles.length - withImages, detail: t("overview.gap.noMainImageDetail") },
+      { label: t("overview.gap.noArticleNumber"), count: vehicles.length - withArticleNumbers, detail: t("overview.gap.noArticleNumberDetail") },
+      { label: t("overview.gap.noEan"), count: vehicles.length - withEAN, detail: t("overview.gap.noEanDetail") },
+      { label: t("overview.gap.digitalNoDecoder"), count: digitalWithoutDecoder, detail: t("overview.gap.digitalNoDecoderDetail") }
     ].filter((gap) => gap.count > 0);
     return {
       totalValue,
@@ -199,7 +199,7 @@ export function OverviewView() {
       gauges,
       manufacturers
     };
-  }, [vehicles]);
+  }, [t, vehicles]);
 
   const digitalShare = vehicles.length ? Math.round((stats.digital / vehicles.length) * 100) : 0;
   const imageShare = vehicles.length ? Math.round((stats.withImages / vehicles.length) * 100) : 0;
@@ -249,7 +249,7 @@ export function OverviewView() {
           <h1>{t("overview.title")}</h1>
           <p>{t("overview.subtitle")}</p>
         </div>
-        <div className="overview-actions" aria-label="Dashboard-Werkzeuge">
+        <div className="overview-actions" aria-label={t("overview.tools")}>
           <button type="button" className="icon-button" onClick={loadVehicles} disabled={loading} aria-label={t("overview.refresh")} title={t("overview.refresh")}>
             <RefreshCw size={15} aria-hidden="true" />
           </button>
@@ -275,27 +275,27 @@ export function OverviewView() {
       <section className="overview-hero panel">
         <div>
           <span className="overview-icon"><Box size={20} aria-hidden="true" /></span>
-          <p>Gesamtbestand</p>
+          <p>{t("overview.totalInventory")}</p>
           <strong>{loading ? "..." : vehicles.length}</strong>
-          <small>{stats.categories.length} Kategorien, {stats.gauges.length} Spurweiten</small>
+          <small>{t("overview.categoriesGauges", { categories: stats.categories.length, gauges: stats.gauges.length })}</small>
         </div>
         <div>
           <span className="overview-icon"><Gauge size={20} aria-hidden="true" /></span>
-          <p>Digitalisierung</p>
+          <p>{t("overview.digitalization")}</p>
           <strong>{digitalShare}%</strong>
-          <small>{stats.digital} digital · {stats.analog} analog</small>
+          <small>{t("overview.digitalAnalog", { digital: stats.digital, analog: stats.analog })}</small>
         </div>
         <div>
           <span className="overview-icon"><BarChart3 size={20} aria-hidden="true" /></span>
-          <p>Erfasster Listenwert</p>
-          <strong>{currency(stats.totalValue)}</strong>
-          <small>Basis: gepflegte Listenpreise</small>
+          <p>{t("overview.listValue")}</p>
+          <strong>{currency(stats.totalValue, language)}</strong>
+          <small>{t("overview.listValueBasis")}</small>
         </div>
         <div className={stats.due > 0 ? "attention" : ""}>
           <span className="overview-icon">{stats.due > 0 ? <AlertTriangle size={20} aria-hidden="true" /> : <Wrench size={20} aria-hidden="true" />}</span>
-          <p>Wartung</p>
+          <p>{t("overview.maintenance")}</p>
           <strong>{stats.due}</strong>
-          <small>{stats.upcoming} in 30 Tagen · {stats.openMaintenance} offen</small>
+          <small>{t("overview.maintenanceSummary", { upcoming: stats.upcoming, open: stats.openMaintenance })}</small>
         </div>
       </section>
 
@@ -303,10 +303,10 @@ export function OverviewView() {
         <article className="panel insight-card overview-widget" hidden={!widgetVisible("mix")} style={{ order: widgetOrderIndex("mix") }}>
           <div className="panel-head">
             <div>
-              <h2>Bestandsmix</h2>
-              <p>Kategorien mit den meisten Fahrzeugen.</p>
+              <h2>{t("overview.mix.title")}</h2>
+              <p>{t("overview.mix.subtitle")}</p>
             </div>
-            {widgetControls("mix", "Bestandsmix")}
+            {widgetControls("mix", t("overview.mix.title"))}
           </div>
           <div className="bar-list">
             {stats.categories.map(([label, count]) => (
@@ -322,30 +322,30 @@ export function OverviewView() {
         <article className="panel insight-card overview-widget" hidden={!widgetVisible("quality")} style={{ order: widgetOrderIndex("quality") }}>
           <div className="panel-head">
             <div>
-              <h2>Datenqualität</h2>
-              <p>Was schon gut gepflegt ist.</p>
+              <h2>{t("overview.quality.title")}</h2>
+              <p>{t("overview.quality.subtitle")}</p>
             </div>
-            {widgetControls("quality", "Datenqualität")}
+            {widgetControls("quality", t("overview.quality.title"))}
           </div>
           <div className="quality-list">
-            <div><span>Bilder</span><strong>{imageShare}%</strong><i style={{ width: `${imageShare}%` }} /></div>
-            <div><span>Decoder-Nummern</span><strong>{decoderShare}%</strong><i style={{ width: `${decoderShare}%` }} /></div>
-            <div><span>Artikelnummern</span><strong>{articleShare}%</strong><i style={{ width: `${articleShare}%` }} /></div>
-            <div><span>EAN</span><strong>{eanShare}%</strong><i style={{ width: `${eanShare}%` }} /></div>
-            <div><span>Voll dokumentiert</span><strong>{documentedShare}%</strong><i style={{ width: `${documentedShare}%` }} /></div>
+            <div><span>{t("overview.quality.images")}</span><strong>{imageShare}%</strong><i style={{ width: `${imageShare}%` }} /></div>
+            <div><span>{t("overview.quality.decoderNumbers")}</span><strong>{decoderShare}%</strong><i style={{ width: `${decoderShare}%` }} /></div>
+            <div><span>{t("overview.quality.articleNumbers")}</span><strong>{articleShare}%</strong><i style={{ width: `${articleShare}%` }} /></div>
+            <div><span>{t("overview.quality.ean")}</span><strong>{eanShare}%</strong><i style={{ width: `${eanShare}%` }} /></div>
+            <div><span>{t("overview.quality.documented")}</span><strong>{documentedShare}%</strong><i style={{ width: `${documentedShare}%` }} /></div>
           </div>
         </article>
 
         <article className="panel insight-card action-card overview-widget" hidden={!widgetVisible("actions")} style={{ order: widgetOrderIndex("actions") }}>
           <div className="panel-head">
             <div>
-              <h2>Handlungsbedarf</h2>
-              <p>Die größten Pflegepunkte im Bestand.</p>
+              <h2>{t("overview.actions.title")}</h2>
+              <p>{t("overview.actions.subtitle")}</p>
             </div>
-            {widgetControls("actions", "Handlungsbedarf")}
+            {widgetControls("actions", t("overview.actions.title"))}
           </div>
           {stats.dataGaps.length === 0 ? (
-            <p className="empty-mini">Keine größeren Datenlücken erkannt.</p>
+            <p className="empty-mini">{t("overview.actions.empty")}</p>
           ) : (
             <div className="action-gap-list">
               {stats.dataGaps.map((gap) => (
@@ -365,10 +365,10 @@ export function OverviewView() {
         <article className="panel insight-card overview-widget" hidden={!widgetVisible("manufacturers")} style={{ order: widgetOrderIndex("manufacturers") }}>
           <div className="panel-head">
             <div>
-              <h2>Hersteller</h2>
-              <p>Die stärksten Hersteller im Bestand.</p>
+              <h2>{t("overview.manufacturers.title")}</h2>
+              <p>{t("overview.manufacturers.subtitle")}</p>
             </div>
-            {widgetControls("manufacturers", "Hersteller")}
+            {widgetControls("manufacturers", t("overview.manufacturers.title"))}
           </div>
           <div className="rank-list">
             {stats.manufacturers.map(([label, count], index) => (
@@ -380,25 +380,25 @@ export function OverviewView() {
         <article className="panel insight-card quick-actions-card overview-widget" hidden={!widgetVisible("quickActions")} style={{ order: widgetOrderIndex("quickActions") }}>
           <div className="panel-head">
             <div>
-              <h2>Schnellaktionen</h2>
-              <p>Direkt zu den nächsten Arbeitsbereichen.</p>
+              <h2>{t("overview.quick.title")}</h2>
+              <p>{t("overview.quick.subtitle")}</p>
             </div>
-            {widgetControls("quickActions", "Schnellaktionen")}
+            {widgetControls("quickActions", t("overview.quick.title"))}
           </div>
           <div className="quick-action-list">
             <a href="/vehicles">
-              <span>Bestand pflegen</span>
-              <small>Fahrzeuge öffnen, suchen und ergänzen.</small>
+              <span>{t("overview.quick.inventory")}</span>
+              <small>{t("overview.quick.inventoryHelp")}</small>
               <ArrowRight size={16} aria-hidden="true" />
             </a>
             <a href="/import-export">
-              <span>Import/Export</span>
-              <small>Listen prüfen, übernehmen oder drucken.</small>
+              <span>{t("overview.quick.import")}</span>
+              <small>{t("overview.quick.importHelp")}</small>
               <ArrowRight size={16} aria-hidden="true" />
             </a>
             <a href="/settings">
-              <span>Stammdaten prüfen</span>
-              <small>Auswahlwerte, Nummern und Darstellung verwalten.</small>
+              <span>{t("overview.quick.masterData")}</span>
+              <small>{t("overview.quick.masterDataHelp")}</small>
               <ArrowRight size={16} aria-hidden="true" />
             </a>
           </div>
@@ -407,13 +407,13 @@ export function OverviewView() {
         <article className="panel insight-card maintenance-insight-card overview-widget" hidden={!widgetVisible("maintenance")} style={{ order: widgetOrderIndex("maintenance") }}>
           <div className="panel-head">
             <div>
-              <h2>Wartungsradar</h2>
-              <p>Die nächsten fälligen Arbeiten im Blick.</p>
+              <h2>{t("overview.maintenanceRadar.title")}</h2>
+              <p>{t("overview.maintenanceRadar.subtitle")}</p>
             </div>
-            {widgetControls("maintenance", "Wartungsradar")}
+            {widgetControls("maintenance", t("overview.maintenanceRadar.title"))}
           </div>
           {stats.nextMaintenance.length === 0 ? (
-            <p className="empty-mini">Keine geplanten Wartungen mit Fälligkeitsdatum.</p>
+            <p className="empty-mini">{t("overview.maintenanceRadar.empty")}</p>
           ) : (
             <div className="maintenance-overview-list">
               {stats.nextMaintenance.map(({ vehicle, entry, days }) => (
@@ -423,45 +423,45 @@ export function OverviewView() {
                     <small>{vehicle.name || entry.kind}</small>
                   </span>
                   <em>{entry.kind}</em>
-                  <b>{maintenanceDistanceText(days)}</b>
-                  <small>{formatDate(entry.dueDate)}</small>
+                  <b>{maintenanceDistanceText(days, t)}</b>
+                  <small>{formatDate(entry.dueDate, language)}</small>
                 </div>
               ))}
             </div>
           )}
           <div className="maintenance-kpi-row">
-            <span><small>Erledigt</small><strong>{stats.completedMaintenance}</strong></span>
-            <span><small>Kosten</small><strong>{currency(stats.maintenanceCost)}</strong></span>
-            <span><small>Zustände</small><strong>{stats.conditions.length}</strong></span>
+            <span><small>{t("overview.maintenance.completed")}</small><strong>{stats.completedMaintenance}</strong></span>
+            <span><small>{t("overview.maintenance.cost")}</small><strong>{currency(stats.maintenanceCost, language)}</strong></span>
+            <span><small>{t("overview.maintenance.conditions")}</small><strong>{stats.conditions.length}</strong></span>
           </div>
         </article>
 
         <article className="panel insight-card overview-widget" hidden={!widgetVisible("recommendation")} style={{ order: widgetOrderIndex("recommendation") }}>
           <div className="panel-head">
             <div>
-              <h2>Nächster Mehrwert</h2>
-              <p>Automatisch aus deinen Daten abgeleitet.</p>
+              <h2>{t("overview.recommendation.title")}</h2>
+              <p>{t("overview.recommendation.subtitle")}</p>
             </div>
-            {widgetControls("recommendation", "Nächster Mehrwert")}
+            {widgetControls("recommendation", t("overview.recommendation.title"))}
           </div>
           <p className="recommendation">
             {vehicles.length === 0
-              ? "Lege die ersten Fahrzeuge an oder importiere eine Bestandsliste."
+              ? t("overview.recommendation.empty")
               : imageShare < 70
-                ? "Mehr Hauptbilder würden Kartenansicht, Drucklisten und QR-Etiketten deutlich nützlicher machen."
+                ? t("overview.recommendation.images")
                 : stats.due > 0
-                  ? "Die fälligen Wartungen sind der beste nächste Arbeitspunkt."
-            : "Der Bestand wirkt stabil. Als nächstes lohnen sich Ersatzteile und strukturierte Preis-/Wertpflege."}
+                  ? t("overview.recommendation.maintenance")
+            : t("overview.recommendation.stable")}
           </p>
         </article>
 
         {hiddenWidgets.length === 7 && (
           <article className="panel insight-card overview-reset-card">
-            <h2>Dashboard leer</h2>
-            <p>Alle Kacheln sind ausgeblendet. Das Layout kann jederzeit zurückgesetzt werden.</p>
+            <h2>{t("overview.dashboardEmpty.title")}</h2>
+            <p>{t("overview.dashboardEmpty.subtitle")}</p>
             <button type="button" className="secondary-button" onClick={resetWidgets}>
               <RotateCcw size={15} aria-hidden="true" />
-              Layout zurücksetzen
+              {t("overview.resetLayout")}
             </button>
           </article>
         )}

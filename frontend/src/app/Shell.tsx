@@ -109,7 +109,7 @@ export function Shell({
           <img className="brand-mark" src="/brand/railkeeper-mark.png" alt="RailKeeper2" />
         </div>
 
-        <nav id="main-navigation" className="nav" aria-label="Hauptnavigation">
+        <nav id="main-navigation" className="nav" aria-label={t("nav.main")}>
           {orderedNavItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -130,7 +130,7 @@ export function Shell({
             {sidebarCollapsed ? <ChevronRight size={17} aria-hidden="true" /> : <ChevronLeft size={17} aria-hidden="true" />}
           </button>
 
-          <div className="sidebar-footer" aria-label="Seitenleisten-Aktionen">
+          <div className="sidebar-footer" aria-label={t("nav.footerActions")}>
             <div className="sidebar-footer-actions">
               <a href="/settings" title={t("nav.system")} aria-label={t("nav.system")}>
                 <Info size={17} aria-hidden="true" />
@@ -152,7 +152,7 @@ export function Shell({
 
       <main className="main">{children}</main>
 
-      <a className="feedback-button" href="https://github.com/ichwars/RailKeeper2/issues/new" target="_blank" rel="noreferrer" title="Fehler melden" aria-label="Fehler melden">
+      <a className="feedback-button" href="https://github.com/ichwars/RailKeeper2/issues/new" target="_blank" rel="noreferrer" title={t("nav.feedback")} aria-label={t("nav.feedback")}>
         <Bug size={20} aria-hidden="true" />
       </a>
     </div>

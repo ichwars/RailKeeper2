@@ -52,6 +52,7 @@ import {
   Vehicle
 } from "../../shared/api";
 import { FunctionSymbolPicker, functionSymbolIcon, functionSymbolMetadata } from "../../shared/functionSymbols";
+import { useI18n } from "../../shared/i18n";
 
 const emptyVehicle: CreateVehicleRequest = {
   manufacturer: "",
@@ -458,9 +459,9 @@ function currentArticleValue(form: CreateVehicleRequest, key: ArticleFieldKey) {
 }
 
 function articleFieldStatus(current: string, found: string) {
-  if (!current) return "leer";
-  if (current.toLocaleLowerCase("de-DE") === found.toLocaleLowerCase("de-DE")) return "bereits gleich";
-  return "Konflikt";
+  if (!current) return "empty";
+  if (current.toLocaleLowerCase("de-DE") === found.toLocaleLowerCase("de-DE")) return "same";
+  return "conflict";
 }
 
 function sourceDisplayName(rawUrl: string) {
@@ -966,12 +967,12 @@ function maintenanceReminderText(daysUntilDue: number) {
   return `in ${daysUntilDue} Tagen fällig`;
 }
 
-function maintenanceStatusLabel(status: string) {
-  return status === "faellig" || status === "fällig" ? "fällig" : status;
+function normalizeMaintenanceStatus(status: string) {
+  return status === "fällig" ? "faellig" : status;
 }
 
 function maintenanceStatusClass(status: string) {
-  return status === "fällig" ? "faellig" : status;
+  return normalizeMaintenanceStatus(status);
 }
 
 function todayISODate() {
@@ -1062,98 +1063,99 @@ function VehicleDetailsFields({
   updateCouplingFront: (couplingFront: string) => void;
   updateCouplingSame: (couplingSame: boolean) => void;
 }) {
+  const { t } = useI18n();
   return (
     <>
       <div className="form-row four-columns">
         <label>
-          Länge (mm)
+          {t("vehicle.field.lengthMm")}
           <input value={form.lengthMm || ""} onChange={(event) => update({ lengthMm: event.target.value })} disabled={readonly} inputMode="decimal" />
         </label>
         <label>
-          Gewicht (g)
+          {t("vehicle.field.weightG")}
           <input value={form.weightG || ""} onChange={(event) => update({ weightG: event.target.value })} disabled={readonly} inputMode="decimal" />
         </label>
         <label>
-          Farbe
+          {t("vehicle.field.color")}
           <input value={form.color || ""} onChange={(event) => update({ color: event.target.value })} disabled={readonly} />
         </label>
         <label>
-          Beschriftung
+          {t("vehicle.field.lettering")}
           <input value={form.lettering || ""} onChange={(event) => update({ lettering: event.target.value })} disabled={readonly} />
         </label>
       </div>
 
       <div className="form-row three-columns">
         <label>
-          Beladung
+          {t("vehicle.field.load")}
           <input value={form.load || ""} onChange={(event) => update({ load: event.target.value })} disabled={readonly} />
         </label>
         <label>
-          Inneneinrichtung
+          {t("vehicle.field.interior")}
           <input value={form.interior || ""} onChange={(event) => update({ interior: event.target.value })} disabled={readonly} />
         </label>
         <label>
-          Achsen
+          {t("vehicle.field.axles")}
           <input value={form.axles || ""} onChange={(event) => update({ axles: event.target.value })} disabled={readonly} />
         </label>
       </div>
 
       <div className="form-row four-columns">
         <label>
-          Anzahl
+          {t("vehicle.field.axleCount")}
           <input value={form.axleCount || ""} onChange={(event) => update({ axleCount: event.target.value })} disabled={readonly} inputMode="numeric" />
         </label>
         <label>
-          Anzahl Haftreifen
+          {t("vehicle.field.tractionTireCount")}
           <input value={form.tractionTireCount || ""} onChange={(event) => update({ tractionTireCount: event.target.value })} disabled={readonly} inputMode="numeric" />
         </label>
         <label>
-          Radsatz
+          {t("vehicle.field.wheelset")}
           <select value={form.wheelset || ""} onChange={(event) => update({ wheelset: event.target.value })} disabled={readonly}>
-            {renderStaticOptions(wheelsetOptions)}
+            {renderStaticOptions(wheelsetOptions, t("vehicles.select.placeholder"))}
           </select>
         </label>
         <label>
-          Stromabnahme
+          {t("vehicle.field.powerPickup")}
           <select value={form.powerPickup || ""} onChange={(event) => update({ powerPickup: event.target.value })} disabled={readonly}>
-            {renderStaticOptions(powerPickupOptions)}
+            {renderStaticOptions(powerPickupOptions, t("vehicles.select.placeholder"))}
           </select>
         </label>
       </div>
 
       <div className="form-row details-coupling-row">
         <label>
-          Adapter
+          {t("vehicle.field.adapter")}
           <select value={form.adapter || ""} onChange={(event) => update({ adapter: event.target.value })} disabled={readonly}>
-            {renderStaticOptions(adapterOptions)}
+            {renderStaticOptions(adapterOptions, t("vehicles.select.placeholder"))}
           </select>
         </label>
         <label className="coupling-same-field">
-          <span>Kupplung (V=H)</span>
+          <span>{t("vehicles.detail.couplingSame")}</span>
           <span className="switch-field">
             <input type="checkbox" checked={Boolean(form.couplingSame)} onChange={(event) => updateCouplingSame(event.target.checked)} disabled={readonly} />
             <span />
           </span>
         </label>
         <label>
-          Kupplung vorne
+          {t("vehicle.field.couplingFront")}
           <select value={form.couplingFront || ""} onChange={(event) => updateCouplingFront(event.target.value)} disabled={readonly}>
-            {renderStaticOptions(couplingOptions)}
+            {renderStaticOptions(couplingOptions, t("vehicles.select.placeholder"))}
           </select>
         </label>
         <label>
-          Kupplung hinten
+          {t("vehicle.field.couplingRear")}
           <select value={form.couplingSame ? form.couplingFront || "" : form.couplingRear || ""} onChange={(event) => update({ couplingRear: event.target.value })} disabled={readonly || Boolean(form.couplingSame)}>
-            {renderStaticOptions(couplingOptions)}
+            {renderStaticOptions(couplingOptions, t("vehicles.select.placeholder"))}
           </select>
         </label>
       </div>
 
       <div className="form-row switch-description-row">
         <label>
-          Fahrlicht Beschreibung
+          {t("vehicle.field.headlightsDescription")}
           <span className="inline-switch-input">
-            <span className="switch-field" aria-label="Fahrlicht">
+            <span className="switch-field" aria-label={t("vehicle.field.headlightsEnabled")}>
               <input type="checkbox" checked={Boolean(form.headlightsEnabled)} onChange={(event) => update({ headlightsEnabled: event.target.checked })} disabled={readonly} />
               <span />
             </span>
@@ -1161,9 +1163,9 @@ function VehicleDetailsFields({
           </span>
         </label>
         <label>
-          Antrieb Beschreibung
+          {t("vehicle.field.driveDescription")}
           <span className="inline-switch-input">
-            <span className="switch-field" aria-label="Antrieb">
+            <span className="switch-field" aria-label={t("vehicle.field.driveEnabled")}>
               <input type="checkbox" checked={Boolean(form.driveEnabled)} onChange={(event) => update({ driveEnabled: event.target.checked })} disabled={readonly} />
               <span />
             </span>
@@ -1174,9 +1176,9 @@ function VehicleDetailsFields({
 
       <div className="form-row switch-description-row">
         <label>
-          Beleuchtung Beschreibung
+          {t("vehicle.field.lightingDescription")}
           <span className="inline-switch-input">
-            <span className="switch-field" aria-label="Beleuchtung">
+            <span className="switch-field" aria-label={t("vehicle.field.lightingEnabled")}>
               <input type="checkbox" checked={Boolean(form.lightingEnabled)} onChange={(event) => update({ lightingEnabled: event.target.checked })} disabled={readonly} />
               <span />
             </span>
@@ -1184,9 +1186,9 @@ function VehicleDetailsFields({
           </span>
         </label>
         <label>
-          Soundgenerator Beschreibung
+          {t("vehicle.field.soundGeneratorDescription")}
           <span className="inline-switch-input">
-            <span className="switch-field" aria-label="Soundgenerator">
+            <span className="switch-field" aria-label={t("vehicle.field.soundGeneratorEnabled")}>
               <input type="checkbox" checked={Boolean(form.soundGeneratorEnabled)} onChange={(event) => update({ soundGeneratorEnabled: event.target.checked })} disabled={readonly} />
               <span />
             </span>
@@ -1197,9 +1199,9 @@ function VehicleDetailsFields({
 
       <div className="form-row switch-description-row">
         <label>
-          Rauchgenerator Beschreibung
+          {t("vehicle.field.smokeGeneratorDescription")}
           <span className="inline-switch-input">
-            <span className="switch-field" aria-label="Rauchgenerator">
+            <span className="switch-field" aria-label={t("vehicle.field.smokeGeneratorEnabled")}>
               <input type="checkbox" checked={Boolean(form.smokeGeneratorEnabled)} onChange={(event) => update({ smokeGeneratorEnabled: event.target.checked })} disabled={readonly} />
               <span />
             </span>
@@ -1207,13 +1209,13 @@ function VehicleDetailsFields({
           </span>
         </label>
         <label className="qr-switch-field">
-          <span>QR-Code erstellen</span>
+          <span>{t("vehicles.detail.qrCreate")}</span>
           <span className="qr-card-actions">
             <span className="switch-field">
               <input type="checkbox" checked={Boolean(form.qrCodeEnabled)} onChange={(event) => update({ qrCodeEnabled: event.target.checked })} disabled={readonly} />
               <span />
             </span>
-            <button type="button" className="icon-button" onClick={onOpenQr} aria-label="QR-Code anzeigen" title="QR-Code anzeigen" disabled={!form.qrCodeEnabled}>
+            <button type="button" className="icon-button" onClick={onOpenQr} aria-label={t("vehicles.detail.qrShow")} title={t("vehicles.detail.qrShow")} disabled={!form.qrCodeEnabled}>
               <QrCode size={16} />
             </button>
           </span>
@@ -1221,7 +1223,7 @@ function VehicleDetailsFields({
       </div>
 
       <label>
-        Zusatzinformationen
+        {t("vehicle.field.additionalInfo")}
         <textarea value={form.additionalInfo || ""} onChange={(event) => update({ additionalInfo: event.target.value })} disabled={readonly} rows={4} />
       </label>
     </>
@@ -1257,7 +1259,19 @@ function ArticleSearchDialog({
   onSelectAllFields: () => void;
   onClearFields: () => void;
 }) {
+  const { t } = useI18n();
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const articleFieldLabel = (key: string, fallback?: string) => {
+    const label = t(`vehicle.field.${key}`);
+    return label === `vehicle.field.${key}` ? fallback || articleFieldLabels[key as ArticleFieldKey] || key : label;
+  };
+  const articleGroupTitle = (title: string) => {
+    if (title === "Modell") return t("vehicles.articleSearch.group.model");
+    if (title === "Masse / Bauart") return t("vehicles.articleSearch.group.mass");
+    if (title === "Technik") return t("vehicles.articleSearch.group.technology");
+    if (title === "Weitere Daten") return t("vehicles.articleSearch.group.more");
+    return title;
+  };
 
   useEffect(() => {
     setFailedImages({});
@@ -1268,23 +1282,23 @@ function ArticleSearchDialog({
   }, []);
 
   return (
-    <div className="confirm-layer article-search-layer" role="dialog" aria-modal="true" aria-label="Artikeldaten-Websuche">
+    <div className="confirm-layer article-search-layer" role="dialog" aria-modal="true" aria-label={t("vehicles.articleSearch.dialogTitle")}>
       <section className="article-search-dialog">
         <div className="panel-head form-head">
           <div>
-            <h2>Artikeldaten-Websuche</h2>
-            <p>{response?.query ? `Suchanfrage: ${response.query}` : "Webseiten werden als Vorschläge ausgewertet."}</p>
+            <h2>{t("vehicles.articleSearch.dialogTitle")}</h2>
+            <p>{response?.query ? t("vehicles.articleSearch.query", { query: response.query }) : t("vehicles.articleSearch.help")}</p>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Schließen" title="Schließen">
+          <button type="button" className="icon-button" onClick={onClose} aria-label={t("vehicles.close")} title={t("vehicles.close")}>
             <X size={17} />
           </button>
         </div>
 
         <div className="article-dialog-state">
-          {loading && <p className="empty-state compact">Suche läuft mit Timeout und ohne automatische Übernahme...</p>}
+          {loading && <p className="empty-state compact">{t("vehicles.articleSearch.loading")}</p>}
           {error && <p className="form-message">{error}</p>}
           {!loading && !error && response && response.results.length === 0 && (
-            <p className="empty-state compact">Keine passenden Artikeldaten gefunden.</p>
+            <p className="empty-state compact">{t("vehicles.articleSearch.empty")}</p>
           )}
         </div>
 
@@ -1305,14 +1319,14 @@ function ArticleSearchDialog({
                     <span>{result.source} - {Object.keys(result.fields).length} Felder - Trefferwert {result.score}</span>
                     {result.snippet && <p>{result.snippet}</p>}
                   </div>
-                  <a className="secondary-button article-source-button" href={result.url} target="_blank" rel="noreferrer" aria-label="Quelle öffnen" title="Quelle öffnen">
+                  <a className="secondary-button article-source-button" href={result.url} target="_blank" rel="noreferrer" aria-label={t("vehicles.articleSearch.sourceOpen")} title={t("vehicles.articleSearch.sourceOpen")}>
                     <ExternalLink size={15} />
-                    Quelle öffnen
+                    {t("vehicles.articleSearch.sourceOpen")}
                   </a>
                 </header>
 
                 {visibleImages.length > 0 && (
-                  <div className="article-image-strip" aria-label="Gefundene Bilder">
+                  <div className="article-image-strip" aria-label={t("vehicles.articleSearch.imagesFound")}>
                     {visibleImages.map((image) => {
                       const selectionKey = imageSelectionKey(result, image, index);
                       return (
@@ -1340,7 +1354,7 @@ function ArticleSearchDialog({
                 {result.conflicts && result.conflicts.length > 0 && (
                   <div className="conflict-note">
                     <AlertTriangle size={15} aria-hidden="true" />
-                    Konflikte mit bestehenden Feldern: {result.conflicts.map((key) => articleFieldLabels[key as ArticleFieldKey] || key).join(", ")}
+                    {t("vehicles.articleSearch.conflicts", { fields: result.conflicts.map((key) => articleFieldLabel(key)).join(", ") })}
                   </div>
                 )}
 
@@ -1352,15 +1366,15 @@ function ArticleSearchDialog({
                     if (rows.length === 0) return null;
                     return (
                       <section key={group.title} className="article-field-group">
-                        <h3>{group.title}</h3>
+                        <h3>{articleGroupTitle(group.title)}</h3>
                         <table>
                           <thead>
                             <tr>
-                              <th>Übernehmen</th>
-                              <th>Feld</th>
-                              <th>Aktuell</th>
-                              <th>Gefunden</th>
-                              <th>Status</th>
+                              <th>{t("vehicles.articleSearch.apply")}</th>
+                              <th>{t("vehicles.articleSearch.field")}</th>
+                              <th>{t("vehicles.articleSearch.current")}</th>
+                              <th>{t("vehicles.articleSearch.found")}</th>
+                              <th>{t("vehicles.articleSearch.status")}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1371,7 +1385,7 @@ function ArticleSearchDialog({
                               const currentDisplay = key === "articleSourceUrl" && current ? sourceDisplayName(current) : current;
                               const selectionKey = articleSelectionKey(result, key, index);
                               return (
-                                <tr key={key} className={status === "Konflikt" ? "conflict" : ""}>
+                                <tr key={key} className={status === "conflict" ? "conflict" : ""}>
                                   <td>
                                     <input
                                       type="checkbox"
@@ -1379,19 +1393,19 @@ function ArticleSearchDialog({
                                       onChange={(event) => onToggleField(result, index, key, event.target.checked)}
                                     />
                                   </td>
-                                  <td><strong>{articleFieldLabels[key] || field.label}</strong></td>
+                                  <td><strong>{articleFieldLabel(key, field.label)}</strong></td>
                                   <td>{currentDisplay || "-"}</td>
                                   <td>
                                     {key === "articleSourceUrl" && field.value ? (
                                       <a className="inline-source-link" href={field.value} target="_blank" rel="noreferrer" title={field.value}>
-                                        {foundDisplay || "Quelle"}
+                                        {foundDisplay || t("vehicles.articleSearch.source")}
                                         <ExternalLink size={13} aria-hidden="true" />
                                       </a>
                                     ) : (
                                       foundDisplay || "-"
                                     )}
                                   </td>
-                                  <td><span className={`article-status ${status === "Konflikt" ? "conflict" : status === "bereits gleich" ? "same" : "empty"}`}>{status}</span></td>
+                                  <td><span className={`article-status ${status}`}>{t(`vehicles.articleSearch.status.${status}`)}</span></td>
                                 </tr>
                               );
                             })}
@@ -1403,10 +1417,10 @@ function ArticleSearchDialog({
                 </div>
 
                 <footer>
-                  <span>{selectableKeys.length} übernehmbare Felder</span>
+                  <span>{t("vehicles.articleSearch.selectableFields", { count: selectableKeys.length })}</span>
                   <button type="button" className="primary-button" onClick={() => onApply(result)}>
                     <Check size={16} aria-hidden="true" />
-                    Ausgewählte Felder übernehmen
+                    {t("vehicles.articleSearch.applySelected")}
                   </button>
                 </footer>
               </article>
@@ -1415,9 +1429,9 @@ function ArticleSearchDialog({
         </div>
 
         <footer className="article-dialog-actions">
-          <button type="button" className="secondary-button" onClick={onSelectEmptyFields}>Nur leere Felder</button>
-          <button type="button" className="secondary-button" onClick={onSelectAllFields}>Alles auswählen</button>
-          <button type="button" className="secondary-button" onClick={onClearFields}>Nichts auswählen</button>
+          <button type="button" className="secondary-button" onClick={onSelectEmptyFields}>{t("vehicles.articleSearch.onlyEmpty")}</button>
+          <button type="button" className="secondary-button" onClick={onSelectAllFields}>{t("vehicles.articleSearch.selectAll")}</button>
+          <button type="button" className="secondary-button" onClick={onClearFields}>{t("vehicles.articleSearch.selectNone")}</button>
         </footer>
       </section>
     </div>
@@ -1441,21 +1455,22 @@ function QrDialog({
   onDownloadSvg: () => void;
   onPrint: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="confirm-layer qr-layer" role="dialog" aria-modal="true" aria-label="QR-Code">
       <section className="qr-dialog">
         <div className="panel-head form-head">
           <div>
             <h2>QR-Code</h2>
-            <p>{form.inventoryNumber || "Ohne Inventarnummer"} - {form.name || "Ohne Bezeichnung"}</p>
+            <p>{form.inventoryNumber || t("vehicles.qr.noInventory")} - {form.name || t("vehicles.qr.noName")}</p>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Schließen" title="Schließen">
+          <button type="button" className="icon-button" onClick={onClose} aria-label={t("vehicles.close")} title={t("vehicles.close")}>
             <X size={17} />
           </button>
         </div>
         {error && <p className="form-message">{error}</p>}
-        <button type="button" className="qr-preview-button" onClick={onPrint} disabled={!qrSvg} title="Druckansicht öffnen">
-          {qrSvg ? <span dangerouslySetInnerHTML={{ __html: qrSvg }} /> : "QR-Code wird erstellt..."}
+        <button type="button" className="qr-preview-button" onClick={onPrint} disabled={!qrSvg} title={t("vehicles.qr.printView")}>
+          {qrSvg ? <span dangerouslySetInnerHTML={{ __html: qrSvg }} /> : t("vehicles.qr.creating")}
         </button>
         <div className="qr-dialog-actions">
           <button type="button" className="secondary-button" onClick={onDownloadPng} disabled={!qrSvg}>
@@ -1468,7 +1483,7 @@ function QrDialog({
           </button>
           <button type="button" className="primary-button" onClick={onPrint} disabled={!qrSvg}>
             <Printer size={16} aria-hidden="true" />
-            Drucken
+            {t("overview.print")}
           </button>
         </div>
       </section>
@@ -1483,20 +1498,21 @@ function ImagePreviewDialog({
   image: PendingArticleImage;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   return (
-    <div className="confirm-layer image-preview-layer" role="dialog" aria-modal="true" aria-label="Bildvorschau">
+    <div className="confirm-layer image-preview-layer" role="dialog" aria-modal="true" aria-label={t("vehicles.imagePreview.title")}>
       <section className="image-preview-dialog">
         <div className="panel-head form-head">
           <div>
-            <h2>Bildvorschau</h2>
+            <h2>{t("vehicles.imagePreview.title")}</h2>
             <p className="image-preview-source">
-              {image.title || "Artikeldaten-Bild"} - {sourceDisplayName(image.source)}
-              <a className="icon-button image-title-link" href={image.source} target="_blank" rel="noreferrer" aria-label="Quelle öffnen" title="Quelle öffnen">
+              {image.title || t("vehicles.imagePreview.defaultTitle")} - {sourceDisplayName(image.source)}
+              <a className="icon-button image-title-link" href={image.source} target="_blank" rel="noreferrer" aria-label={t("vehicles.articleSearch.sourceOpen")} title={t("vehicles.articleSearch.sourceOpen")}>
                 <ExternalLink size={15} />
               </a>
             </p>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Schließen" title="Schließen">
+          <button type="button" className="icon-button" onClick={onClose} aria-label={t("vehicles.close")} title={t("vehicles.close")}>
             <X size={17} />
           </button>
         </div>
@@ -1514,6 +1530,7 @@ type BarcodeSearchDialogProps = {
 };
 
 function BarcodeSearchDialog({ value, onValueChange, onClose, onSubmit }: BarcodeSearchDialogProps) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -1522,14 +1539,14 @@ function BarcodeSearchDialog({ value, onValueChange, onClose, onSubmit }: Barcod
   }, []);
 
   return (
-    <div className="confirm-layer barcode-search-layer" role="dialog" aria-modal="true" aria-label="Strichcode suchen">
+    <div className="confirm-layer barcode-search-layer" role="dialog" aria-modal="true" aria-label={t("vehicles.barcode.title")}>
       <form className="barcode-search-dialog" onSubmit={onSubmit}>
         <header className="panel-head form-head">
           <div>
-            <h2>Strichcode suchen</h2>
-            <p>Scanner-App oder Tastatur-Scanner nutzen, Code einfügen und als EAN suchen.</p>
+            <h2>{t("vehicles.barcode.title")}</h2>
+            <p>{t("vehicles.barcode.help")}</p>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Schließen" title="Schließen">
+          <button type="button" className="icon-button" onClick={onClose} aria-label={t("vehicles.close")} title={t("vehicles.close")}>
             <X size={17} />
           </button>
         </header>
@@ -1544,22 +1561,22 @@ function BarcodeSearchDialog({ value, onValueChange, onClose, onSubmit }: Barcod
               onChange={(event) => onValueChange(event.target.value)}
               inputMode="numeric"
               autoComplete="off"
-              placeholder="Scanner-Code"
+              placeholder={t("vehicles.barcode.placeholder")}
             />
           </span>
         </label>
 
         <p className="barcode-hint">
-          Der Code wird als EAN-Nr. im Modell eingetragen. Artikelnummern bleiben unverändert.
+          {t("vehicles.barcode.hint")}
         </p>
 
         <footer className="barcode-search-actions">
           <button type="button" className="secondary-button" onClick={onClose}>
-            Abbrechen
+            {t("vehicles.cancel")}
           </button>
           <button type="submit" className="primary-button">
             <PackageSearch size={15} aria-hidden="true" />
-            Artikeldaten suchen
+            {t("vehicles.articleSearch.search")}
           </button>
         </footer>
       </form>
@@ -1568,6 +1585,7 @@ function BarcodeSearchDialog({ value, onValueChange, onClose, onSubmit }: Barcod
 }
 
 export function VehiclesView() {
+  const { language, t } = useI18n();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [form, setForm] = useState<CreateVehicleRequest>(emptyVehicle);
   const [options, setOptions] = useState<MasterDataOptions>(emptyOptions);
@@ -1767,12 +1785,12 @@ export function VehiclesView() {
   }, [vehicles]);
 
   const inventoryFilters: { key: InventoryFilter; label: string; count: number }[] = [
-    { key: "all", label: "Alle", count: inventoryFilterCounts.all },
-    { key: "digital", label: "Digital", count: inventoryFilterCounts.digital },
-    { key: "analog", label: "Analog", count: inventoryFilterCounts.analog },
-    { key: "withImages", label: "Mit Bild", count: inventoryFilterCounts.withImages },
-    { key: "withoutImages", label: "Ohne Bild", count: inventoryFilterCounts.withoutImages },
-    { key: "maintenanceDue", label: "Wartung fällig", count: inventoryFilterCounts.maintenanceDue }
+    { key: "all", label: t("vehicles.filter.all"), count: inventoryFilterCounts.all },
+    { key: "digital", label: t("vehicles.filter.digital"), count: inventoryFilterCounts.digital },
+    { key: "analog", label: t("vehicles.filter.analog"), count: inventoryFilterCounts.analog },
+    { key: "withImages", label: t("vehicles.filter.withImages"), count: inventoryFilterCounts.withImages },
+    { key: "withoutImages", label: t("vehicles.filter.withoutImages"), count: inventoryFilterCounts.withoutImages },
+    { key: "maintenanceDue", label: t("vehicles.filter.maintenanceDue"), count: inventoryFilterCounts.maintenanceDue }
   ];
 
   const filteredGattungen = useMemo(() => {
@@ -2877,9 +2895,9 @@ export function VehiclesView() {
       type="button"
       className={`sort-button ${sort.key === key ? "active" : ""}`}
       onClick={() => toggleSort(key)}
-      title={`${sortLabels[key]} sortieren`}
+      title={t("common.sort", { label: t(`vehicle.field.${key}`) })}
     >
-      {sortLabels[key]}
+      {t(`vehicle.field.${key}`)}
       {sort.key === key
         ? sort.direction === "asc"
           ? <ChevronUp size={14} />
@@ -2894,22 +2912,22 @@ export function VehiclesView() {
         type="button"
         className={quickMenuVehicleID === vehicle.id ? "icon-button active" : "icon-button"}
         onClick={() => setQuickMenuVehicleID((current) => current === vehicle.id ? "" : vehicle.id)}
-        aria-label="Kurzmenü"
-        title="Kurzmenü"
+        aria-label={t("vehicles.quickMenu")}
+        title={t("vehicles.quickMenu")}
       >
         <MoreVertical size={16} />
       </button>
       {quickMenuVehicleID === vehicle.id && (
         <div className="quick-menu" role="menu">
-          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle); }}><Eye size={14} />Anzeigen</button>
-          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openEdit(vehicle); }}><Pencil size={14} />Bearbeiten</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle); }}><Eye size={14} />{t("vehicles.view")}</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openEdit(vehicle); }}><Pencil size={14} />{t("vehicles.edit")}</button>
           <span className="quick-menu-separator" role="separator" />
           <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openQrForVehicle(vehicle); }}><QrCode size={14} />QR-Code</button>
-          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); printVehicleReport(vehicle); }}><Printer size={14} />Drucken</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); printVehicleReport(vehicle); }}><Printer size={14} />{t("overview.print")}</button>
           <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle, "uploads"); }}><Upload size={14} />Uploads</button>
-          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle, "maintenance"); }}><Wrench size={14} />Wartung</button>
+          <button type="button" role="menuitem" onClick={() => { setQuickMenuVehicleID(""); openDetail(vehicle, "maintenance"); }}><Wrench size={14} />{t("vehicles.maintenance")}</button>
           <span className="quick-menu-separator" role="separator" />
-          <button type="button" role="menuitem" className="danger" onClick={() => { setQuickMenuVehicleID(""); setDeleteCandidate(vehicle); }}><Trash2 size={14} />Löschen</button>
+          <button type="button" role="menuitem" className="danger" onClick={() => { setQuickMenuVehicleID(""); setDeleteCandidate(vehicle); }}><Trash2 size={14} />{t("vehicles.delete")}</button>
         </div>
       )}
     </div>
@@ -2971,30 +2989,30 @@ export function VehiclesView() {
     <>
       <section className="inventory-head">
         <div>
-          <h1>Bestand</h1>
-          <p>Fahrzeuge verwalten</p>
+          <h1>{t("vehicles.title")}</h1>
+          <p>{t("vehicles.subtitle")}</p>
         </div>
         <button type="button" className="primary-button new-vehicle-button" onClick={openCreate}>
           <Plus size={16} aria-hidden="true" />
-          Neues Fahrzeug
+          {t("vehicles.new")}
         </button>
       </section>
 
-      <section className="inventory-status-row" aria-label="Bestandsstatus">
+      <section className="inventory-status-row" aria-label={t("vehicles.status")}>
         <article className={inventoryFilter === "all" ? "inventory-status-card active" : "inventory-status-card"}>
-          <button type="button" onClick={() => setInventoryFilter("all")} aria-label="Alle Fahrzeuge anzeigen">
+          <button type="button" onClick={() => setInventoryFilter("all")} aria-label={t("vehicles.status.allAria")}>
             <span><PackageSearch size={16} aria-hidden="true" /></span>
-            <small>Gesamtbestand</small>
+            <small>{t("vehicles.totalInventory")}</small>
             <strong>{vehicles.length}</strong>
-            <em>{inventorySummary.categories} Kategorien</em>
+            <em>{t("overview.categoriesGauges", { categories: inventorySummary.categories, gauges: new Set(vehicles.map((vehicle) => vehicle.gauge).filter(Boolean)).size })}</em>
           </button>
         </article>
         <article className={inventoryFilter === "digital" ? "inventory-status-card active" : "inventory-status-card"}>
-          <button type="button" onClick={() => setInventoryFilter("digital")} aria-label="Digitale Fahrzeuge anzeigen">
+          <button type="button" onClick={() => setInventoryFilter("digital")} aria-label={t("vehicles.status.digitalAria")}>
             <span><Gauge size={16} aria-hidden="true" /></span>
-            <small>Digitalisierung</small>
+            <small>{t("vehicles.digitalization")}</small>
             <strong>{vehicles.length ? Math.round((inventorySummary.digital / vehicles.length) * 100) : 0}%</strong>
-            <em>{inventorySummary.digital} digital · {inventorySummary.analog} analog</em>
+            <em>{t("vehicles.digitalAnalog", { digital: inventorySummary.digital, analog: inventorySummary.analog })}</em>
           </button>
         </article>
         <article className={[
@@ -3002,16 +3020,16 @@ export function VehiclesView() {
           maintenanceReminderSummary.due > 0 ? "attention" : "",
           inventoryFilter === "maintenanceDue" ? "active" : ""
         ].filter(Boolean).join(" ")}>
-          <button type="button" onClick={() => setInventoryFilter("maintenanceDue")} aria-label="Fahrzeuge mit fälliger Wartung anzeigen">
+          <button type="button" onClick={() => setInventoryFilter("maintenanceDue")} aria-label={t("vehicles.status.maintenanceAria")}>
             <span>{maintenanceReminderSummary.due > 0 ? <AlertTriangle size={16} aria-hidden="true" /> : <Wrench size={16} aria-hidden="true" />}</span>
-            <small>Wartung</small>
+            <small>{t("vehicles.maintenance")}</small>
             <strong>{maintenanceReminderSummary.due}</strong>
             <em>{maintenanceReminderSummary.upcoming} geplant</em>
           </button>
         </article>
         <article className="inventory-status-card wide">
           <span><Wrench size={16} aria-hidden="true" /></span>
-          <small>Nächster Termin</small>
+          <small>{t("vehicles.nextAppointment")}</small>
           {nextMaintenanceReminder ? (
             <button type="button" onClick={() => openDetail(nextMaintenanceReminder.vehicle, "maintenance")}>
               <strong>{nextMaintenanceReminder.vehicle.inventoryNumber}</strong>
@@ -3019,17 +3037,17 @@ export function VehiclesView() {
             </button>
           ) : (
             <>
-              <strong>Alles ruhig</strong>
-              <em>Keine fälligen Wartungen in den nächsten 14 Tagen</em>
+              <strong>{t("vehicles.allQuiet")}</strong>
+              <em>{t("vehicles.noDueMaintenance")}</em>
             </>
           )}
         </article>
         <article className={inventoryFilter === "withoutImages" ? "inventory-status-card active" : "inventory-status-card"}>
-          <button type="button" onClick={() => setInventoryFilter("withoutImages")} aria-label="Fahrzeuge ohne Bild anzeigen">
+          <button type="button" onClick={() => setInventoryFilter("withoutImages")} aria-label={t("vehicles.status.imagesAria")}>
             <span><Image size={16} aria-hidden="true" /></span>
-            <small>Bildpflege</small>
+            <small>{t("vehicles.imageCare")}</small>
             <strong>{vehicles.length ? Math.round((inventorySummary.withImages / vehicles.length) * 100) : 0}%</strong>
-            <em>{inventorySummary.withImages} mit Bild</em>
+            <em>{t("vehicles.withImage", { count: inventorySummary.withImages })}</em>
           </button>
         </article>
       </section>
@@ -3038,19 +3056,19 @@ export function VehiclesView() {
         <div className="panel-head inventory-list-head">
           <div className="inventory-title-line">
             <div>
-              <h2>Fahrzeuge</h2>
-              <p>{sortedVehicles.length} von {vehicles.length} Fahrzeugen</p>
+              <h2>{t("vehicles.list.title")}</h2>
+              <p>{t("vehicles.list.count", { shown: sortedVehicles.length, total: vehicles.length })}</p>
             </div>
           </div>
-          <div className="inventory-toolbar" aria-label="Bestandswerkzeuge">
+          <div className="inventory-toolbar" aria-label={t("vehicles.tools")}>
             <label className="search-field inventory-search">
               <span>
                 <Search size={16} aria-hidden="true" />
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Inventarnummer, Hersteller, Artikel oder Bezeichnung"
-                  aria-label="Bestand durchsuchen"
+                  placeholder={t("vehicles.search.placeholder")}
+                  aria-label={t("vehicles.search.aria")}
                 />
               </span>
             </label>
@@ -3074,7 +3092,7 @@ export function VehiclesView() {
               </button>
             </div>
           </div>
-          <div className="inventory-filter-row" aria-label="Bestand filtern">
+          <div className="inventory-filter-row" aria-label={t("vehicles.filter")}>
             {inventoryFilters.map((filter) => (
               <button
                 key={filter.key}
@@ -3102,7 +3120,7 @@ export function VehiclesView() {
                     {image ? (
                       <img src={previewImageUrl(image)} alt="" />
                     ) : (
-                      <div className="image-placeholder">Keine Vorschau</div>
+                      <div className="image-placeholder">{t("exhibition.noPreview")}</div>
                     )}
                   </button>
                   <button type="button" className="inventory-mobile-main" onClick={() => openDetail(vehicle)}>
@@ -3115,10 +3133,10 @@ export function VehiclesView() {
                     <small>{vehicle.epoch || "-"}</small>
                   </div>
                   <div className="inventory-mobile-actions">
-                    <button type="button" className="icon-button" onClick={() => openEdit(vehicle)} aria-label="Bearbeiten" title="Bearbeiten">
+                    <button type="button" className="icon-button" onClick={() => openEdit(vehicle)} aria-label={t("vehicles.edit")} title={t("vehicles.edit")}>
                       <Pencil size={16} />
                     </button>
-                    <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label="Löschen" title="Löschen">
+                    <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label={t("vehicles.delete")} title={t("vehicles.delete")}>
                       <Trash2 size={16} />
                     </button>
                     {vehicleQuickMenu(vehicle)}
@@ -3130,11 +3148,11 @@ export function VehiclesView() {
         )}
 
         {loading && vehicles.length === 0 ? (
-          <p className="empty-state">Lade Fahrzeuge aus lokaler Datenbank...</p>
+          <p className="empty-state">{t("vehicles.loading")}</p>
         ) : vehicles.length === 0 ? (
-          <p className="empty-state">Noch keine Fahrzeuge vorhanden.</p>
+          <p className="empty-state">{t("vehicles.empty")}</p>
         ) : sortedVehicles.length === 0 ? (
-          <p className="empty-state">Keine Fahrzeuge für diesen Filter gefunden.</p>
+          <p className="empty-state">{t("vehicles.emptyFilter")}</p>
         ) : (
           <div className="inventory-desktop-content">
             {inventoryView === "cards" ? (
@@ -3147,7 +3165,7 @@ export function VehiclesView() {
                     {image ? (
                       <img src={previewImageUrl(image)} alt="" />
                     ) : (
-                      <div className="image-placeholder">Keine Vorschau</div>
+                      <div className="image-placeholder">{t("exhibition.noPreview")}</div>
                     )}
                   </button>
                   <div className="inventory-card-body">
@@ -3161,7 +3179,7 @@ export function VehiclesView() {
                     <h3>{vehicle.name}</h3>
                     <dl>
                       <div>
-                        <dt>Artikel</dt>
+                        <dt>{t("importExport.review.article")}</dt>
                         <dd>{vehicle.articleNumber || "-"}</dd>
                       </div>
                       <div>
@@ -3174,13 +3192,13 @@ export function VehiclesView() {
                       </div>
                     </dl>
                     <div className="inventory-card-actions">
-                      <button type="button" className="icon-button" onClick={() => openDetail(vehicle)} aria-label="Anzeigen" title="Anzeigen">
+                      <button type="button" className="icon-button" onClick={() => openDetail(vehicle)} aria-label={t("exhibition.view")} title={t("exhibition.view")}>
                         <Eye size={16} />
                       </button>
-                      <button type="button" className="icon-button" onClick={() => openEdit(vehicle)} aria-label="Bearbeiten" title="Bearbeiten">
+                      <button type="button" className="icon-button" onClick={() => openEdit(vehicle)} aria-label={t("vehicles.edit")} title={t("vehicles.edit")}>
                         <Pencil size={16} />
                       </button>
-                      <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label="Löschen" title="Löschen">
+                      <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label={t("vehicles.delete")} title={t("vehicles.delete")}>
                         <Trash2 size={16} />
                       </button>
                       {vehicleQuickMenu(vehicle)}
@@ -3195,7 +3213,7 @@ export function VehiclesView() {
             <table className="inventory-table">
               <thead>
                 <tr>
-                  <th>Bild</th>
+                  <th>{t("vehicles.image")}</th>
                   <th>{sortHeader("inventoryNumber")}</th>
                   <th>{sortHeader("manufacturer")}</th>
                   <th>{sortHeader("articleNumber")}</th>
@@ -3203,7 +3221,7 @@ export function VehiclesView() {
                   <th>{sortHeader("gauge")}</th>
                   <th>{sortHeader("epoch")}</th>
                   <th>{sortHeader("category")}</th>
-                  <th className="actions-cell">Aktionen</th>
+                  <th className="actions-cell">{t("vehicles.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -3213,7 +3231,7 @@ export function VehiclesView() {
                       {primaryImage(vehicle.images) ? (
                         <img className="inventory-thumb" src={previewImageUrl(primaryImage(vehicle.images))} alt="" />
                       ) : (
-                        <div className="image-placeholder">Keine Vorschau</div>
+                        <div className="image-placeholder">{t("exhibition.noPreview")}</div>
                       )}
                     </td>
                     <td>{vehicle.inventoryNumber}</td>
@@ -3229,13 +3247,13 @@ export function VehiclesView() {
                     <td>{vehicle.category || "-"}</td>
                     <td className="actions-cell">
                       <div className="table-actions">
-                        <button type="button" className="icon-button" onClick={() => openDetail(vehicle)} aria-label="Anzeigen" title="Anzeigen">
+                        <button type="button" className="icon-button" onClick={() => openDetail(vehicle)} aria-label={t("exhibition.view")} title={t("exhibition.view")}>
                           <Eye size={16} />
                         </button>
-                        <button type="button" className="icon-button" onClick={() => openEdit(vehicle)} aria-label="Bearbeiten" title="Bearbeiten">
+                        <button type="button" className="icon-button" onClick={() => openEdit(vehicle)} aria-label={t("vehicles.edit")} title={t("vehicles.edit")}>
                           <Pencil size={16} />
                         </button>
-                        <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label="Löschen" title="Löschen">
+                        <button type="button" className="icon-button danger" onClick={() => setDeleteCandidate(vehicle)} aria-label={t("vehicles.delete")} title={t("vehicles.delete")}>
                           <Trash2 size={16} />
                         </button>
                         {vehicleQuickMenu(vehicle)}
@@ -3252,30 +3270,30 @@ export function VehiclesView() {
       </section>
 
       {modalOpen && (
-        <div className="modal-layer" role="dialog" aria-modal="true" aria-label="Fahrzeugdaten bearbeiten">
+        <div className="modal-layer" role="dialog" aria-modal="true" aria-label={t("vehicles.modal.aria")}>
           <form className="vehicle-modal" onSubmit={submit}>
             <header className="modal-head">
-              <h2>{mode === "create" ? "Fahrzeugdaten erfassen" : mode === "edit" ? "Fahrzeugdaten bearbeiten" : "Fahrzeugdaten"}</h2>
-              <button type="button" className="icon-button" onClick={closeModal} aria-label="Schließen" title="Schließen">
+              <h2>{mode === "create" ? t("vehicles.modal.create") : mode === "edit" ? t("vehicles.modal.edit") : t("vehicles.modal.view")}</h2>
+              <button type="button" className="icon-button" onClick={closeModal} aria-label={t("vehicles.close")} title={t("vehicles.close")}>
                 <X size={18} />
               </button>
             </header>
 
-            <nav className="modal-tabs" aria-label="Fahrzeugbereiche">
+            <nav className="modal-tabs" aria-label={t("vehicles.modal.aria")}>
               <button type="button" className={activeTab === "model" ? "active" : ""} onClick={() => setActiveTab("model")}>
-                Modell
+                {t("vehicles.tab.model")}
               </button>
               <button type="button" className={activeTab === "control" ? "active" : ""} onClick={() => setActiveTab("control")}>
-                Steuerung
+                {t("vehicles.tab.control")}
               </button>
               <button type="button" className={activeTab === "cv" ? "active" : ""} onClick={() => setActiveTab("cv")}>
                 CV
               </button>
               <button type="button" className={activeTab === "uploads" ? "active" : ""} onClick={() => setActiveTab("uploads")}>
-                Uploads
+                {t("vehicles.tab.uploads")}
               </button>
               <button type="button" className={activeTab === "maintenance" ? "active" : ""} onClick={() => setActiveTab("maintenance")}>
-                Wartung
+                {t("vehicles.tab.maintenance")}
               </button>
             </nav>
 
@@ -3285,23 +3303,23 @@ export function VehiclesView() {
                   <section className="accordion-section">
                     <button type="button" className="accordion-trigger" onClick={() => toggleSection("model")}>
                       {openSections.model ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      Modell
+                      {t("vehicles.tab.model")}
                     </button>
                     {openSections.model && (
                       <div className="accordion-content vehicle-form">
                         <div className="article-search-box">
                           <div>
-                            <strong>Artikelsuche</strong>
-                            <span>Nach Hersteller, Artikel-Nr., Bezeichnung und Detaildaten suchen</span>
+                            <strong>{t("vehicles.articleSearch.title")}</strong>
+                            <span>{t("vehicles.articleSearch.subtitle")}</span>
                           </div>
                           <div className="article-search-actions">
-                            <button type="button" className="secondary-button" onClick={openBarcodeSearch} disabled={readonly || articleSearchLoading} title="Strichcode oder EAN suchen">
+                            <button type="button" className="secondary-button" onClick={openBarcodeSearch} disabled={readonly || articleSearchLoading} title={t("vehicles.articleSearch.barcodeTitle")}>
                               <Barcode size={15} aria-hidden="true" />
-                              Strichcode suchen
+                              {t("vehicles.articleSearch.barcode")}
                             </button>
                             <button type="button" className="secondary-button" onClick={() => runArticleSearch()} disabled={readonly || articleSearchLoading}>
                               <PackageSearch size={15} aria-hidden="true" />
-                              {articleSearchLoading ? "Sucht..." : "Artikeldaten suchen"}
+                              {articleSearchLoading ? t("vehicles.articleSearch.searching") : t("vehicles.articleSearch.search")}
                             </button>
                           </div>
                         </div>
@@ -3310,51 +3328,51 @@ export function VehiclesView() {
                           <p className="source-note compact-source-note">
                             <ExternalLink size={15} aria-hidden="true" />
                             <span>
-                              Quelle: <a href={form.articleSourceUrl} target="_blank" rel="noreferrer">{sourceDisplayName(form.articleSourceUrl)}</a>
+                              {t("vehicles.source")}: <a href={form.articleSourceUrl} target="_blank" rel="noreferrer">{sourceDisplayName(form.articleSourceUrl)}</a>
                             </span>
                           </p>
                         )}
 
                         <div className="form-row">
                           <label>
-                            Inventar-Nr.
-                            <input value={form.inventoryNumber || ""} onChange={(event) => update({ inventoryNumber: event.target.value })} disabled={readonly} placeholder="wird automatisch vergeben" />
+                            {t("vehicle.field.inventoryNumber")}
+                            <input value={form.inventoryNumber || ""} onChange={(event) => update({ inventoryNumber: event.target.value })} disabled={readonly} placeholder={t("vehicles.inventoryNumberAuto")} />
                           </label>
                           <label>
-                            Artikel-Nr.
+                            {t("vehicle.field.articleNumber")}
                             <input value={form.articleNumber || ""} onChange={(event) => update({ articleNumber: event.target.value })} disabled={readonly} />
                           </label>
                         </div>
 
                         <div className="form-row">
                           <label>
-                            Hersteller *
+                            {t("vehicle.field.manufacturer")} *
                             <select value={form.manufacturer} onChange={(event) => update({ manufacturer: event.target.value })} disabled={readonly} required>
-                              {selectOptions(options.manufacturers, "Bitte wählen")}
+                              {selectOptions(options.manufacturers, t("vehicles.select.placeholder"))}
                             </select>
                           </label>
                           <label>
-                            Spurweite *
+                            {t("vehicle.field.gauge")} *
                             <select value={form.gauge} onChange={(event) => update({ gauge: event.target.value })} disabled={readonly} required>
-                              {selectOptions(options.gauges, "Bitte wählen")}
+                              {selectOptions(options.gauges, t("vehicles.select.placeholder"))}
                             </select>
                           </label>
                         </div>
 
                         <label>
-                          Bezeichnung *
+                          {t("vehicle.field.name")} *
                           <input value={form.name} onChange={(event) => update({ name: event.target.value })} disabled={readonly} required />
                         </label>
 
                         <div className="form-row">
                           <label>
-                            Bahngesellschaft
+                            {t("vehicle.field.railwayCompany")}
                             <select value={form.railwayCompany || ""} onChange={(event) => update({ railwayCompany: event.target.value })} disabled={readonly}>
                               {selectOptions(options.railwayCompanies)}
                             </select>
                           </label>
                           <label>
-                            Epoche
+                            {t("vehicle.field.epoch")}
                             <select value={form.epoch || ""} onChange={(event) => update({ epoch: event.target.value })} disabled={readonly}>
                               {selectOptions(options.epochs)}
                             </select>
@@ -3363,13 +3381,13 @@ export function VehiclesView() {
 
                         <div className="form-row">
                           <label>
-                            Kategorie
+                            {t("vehicle.field.category")}
                             <select value={form.category || ""} onChange={(event) => updateCategory(event.target.value)} disabled={readonly}>
                               {selectOptions(options.categories)}
                             </select>
                           </label>
                           <label>
-                            Gattung
+                            {t("vehicle.field.gattung")}
                             <select value={form.gattung || ""} onChange={(event) => update({ gattung: event.target.value })} disabled={readonly || filteredGattungen.length === 0}>
                               {selectOptions(filteredGattungen)}
                             </select>
@@ -3377,24 +3395,24 @@ export function VehiclesView() {
                         </div>
 
                         <label>
-                          Beschreibung
+                          {t("vehicle.field.description")}
                           <textarea value={form.description || ""} onChange={(event) => update({ description: event.target.value })} disabled={readonly} rows={4} />
                         </label>
 
                         <div className="form-row">
                           <label>
-                            Baureihe
+                            {t("vehicle.field.series")}
                             <input value={form.series || ""} onChange={(event) => update({ series: event.target.value })} disabled={readonly} />
                           </label>
                           <label>
-                            Fahrzeug-Nr.
+                            {t("vehicle.field.vehicleNumber")}
                             <input value={form.vehicleNumber || ""} onChange={(event) => update({ vehicleNumber: event.target.value })} disabled={readonly} />
                           </label>
                         </div>
 
                         <div className="form-row decoder-row">
                           <label>
-                            Digital / Decoder-Nr.
+                            {t("vehicle.field.digitalDecoderNumber")}
                             <span className="inline-switch-input">
                               <span className="switch-field" aria-label="Digital">
                                 <input type="checkbox" checked={Boolean(form.digital)} onChange={(event) => update({ digital: event.target.checked })} disabled={readonly} />
@@ -3404,7 +3422,7 @@ export function VehiclesView() {
                             </span>
                           </label>
                           <label>
-                            DT / Decoder-Nr.
+                            {t("vehicle.field.dtDecoderNumber")}
                             <span className="inline-switch-input">
                               <span className="switch-field" aria-label="DT Decoder">
                                 <input type="checkbox" checked={Boolean(form.dtDecoder)} onChange={(event) => update({ dtDecoder: event.target.checked })} disabled={readonly} />
@@ -3417,7 +3435,7 @@ export function VehiclesView() {
 
                         <div className="form-row compact-switch-row">
                           <label className="switch-label">
-                            Messe tauglich
+                            {t("vehicle.field.exhibitionReady")}
                             <span className="switch-field">
                               <input type="checkbox" checked={Boolean(form.exhibitionReady)} onChange={(event) => update({ exhibitionReady: event.target.checked })} disabled={readonly} />
                               <span />
@@ -3438,11 +3456,11 @@ export function VehiclesView() {
                             <input value={form.ean || ""} onChange={(event) => update({ ean: event.target.value })} disabled={readonly} />
                           </label>
                           <label>
-                            Produktionszeit
+                            {t("vehicle.field.productionPeriod")}
                             <input value={form.productionPeriod || ""} onChange={(event) => update({ productionPeriod: event.target.value })} disabled={readonly} placeholder="TT. MM. JJJJ" />
                           </label>
                           <label>
-                            Listenpreis
+                            {t("vehicle.field.listPrice")}
                             <input value={form.listPrice || ""} onChange={(event) => update({ listPrice: event.target.value })} disabled={readonly} inputMode="decimal" />
                           </label>
                         </div>
@@ -3453,7 +3471,7 @@ export function VehiclesView() {
                   <section className="accordion-section">
                     <button type="button" className="accordion-trigger" onClick={() => toggleSection("details")}>
                       {openSections.details ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      Fahrzeug Details
+                      {t("vehicles.details.title")}
                     </button>
                     {openSections.details && (
                       <div className="accordion-content vehicle-form">
@@ -3476,8 +3494,8 @@ export function VehiclesView() {
                 <section className="functions-tab">
                   <div className="upload-head">
                     <div>
-                      <h3>Digitalfunktionen</h3>
-                      <p>Funktionstasten F0 bis F31 mit Symbol, Typ, Betriebsart und Richtungsabhängigkeit pflegen.</p>
+                      <h3>{t("vehicles.functions.title")}</h3>
+                      <p>{t("vehicles.functions.subtitle")}</p>
                     </div>
                     <div className="cv-toolbar">
                       <input
@@ -3498,17 +3516,17 @@ export function VehiclesView() {
                       </button>
                     </div>
                   </div>
-                  {!selected && <p className="empty-state compact">Digitalfunktionen können nach dem ersten Speichern gepflegt werden.</p>}
+                    {!selected && <p className="empty-state compact">{t("vehicles.functions.emptyUntilSave")}</p>}
                   {selected && (
                     <div className="function-list">
                       <div className="function-toolbar">
                         <div className="function-summary">
-                          <span><strong>{functionSummary.configured}</strong> belegt</span>
-                          <span><strong>{functionSummary.sound}</strong> Sound</span>
-                          <span><strong>{functionSummary.light}</strong> Licht</span>
+                          <span><strong>{functionSummary.configured}</strong> {t("vehicles.functions.configured")}</span>
+                          <span><strong>{functionSummary.sound}</strong> {t("vehicles.functions.sound")}</span>
+                          <span><strong>{functionSummary.light}</strong> {t("vehicles.functions.light")}</span>
                         </div>
                         <label className="switch-label compact-switch">
-                          <span>Nur belegte</span>
+                          <span>{t("vehicles.functions.onlyConfigured")}</span>
                           <span className="switch-field">
                             <input
                               type="checkbox"
@@ -3521,7 +3539,7 @@ export function VehiclesView() {
                         </label>
                       </div>
                       {visibleFunctionKeys.length === 0 && (
-                        <p className="empty-state compact">Noch keine Digitalfunktionen belegt.</p>
+                        <p className="empty-state compact">{t("vehicles.functions.empty")}</p>
                       )}
                       {visibleFunctionKeys.map((functionKey) => {
                         const edit = functionEdit(functionKey);
@@ -3535,39 +3553,39 @@ export function VehiclesView() {
                               value={edit.name || ""}
                               onChange={(event) => updateFunctionEdit(functionKey, { name: event.target.value })}
                               disabled={readonly || saving}
-                              placeholder="Funktionsname"
-                              aria-label={`${functionKey} Funktionsname`}
+                              placeholder={t("vehicles.functions.name")}
+                              aria-label={`${functionKey} ${t("vehicles.functions.name")}`}
                             />
                             <FunctionSymbolPicker
                               value={edit.symbolKey || ""}
                               functionType={edit.functionType}
                               symbols={options.symbols}
                               disabled={readonly || saving}
-                              label={`${functionKey} Symbol`}
+                              label={`${functionKey} ${t("vehicles.functions.symbol")}`}
                               onChange={(symbolKey) => updateFunctionEdit(functionKey, { symbolKey })}
                             />
                             <select
                               value={edit.functionType || "standard"}
                               onChange={(event) => updateFunctionEdit(functionKey, { functionType: event.target.value })}
                               disabled={readonly || saving}
-                              aria-label={`${functionKey} Typ`}
+                              aria-label={`${functionKey} ${t("vehicles.functions.type")}`}
                             >
                               {functionTypes.map((type) => (
-                                <option key={type} value={type}>{type}</option>
+                                <option key={type} value={type}>{t(`vehicles.functionType.${type}`)}</option>
                               ))}
                             </select>
                             <select
                               value={edit.mode || "dauer"}
                               onChange={(event) => updateFunctionEdit(functionKey, { mode: event.target.value })}
                               disabled={readonly || saving}
-                              aria-label={`${functionKey} Betriebsart`}
+                              aria-label={`${functionKey} ${t("vehicles.functions.mode")}`}
                             >
                               {functionModes.map((modeName) => (
-                                <option key={modeName} value={modeName}>{modeName}</option>
+                                <option key={modeName} value={modeName}>{t(`vehicles.functionMode.${modeName}`)}</option>
                               ))}
                             </select>
                             <label className="switch-card function-direction">
-                              <span>Richtung</span>
+                              <span>{t("vehicles.functions.direction")}</span>
                               <span className="switch-field">
                                 <input
                                   type="checkbox"
@@ -3582,14 +3600,14 @@ export function VehiclesView() {
                               value={edit.notes || ""}
                               onChange={(event) => updateFunctionEdit(functionKey, { notes: event.target.value })}
                               disabled={readonly || saving}
-                              placeholder="Notiz"
-                              aria-label={`${functionKey} Notiz`}
+                              placeholder={t("vehicles.functions.note")}
+                              aria-label={`${functionKey} ${t("vehicles.functions.note")}`}
                             />
                             <div className="function-actions">
-                              <button type="button" className="icon-button" onClick={() => saveFunction(functionKey)} disabled={readonly || saving} aria-label={`${functionKey} speichern`} title="Speichern">
+                              <button type="button" className="icon-button" onClick={() => saveFunction(functionKey)} disabled={readonly || saving} aria-label={t("vehicles.functions.save", { key: functionKey })} title={t("vehicles.save")}>
                                 <Save size={15} />
                               </button>
-                              <button type="button" className="icon-button danger" onClick={() => deleteFunction(functionKey)} disabled={readonly || saving || !edit.persisted} aria-label={`${functionKey} löschen`} title="Löschen">
+                              <button type="button" className="icon-button danger" onClick={() => deleteFunction(functionKey)} disabled={readonly || saving || !edit.persisted} aria-label={t("vehicles.functions.delete", { key: functionKey })} title={t("vehicles.delete")}>
                                 <Trash2 size={15} />
                               </button>
                             </div>
@@ -3606,8 +3624,8 @@ export function VehiclesView() {
                   <section className="cv-editor">
                     <div className="upload-head">
                       <div>
-                        <h3>CV-Werte</h3>
-                        <p>Decoder-CVs strukturiert erfassen, importieren und exportieren. Werte werden im Backend validiert.</p>
+                        <h3>{t("vehicles.cv.title")}</h3>
+                        <p>{t("vehicles.cv.subtitle")}</p>
                       </div>
                       <div className="cv-toolbar">
                         <input
@@ -3628,65 +3646,65 @@ export function VehiclesView() {
                         </button>
                       </div>
                     </div>
-                    {!selected && <p className="empty-state compact">CV-Werte können nach dem ersten Speichern gepflegt werden.</p>}
+                    {!selected && <p className="empty-state compact">{t("vehicles.cv.emptyUntilSave")}</p>}
                     {selected && (
                       <>
                         <div className="cv-summary">
                           <div>
-                            <span>CV-Werte</span>
+                            <span>{t("vehicles.cv.values")}</span>
                             <strong>{cvSummary.values}</strong>
                           </div>
                           <div>
-                            <span>Profile</span>
+                            <span>{t("vehicles.cv.profiles")}</span>
                             <strong>{cvSummary.profiles}</strong>
                           </div>
                           <div>
-                            <span>Dateien</span>
+                            <span>{t("vehicles.cv.files")}</span>
                             <strong>{cvSummary.files}</strong>
                           </div>
                         </div>
                         {cvImportPreview && (
-                          <section className="cv-import-preview" aria-label="CV-Import Vorschau">
+                          <section className="cv-import-preview" aria-label={t("vehicles.cv.importPreview")}>
                             <div className="cv-import-head">
                               <div>
-                                <h4>Import prüfen</h4>
+                                <h4>{t("vehicles.cv.importCheck")}</h4>
                                 <p>{cvImportPreview.fileName}</p>
                               </div>
-                              <div className="cv-import-badges" aria-label="Import Zusammenfassung">
-                                <span>{cvImportStats.new} neu</span>
-                                <span>{cvImportStats.changed} geändert</span>
-                                <span>{cvImportStats.same} gleich</span>
-                                {cvImportStats.invalid > 0 && <span className="danger">{cvImportStats.invalid} ungültig</span>}
+                              <div className="cv-import-badges" aria-label={t("vehicles.cv.importSummary")}>
+                                <span>{t("vehicles.cv.new", { count: cvImportStats.new })}</span>
+                                <span>{t("vehicles.cv.changed", { count: cvImportStats.changed })}</span>
+                                <span>{t("vehicles.cv.same", { count: cvImportStats.same })}</span>
+                                {cvImportStats.invalid > 0 && <span className="danger">{t("vehicles.cv.invalid", { count: cvImportStats.invalid })}</span>}
                               </div>
                             </div>
                             <div className="cv-import-actions">
                               <button type="button" className="secondary-button" onClick={() => selectCVImportRows("empty")} disabled={saving}>
-                                Nur neue
+                                {t("vehicles.cv.onlyNew")}
                               </button>
                               <button type="button" className="secondary-button" onClick={() => selectCVImportRows("all")} disabled={saving}>
-                                Alles auswählen
+                                {t("vehicles.articleSearch.selectAll")}
                               </button>
                               <button type="button" className="secondary-button" onClick={() => selectCVImportRows("none")} disabled={saving}>
-                                Nichts auswählen
+                                {t("vehicles.articleSearch.selectNone")}
                               </button>
                               <button type="button" className="primary-button" onClick={applyCVImportPreview} disabled={saving || cvImportStats.selected === 0}>
                                 <Check size={15} aria-hidden="true" />
-                                Auswahl übernehmen
+                                {t("vehicles.articleSearch.applySelected")}
                               </button>
                               <button type="button" className="secondary-button" onClick={() => setCVImportPreview(null)} disabled={saving}>
-                                Verwerfen
+                                {t("vehicles.cv.discard")}
                               </button>
                             </div>
                             <div className="table-wrap compact-table cv-import-table">
                               <table>
                                 <thead>
                                   <tr>
-                                    <th>Übernehmen</th>
+                                    <th>{t("vehicles.articleSearch.apply")}</th>
                                     <th>CV</th>
-                                    <th>Aktuell</th>
+                                    <th>{t("vehicles.articleSearch.current")}</th>
                                     <th>Import</th>
-                                    <th>Profil</th>
-                                    <th>Status</th>
+                                    <th>{t("vehicles.cv.profiles")}</th>
+                                    <th>{t("vehicles.articleSearch.status")}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -3698,7 +3716,7 @@ export function VehiclesView() {
                                           checked={row.selected}
                                           onChange={(event) => toggleCVImportRow(row.id, event.target.checked)}
                                           disabled={row.status === "invalid" || saving}
-                                          aria-label={`CV ${row.input.cvNumber} übernehmen`}
+                                          aria-label={t("vehicles.cv.applyCv", { cv: row.input.cvNumber })}
                                         />
                                       </td>
                                       <td>{row.input.cvNumber || "-"}</td>
@@ -3724,9 +3742,9 @@ export function VehiclesView() {
                               const valueCount = (selected.cvValues || []).filter((value) => value.decoderProfile === profile).length;
                               const fileCount = (selected.cvFiles || []).filter((file) => file.decoderProfile === profile).length;
                               return (
-                                <button type="button" key={profile} onClick={() => updateCVForm({ decoderProfile: profile })} disabled={readonly || saving} title={`${profile} für neuen CV-Wert verwenden`}>
+                                <button type="button" key={profile} onClick={() => updateCVForm({ decoderProfile: profile })} disabled={readonly || saving} title={t("vehicles.cv.useProfile", { profile })}>
                                   <strong>{profile}</strong>
-                                  <span>{valueCount} CV · {fileCount} Datei</span>
+                                  <span>{valueCount} CV · {fileCount} {t("vehicles.cv.files").toLocaleLowerCase()}</span>
                                 </button>
                               );
                             })}
@@ -3738,45 +3756,45 @@ export function VehiclesView() {
                             <input type="number" min={1} max={1024} value={cvForm.cvNumber} onChange={(event) => updateCVForm({ cvNumber: Number(event.target.value) })} disabled={readonly || saving} />
                           </label>
                           <label>
-                            Wert
+                            {t("vehicle.field.value")}
                             <input type="number" min={0} max={255} value={cvForm.value} onChange={(event) => updateCVForm({ value: Number(event.target.value) })} disabled={readonly || saving} />
                           </label>
                           <label>
-                            Kategorie
+                            {t("vehicle.field.category")}
                             <select value={cvForm.category || ""} onChange={(event) => updateCVForm({ category: event.target.value })} disabled={readonly || saving}>
-                              <option value="">Kategorie</option>
+                              <option value="">{t("vehicle.field.category")}</option>
                               {cvCategories.map((category) => (
                                 <option key={category} value={category}>{category}</option>
                               ))}
                             </select>
                           </label>
                           <label>
-                            Decoder-Profil
+                            {t("vehicle.field.decoderProfile")}
                             <input list="decoder-profile-options" value={cvForm.decoderProfile || ""} onChange={(event) => updateCVForm({ decoderProfile: event.target.value })} disabled={readonly || saving} placeholder="z. B. ESU LokPilot 5" />
                           </label>
                           <label>
-                            Quelldatei
+                            {t("vehicles.cv.sourceFile")}
                             <select value={cvForm.sourceFileId || ""} onChange={(event) => updateCVForm({ sourceFileId: event.target.value })} disabled={readonly || saving}>
-                              <option value="">Ohne Datei</option>
+                              <option value="">{t("vehicles.cv.noFile")}</option>
                               {(selected.cvFiles || []).map((file) => (
                                 <option key={file.id} value={file.id}>{file.originalName}</option>
                               ))}
                             </select>
                           </label>
                           <label className="cv-description">
-                            Beschreibung
+                            {t("vehicles.cv.description")}
                             <input value={cvForm.description || ""} onChange={(event) => updateCVForm({ description: event.target.value })} disabled={readonly || saving} />
                           </label>
                         </div>
                         <div className="cv-actions">
                           {editingCVID && (
                             <button type="button" className="secondary-button" onClick={resetCVForm} disabled={readonly || saving}>
-                              Abbrechen
+                              {t("vehicles.cancel")}
                             </button>
                           )}
                           <button type="button" className="primary-button" onClick={saveCVValue} disabled={readonly || saving}>
                             <Save size={15} aria-hidden="true" />
-                            {editingCVID ? "CV speichern" : "CV hinzufügen"}
+                            {editingCVID ? t("vehicles.cv.saveCv") : t("vehicles.cv.addCv")}
                           </button>
                         </div>
                       </>
@@ -3785,7 +3803,7 @@ export function VehiclesView() {
 
                   <section className="cv-table-section">
                     {selected && (!selected.cvValues || selected.cvValues.length === 0) && (
-                      <p className="empty-state compact">Noch keine CV-Werte hinterlegt.</p>
+                      <p className="empty-state compact">{t("vehicles.cv.empty")}</p>
                     )}
                     {selected && selected.cvValues && selected.cvValues.length > 0 && (
                       <div className="table-wrap compact-table">
@@ -3793,11 +3811,11 @@ export function VehiclesView() {
                           <thead>
                             <tr>
                               <th>CV</th>
-                              <th>Wert</th>
-                              <th>Kategorie</th>
-                              <th>Decoder-Profil</th>
-                              <th>Beschreibung</th>
-                              <th>Aktionen</th>
+                              <th>{t("vehicle.field.value")}</th>
+                              <th>{t("vehicle.field.category")}</th>
+                              <th>{t("vehicle.field.decoderProfile")}</th>
+                              <th>{t("vehicles.cv.description")}</th>
+                              <th>{t("vehicles.actions")}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -3811,10 +3829,10 @@ export function VehiclesView() {
                                   <td>{value.description || "-"}</td>
                                   <td>
                                     <div className="table-actions">
-                                      <button type="button" className="icon-button" onClick={() => editCVValue(value)} disabled={readonly || saving} aria-label="CV bearbeiten" title="CV bearbeiten">
+                                      <button type="button" className="icon-button" onClick={() => editCVValue(value)} disabled={readonly || saving} aria-label={t("vehicles.cv.edit")} title={t("vehicles.cv.edit")}>
                                         <Pencil size={15} />
                                       </button>
-                                      <button type="button" className="icon-button danger" onClick={() => deleteCVValue(value)} disabled={readonly || saving} aria-label="CV löschen" title="CV löschen">
+                                      <button type="button" className="icon-button danger" onClick={() => deleteCVValue(value)} disabled={readonly || saving} aria-label={t("vehicles.cv.delete")} title={t("vehicles.cv.delete")}>
                                         <Trash2 size={15} />
                                       </button>
                                     </div>
@@ -3824,7 +3842,7 @@ export function VehiclesView() {
                                   <tr className="cv-history-row">
                                     <td colSpan={6}>
                                       <details>
-                                        <summary>Historie: {value.history.length} Änderung{value.history.length === 1 ? "" : "en"}</summary>
+                                        <summary>{t("vehicles.cv.history", { count: value.history.length, suffix: value.history.length === 1 ? "" : language === "de" ? "en" : "s" })}</summary>
                                         <div className="cv-history-list">
                                           {value.history.slice(0, 5).map((entry) => (
                                             <span key={entry.id}>
@@ -3847,8 +3865,8 @@ export function VehiclesView() {
                   <section className="cv-files-section">
                     <div className="upload-head">
                       <div>
-                        <h3>CV-Dateien</h3>
-                        <p>Decoder-Dateien, Exporte oder Profile sicher am Fahrzeug speichern. ESU/LokProgrammer-Metadaten werden beim Upload übernommen.</p>
+                        <h3>{t("vehicles.cv.filesTitle")}</h3>
+                        <p>{t("vehicles.cv.filesSubtitle")}</p>
                       </div>
                       <input
                         ref={cvFileInputRef}
@@ -3861,39 +3879,39 @@ export function VehiclesView() {
                       />
                       <button type="button" className="primary-button" onClick={() => cvFileInputRef.current?.click()} disabled={readonly || !selected || saving}>
                         <Upload size={16} aria-hidden="true" />
-                        CV-Datei hochladen
+                        {t("vehicles.cv.uploadFile")}
                       </button>
                     </div>
                     {selected && (
                       <div className="cv-file-controls">
-                        <input list="decoder-profile-options" value={cvFileProfile} onChange={(event) => setCVFileProfile(event.target.value)} disabled={readonly || saving} placeholder="Decoder-Profil für neue Dateien" />
-                        <input value={cvFileDescription} onChange={(event) => setCVFileDescription(event.target.value)} disabled={readonly || saving} placeholder="Bemerkung für neue Dateien" />
-                        <span>Leer lassen, um ESU/LokProgrammer-Metadaten automatisch zu verwenden.</span>
+                        <input list="decoder-profile-options" value={cvFileProfile} onChange={(event) => setCVFileProfile(event.target.value)} disabled={readonly || saving} placeholder={t("vehicles.cv.fileProfilePlaceholder")} />
+                        <input value={cvFileDescription} onChange={(event) => setCVFileDescription(event.target.value)} disabled={readonly || saving} placeholder={t("vehicles.cv.fileNotePlaceholder")} />
+                        <span>{t("vehicles.cv.autoMetadata")}</span>
                       </div>
                     )}
                     {selected && cvFileUploadPreview && (
                       <section className="cv-file-preview">
                         <div className="upload-head compact">
                           <div>
-                            <h3>Upload-Vorschau</h3>
-                            <p>Metadaten prüfen und danach bewusst speichern.</p>
+                            <h3>{t("vehicles.cv.uploadPreview")}</h3>
+                            <p>{t("vehicles.cv.previewHelp")}</p>
                           </div>
                           <div className="inline-actions">
                             <button type="button" className="secondary-button" onClick={applyFirstCVFileSuggestion} disabled={saving || !cvFileUploadPreview.previews.some((preview) => preview.hasMetadata)}>
-                              Vorschlag übernehmen
+                              {t("vehicles.cv.applySuggestion")}
                             </button>
                             <button type="button" className="secondary-button" onClick={previewCVFileValuesForImport} disabled={saving || readonly || cvFilePreviewStats.cvValues === 0}>
-                              CVs prüfen
+                              {t("vehicles.cv.checkCvs")}
                             </button>
                             <button type="button" className="secondary-button" onClick={applyCVFileFunctionSuggestions} disabled={saving || readonly || cvFilePreviewStats.functions === 0}>
-                              Funktionen übernehmen
+                              {t("vehicles.cv.applyFunctions")}
                             </button>
                             <button type="button" className="primary-button" onClick={confirmCVFileUpload} disabled={saving || readonly}>
                               <Upload size={15} aria-hidden="true" />
-                              Dateien speichern
+                              {t("vehicles.cv.saveFiles")}
                             </button>
                             <button type="button" className="secondary-button" onClick={() => setCVFileUploadPreview(null)} disabled={saving}>
-                              Abbrechen
+                              {t("vehicles.cancel")}
                             </button>
                           </div>
                         </div>
@@ -3912,23 +3930,23 @@ export function VehiclesView() {
                               )}
                               {preview.hasMetadata ? (
                                 <dl>
-                                  <div><dt>Projekt</dt><dd>{preview.projectName || "-"}</dd></div>
-                                  <div><dt>Decoder</dt><dd>{preview.decoder || "-"}</dd></div>
-                                  <div><dt>Adresse</dt><dd>{preview.address || "-"}</dd></div>
-                                  <div><dt>Typ</dt><dd>{preview.type || "-"}</dd></div>
-                                  <div><dt>Hersteller</dt><dd>{preview.manufacturer || "-"}</dd></div>
+                                  <div><dt>{t("vehicles.cv.project")}</dt><dd>{preview.projectName || "-"}</dd></div>
+                                  <div><dt>{t("vehicles.cv.decoder")}</dt><dd>{preview.decoder || "-"}</dd></div>
+                                  <div><dt>{t("vehicles.cv.address")}</dt><dd>{preview.address || "-"}</dd></div>
+                                  <div><dt>{t("vehicles.cv.type")}</dt><dd>{preview.type || "-"}</dd></div>
+                                  <div><dt>{t("vehicles.cv.manufacturer")}</dt><dd>{preview.manufacturer || "-"}</dd></div>
                                   <div><dt>LokProgrammer</dt><dd>{preview.lokProgrammer || "-"}</dd></div>
                                 </dl>
                               ) : (
-                                <p>Keine ESU/LokProgrammer-Metadaten gefunden. Die Datei kann trotzdem gespeichert werden.</p>
+                                <p>{t("vehicles.cv.noMetadata")}</p>
                               )}
                               {((preview.suggestedCvValues?.length || 0) > 0 || (preview.suggestedFunctions?.length || 0) > 0) && (
                                 <div className="decoder-preview-summary">
                                   {(preview.suggestedCvValues?.length || 0) > 0 && (
-                                    <span>{preview.suggestedCvValues?.length} CV-Werte erkannt</span>
+                                    <span>{t("vehicles.cv.detectedValues", { count: preview.suggestedCvValues?.length || 0 })}</span>
                                   )}
                                   {(preview.suggestedFunctions?.length || 0) > 0 && (
-                                    <span>{preview.suggestedFunctions?.length} Funktionstasten erkannt</span>
+                                    <span>{t("vehicles.cv.detectedFunctions", { count: preview.suggestedFunctions?.length || 0 })}</span>
                                   )}
                                 </div>
                               )}
@@ -3938,7 +3956,7 @@ export function VehiclesView() {
                       </section>
                     )}
                     {selected && (!selected.cvFiles || selected.cvFiles.length === 0) && (
-                      <p className="empty-state compact">Noch keine CV-Dateien hinterlegt.</p>
+                      <p className="empty-state compact">{t("vehicles.cv.filesEmpty")}</p>
                     )}
                     {selected && selected.cvFiles && selected.cvFiles.length > 0 && (
                       <div className="attachment-list">
@@ -3952,7 +3970,7 @@ export function VehiclesView() {
                               </div>
                               <div className="attachment-main">
                                 <strong>{file.originalName}</strong>
-                                <span>{file.decoderProfile || "Ohne Profil"} - {file.mimeType || "Datei"} - {formatFileSize(file.sizeBytes)}</span>
+                                <span>{file.decoderProfile || t("vehicles.cv.noProfile")} - {file.mimeType || "Datei"} - {formatFileSize(file.sizeBytes)}</span>
                                 {file.description && <span>{file.description}</span>}
                               </div>
                               <div className="attachment-actions">
@@ -3962,7 +3980,7 @@ export function VehiclesView() {
                                 </a>
                                 <button type="button" className="danger-button" onClick={() => deleteCVFile(file)} disabled={readonly || saving}>
                                   <Trash2 size={15} aria-hidden="true" />
-                                  Löschen
+                                  {t("vehicles.delete")}
                                 </button>
                               </div>
                             </article>
@@ -3979,8 +3997,8 @@ export function VehiclesView() {
                   <section className="upload-section">
                     <div className="upload-head">
                       <div>
-                        <h3>Bilder</h3>
-                        <p>Hauptbild, Alternativbilder, Quellen und Beschreibungen direkt am Fahrzeug pflegen.</p>
+                        <h3>{t("vehicles.uploads.imagesTitle")}</h3>
+                        <p>{t("vehicles.uploads.imagesSubtitle")}</p>
                       </div>
                       <input
                         ref={imageInputRef}
@@ -3997,9 +4015,9 @@ export function VehiclesView() {
                           value={imageUploadMaintenanceID}
                           onChange={(event) => setImageUploadMaintenanceID(event.target.value)}
                           disabled={readonly || saving}
-                          aria-label="Wartung für neue Bilder"
+                          aria-label={t("vehicles.uploads.noNewMaintenance")}
                         >
-                          <option value="">Ohne Wartung</option>
+                          <option value="">{t("vehicles.uploads.noNewMaintenance")}</option>
                           {maintenanceEntries.map((entry) => (
                             <option key={entry.id} value={entry.id}>{maintenanceOptionLabel(entry)}</option>
                           ))}
@@ -4007,23 +4025,23 @@ export function VehiclesView() {
                       )}
                       <button type="button" className="primary-button" onClick={() => imageInputRef.current?.click()} disabled={readonly || !selected || saving}>
                         <Upload size={16} aria-hidden="true" />
-                        Bild hochladen
+                        {t("vehicles.uploads.imageUpload")}
                       </button>
                     </div>
-                    {!selected && <p className="empty-state compact">Lokale Bilder können nach dem ersten Speichern hochgeladen werden.</p>}
+                    {!selected && <p className="empty-state compact">{t("vehicles.uploads.noImagesUntilSave")}</p>}
                     {pendingArticleImages.length === 0 ? (
                       <div className="upload-list">
                         <div className="image-placeholder large">
                           <Image size={22} aria-hidden="true" />
-                          Keine Vorschau
+                          {t("vehicles.uploads.noPreview")}
                         </div>
-                        <span>Kein Bild hinterlegt</span>
+                        <span>{t("vehicles.uploads.noImage")}</span>
                       </div>
                     ) : (
                       <div className="pending-image-grid">
                         {pendingArticleImages.map((image, imageIndex) => (
                           <figure key={image.id} className={image.isPrimary ? "pending-image-card primary" : "pending-image-card"}>
-                            <button type="button" className="image-preview-button" onClick={() => setPreviewImage(image)} title="Originalgröße anzeigen" aria-label="Originalgröße anzeigen">
+                            <button type="button" className="image-preview-button" onClick={() => setPreviewImage(image)} title={t("vehicles.uploads.openOriginal")} aria-label={t("vehicles.uploads.openOriginal")}>
                               <img src={image.url} alt="" />
                             </button>
                             <figcaption>
@@ -4031,8 +4049,8 @@ export function VehiclesView() {
                                 value={image.title || ""}
                                 onChange={(event) => updatePendingImageTitle(image.id, event.target.value)}
                                 disabled={readonly}
-                                placeholder="Bildbeschreibung"
-                                aria-label="Bildbeschreibung"
+                                placeholder={t("vehicles.uploads.imageDescription")}
+                                aria-label={t("vehicles.uploads.imageDescription")}
                               />
                               <span>{sourceDisplayName(image.source)}</span>
                               {maintenanceEntries.length > 0 && (
@@ -4041,25 +4059,25 @@ export function VehiclesView() {
                                   value={image.maintenanceId || ""}
                                   onChange={(event) => updatePendingImageMaintenance(image.id, event.target.value)}
                                   disabled={readonly || saving}
-                                  aria-label="Bild mit Wartung verknuepfen"
+                                  aria-label={t("vehicles.uploads.linkMaintenance")}
                                 >
-                                  <option value="">Keine Wartung</option>
+                                  <option value="">{t("vehicles.uploads.noMaintenance")}</option>
                                   {maintenanceEntries.map((entry) => (
                                     <option key={entry.id} value={entry.id}>{maintenanceOptionLabel(entry)}</option>
                                   ))}
                                 </select>
                               )}
                               <div className="image-card-actions">
-                                <a className="icon-button" href={image.source} target="_blank" rel="noreferrer" aria-label="Quelle öffnen" title="Quelle öffnen">
+                                <a className="icon-button" href={image.source} target="_blank" rel="noreferrer" aria-label={t("vehicles.uploads.openSource")} title={t("vehicles.uploads.openSource")}>
                                   <ExternalLink size={15} />
                                 </a>
-                                <button type="button" className="icon-button" onClick={() => movePendingImage(image.id, -1)} disabled={readonly || imageIndex === 0} aria-label="Bild nach oben" title="Bild nach oben">
+                                <button type="button" className="icon-button" onClick={() => movePendingImage(image.id, -1)} disabled={readonly || imageIndex === 0} aria-label={t("vehicles.uploads.moveUp")} title={t("vehicles.uploads.moveUp")}>
                                   <ChevronUp size={15} />
                                 </button>
-                                <button type="button" className="icon-button" onClick={() => movePendingImage(image.id, 1)} disabled={readonly || imageIndex === pendingArticleImages.length - 1} aria-label="Bild nach unten" title="Bild nach unten">
+                                <button type="button" className="icon-button" onClick={() => movePendingImage(image.id, 1)} disabled={readonly || imageIndex === pendingArticleImages.length - 1} aria-label={t("vehicles.uploads.moveDown")} title={t("vehicles.uploads.moveDown")}>
                                   <ChevronDown size={15} />
                                 </button>
-                                <button type="button" className={image.isPrimary ? "icon-button active" : "icon-button"} onClick={() => setPrimaryPendingImage(image.id)} aria-label="Als Hauptbild markieren" title={image.isPrimary ? "Hauptbild" : "Als Hauptbild markieren"}>
+                                <button type="button" className={image.isPrimary ? "icon-button active" : "icon-button"} onClick={() => setPrimaryPendingImage(image.id)} aria-label={t("vehicles.uploads.markPrimary")} title={image.isPrimary ? t("vehicles.uploads.primary") : t("vehicles.uploads.markPrimary")}>
                                   <Star size={15} />
                                 </button>
                                 <button
@@ -4067,8 +4085,8 @@ export function VehiclesView() {
                                   className="icon-button danger"
                                   onClick={() => removePendingImage(image)}
                                   disabled={readonly || saving}
-                                  aria-label="Bild entfernen"
-                                  title="Bild entfernen"
+                                  aria-label={t("vehicles.uploads.removeImage")}
+                                  title={t("vehicles.uploads.removeImage")}
                                 >
                                   <Trash2 size={15} />
                                 </button>
@@ -4083,8 +4101,8 @@ export function VehiclesView() {
                   <section className="upload-section">
                     <div className="upload-head">
                       <div>
-                        <h3>Beilagen</h3>
-                        <p>PDFs, Anleitungen, Rechnungen und andere zugelassene Dateien direkt in der Erfassung pflegen.</p>
+                        <h3>{t("vehicles.uploads.attachmentsTitle")}</h3>
+                        <p>{t("vehicles.uploads.attachmentsSubtitle")}</p>
                       </div>
                       <input
                         ref={attachmentInputRef}
@@ -4097,7 +4115,7 @@ export function VehiclesView() {
                       />
                       <button type="button" className="primary-button" onClick={() => attachmentInputRef.current?.click()} disabled={readonly || !selected || saving}>
                         <Upload size={16} aria-hidden="true" />
-                        Beilage hochladen
+                        {t("vehicles.uploads.attachmentUpload")}
                       </button>
                     </div>
                     <section
@@ -4106,21 +4124,21 @@ export function VehiclesView() {
                       onDragOver={onAttachmentDrag}
                       onDragLeave={onAttachmentDrag}
                       onDrop={onAttachmentDrop}
-                      aria-label="Beilagen per Drag and Drop hochladen"
+                      aria-label={t("vehicles.uploads.dropAria")}
                     >
                       <div>
-                        <strong>Dateien hier ablegen</strong>
-                        <span>PDF, TXT, CSV, JSON, XML, ZIP sowie JPG, PNG und WebP. Maximal 25 MB pro Datei.</span>
+                        <strong>{t("vehicles.uploads.dropTitle")}</strong>
+                        <span>{t("vehicles.uploads.dropHelp")}</span>
                       </div>
                       <div className="attachment-upload-fields">
                         <select value={attachmentUploadCategory} onChange={(event) => setAttachmentUploadCategory(event.target.value)} disabled={readonly || !selected || saving}>
-                          <option value="">Kategorie automatisch</option>
+                          <option value="">{t("vehicles.uploads.autoCategory")}</option>
                           {attachmentCategories.map((category) => (
                             <option key={category} value={category}>{category}</option>
                           ))}
                         </select>
                         <select value={attachmentUploadMaintenanceID} onChange={(event) => setAttachmentUploadMaintenanceID(event.target.value)} disabled={readonly || !selected || saving}>
-                          <option value="">Keine Wartung</option>
+                          <option value="">{t("vehicles.uploads.noMaintenance")}</option>
                           {maintenanceEntries.map((entry) => (
                             <option key={entry.id} value={entry.id}>{maintenanceOptionLabel(entry)}</option>
                           ))}
@@ -4129,13 +4147,13 @@ export function VehiclesView() {
                           value={attachmentUploadDescription}
                           onChange={(event) => setAttachmentUploadDescription(event.target.value)}
                           disabled={readonly || !selected || saving}
-                          placeholder="Bemerkung für neue Beilagen"
+                          placeholder={t("vehicles.uploads.notePlaceholder")}
                         />
                       </div>
                     </section>
-                    {!selected && <p className="empty-state compact">Beilagen können nach dem ersten Speichern hinzugefügt werden.</p>}
+                    {!selected && <p className="empty-state compact">{t("vehicles.uploads.attachmentsUntilSave")}</p>}
                     {selected && (!selected.attachments || selected.attachments.length === 0) && (
-                      <p className="empty-state compact">Noch keine Beilagen hinterlegt.</p>
+                      <p className="empty-state compact">{t("vehicles.uploads.attachmentsEmpty")}</p>
                     )}
                     {selected && selected.attachments && selected.attachments.length > 0 && (
                       <div className="attachment-list">
@@ -4154,21 +4172,21 @@ export function VehiclesView() {
                               </div>
                               <div className="attachment-main">
                                 <strong>{attachment.originalName}</strong>
-                                <span>{attachment.category || "Ohne Kategorie"} - {attachment.mimeType || "Datei"} - {formatFileSize(attachment.sizeBytes)}</span>
+                                <span>{attachment.category || t("vehicles.uploads.noCategory")} - {attachment.mimeType || "Datei"} - {formatFileSize(attachment.sizeBytes)}</span>
                                 <div className="attachment-edit-row">
                                   <select value={edit.category} onChange={(event) => updateAttachmentEdit(attachment.id, { category: event.target.value })} disabled={readonly}>
-                                    <option value="">Kategorie</option>
+                                    <option value="">{t("vehicles.uploads.category")}</option>
                                     {attachmentCategories.map((category) => (
                                       <option key={category} value={category}>{category}</option>
                                     ))}
                                   </select>
                                   <select value={edit.maintenanceId} onChange={(event) => updateAttachmentEdit(attachment.id, { maintenanceId: event.target.value })} disabled={readonly}>
-                                    <option value="">Keine Wartung</option>
+                                    <option value="">{t("vehicles.uploads.noMaintenance")}</option>
                                     {maintenanceEntries.map((entry) => (
                                       <option key={entry.id} value={entry.id}>{maintenanceOptionLabel(entry)}</option>
                                     ))}
                                   </select>
-                                  <input value={edit.description} onChange={(event) => updateAttachmentEdit(attachment.id, { description: event.target.value })} disabled={readonly} placeholder="Bemerkung" />
+                                  <input value={edit.description} onChange={(event) => updateAttachmentEdit(attachment.id, { description: event.target.value })} disabled={readonly} placeholder={t("vehicles.uploads.note")} />
                                 </div>
                               </div>
                               <div className="attachment-actions">
@@ -4177,17 +4195,17 @@ export function VehiclesView() {
                                   Download
                                 </a>
                                 {attachment.mimeType?.includes("pdf") && (
-                                  <a className="icon-button" href={`${downloadUrl}?inline=true`} target="_blank" rel="noreferrer" aria-label="PDF öffnen" title="PDF öffnen">
+                                  <a className="icon-button" href={`${downloadUrl}?inline=true`} target="_blank" rel="noreferrer" aria-label={t("vehicles.uploads.openPdf")} title={t("vehicles.uploads.openPdf")}>
                                     <ExternalLink size={15} />
                                   </a>
                                 )}
                                 <button type="button" className="secondary-button" onClick={() => saveAttachment(attachment)} disabled={readonly || saving}>
                                   <Save size={15} aria-hidden="true" />
-                                  Speichern
+                                  {t("vehicles.save")}
                                 </button>
                                 <button type="button" className="danger-button" onClick={() => deleteAttachment(attachment)} disabled={readonly || saving}>
                                   <Trash2 size={15} aria-hidden="true" />
-                                  Löschen
+                                  {t("vehicles.delete")}
                                 </button>
                               </div>
                             </article>
@@ -4204,80 +4222,80 @@ export function VehiclesView() {
                   <section className="maintenance-editor">
                     <div className="upload-head">
                       <div>
-                        <h3>Wartung und Zustand</h3>
-                        <p>Wartungen, Reparaturen, Umbauten, Fälligkeiten und Kosten am Fahrzeug dokumentieren.</p>
+                        <h3>{t("vehicles.maintenance.title")}</h3>
+                        <p>{t("vehicles.maintenance.subtitle")}</p>
                       </div>
                       <Wrench size={22} aria-hidden="true" />
                     </div>
-                    {!selected && <p className="empty-state compact">Wartungseinträge können nach dem ersten Speichern hinzugefügt werden.</p>}
+                    {!selected && <p className="empty-state compact">{t("vehicles.maintenance.emptyUntilSave")}</p>}
                     {selected && (
                       <>
                         <div className="maintenance-summary">
                           <div>
-                            <span>Fällig</span>
+                            <span>{t("vehicles.maintenance.due")}</span>
                             <strong>{maintenanceSummary.due}</strong>
                           </div>
                           <div>
-                            <span>Geplant/offen</span>
+                            <span>{t("vehicles.maintenance.plannedOpen")}</span>
                             <strong>{maintenanceSummary.planned}</strong>
                           </div>
                           <div>
-                            <span>Erledigt</span>
+                            <span>{t("vehicles.maintenance.done")}</span>
                             <strong>{maintenanceSummary.done}</strong>
                           </div>
                         </div>
                         <div className="maintenance-form">
                           <label>
-                            Art
+                            {t("vehicles.maintenance.kind")}
                             <select value={maintenanceForm.kind} onChange={(event) => updateMaintenanceForm({ kind: event.target.value })} disabled={readonly || saving}>
                               {maintenanceKinds.map((kind) => (
-                                <option key={kind} value={kind}>{kind}</option>
+                                <option key={kind} value={kind}>{t(`vehicles.maintenance.kind.${kind}`)}</option>
                               ))}
                             </select>
                           </label>
                           <label>
-                            Status
+                            {t("vehicles.maintenance.status")}
                             <select value={maintenanceForm.status} onChange={(event) => updateMaintenanceForm({ status: event.target.value })} disabled={readonly || saving}>
                               {maintenanceStatuses.map((status) => (
-                                <option key={status.value} value={status.value}>{status.label}</option>
+                                <option key={status.value} value={status.value}>{t(`vehicles.maintenance.status.${status.value}`)}</option>
                               ))}
                             </select>
                           </label>
                           <label>
-                            Zustand
+                            {t("vehicles.maintenance.condition")}
                             <select value={maintenanceForm.conditionRating || ""} onChange={(event) => updateMaintenanceForm({ conditionRating: event.target.value })} disabled={readonly || saving}>
-                              <option value="">Bitte wählen</option>
+                              <option value="">{t("vehicles.select.placeholder")}</option>
                               {conditionRatings.map((rating) => (
                                 <option key={rating} value={rating}>{rating}</option>
                               ))}
                             </select>
                           </label>
                           <label>
-                            Fällig am
+                            {t("vehicles.maintenance.dueDate")}
                             <input type="date" value={maintenanceForm.dueDate || ""} onChange={(event) => updateMaintenanceForm({ dueDate: event.target.value })} disabled={readonly || saving} />
                           </label>
                           <label>
-                            Durchgeführt am
+                            {t("vehicles.maintenance.completedAt")}
                             <input type="date" value={maintenanceForm.completedAt || ""} onChange={(event) => updateMaintenanceForm({ completedAt: event.target.value })} disabled={readonly || saving} />
                           </label>
                           <label>
-                            Kosten
+                            {t("vehicles.maintenance.cost")}
                             <input value={maintenanceForm.cost || ""} onChange={(event) => updateMaintenanceForm({ cost: event.target.value })} disabled={readonly || saving} inputMode="decimal" placeholder="0,00" />
                           </label>
                           <label className="maintenance-notes">
-                            Notizen
+                            {t("vehicles.maintenance.notes")}
                             <textarea value={maintenanceForm.notes || ""} onChange={(event) => updateMaintenanceForm({ notes: event.target.value })} disabled={readonly || saving} rows={4} />
                           </label>
                         </div>
                         <div className="maintenance-actions">
                           {editingMaintenanceID && (
                             <button type="button" className="secondary-button" onClick={resetMaintenanceForm} disabled={readonly || saving}>
-                              Abbrechen
+                              {t("vehicles.cancel")}
                             </button>
                           )}
                           <button type="button" className="primary-button" onClick={saveMaintenance} disabled={readonly || saving}>
                             <Save size={15} aria-hidden="true" />
-                            {editingMaintenanceID ? "Eintrag speichern" : "Eintrag hinzufügen"}
+                            {editingMaintenanceID ? t("vehicles.maintenance.saveEntry") : t("vehicles.maintenance.addEntry")}
                           </button>
                         </div>
                       </>
@@ -4286,7 +4304,7 @@ export function VehiclesView() {
 
                   <section className="maintenance-list">
                     {selected && (!selected.maintenance || selected.maintenance.length === 0) && (
-                      <p className="empty-state compact">Noch keine Wartungseinträge hinterlegt.</p>
+                      <p className="empty-state compact">{t("vehicles.maintenance.empty")}</p>
                     )}
                     {selected?.maintenance?.map((entry) => {
                       const linkedImages = pendingArticleImages.filter((image) => image.maintenanceId === entry.id).length;
@@ -4296,48 +4314,48 @@ export function VehiclesView() {
                         <div className="maintenance-card-head">
                           <div>
                             <strong>{entry.kind}</strong>
-                            <span>{entry.notes || "Keine Notiz hinterlegt"}</span>
+                            <span>{entry.notes || t("vehicles.maintenance.noNote")}</span>
                           </div>
-                          <span className={`maintenance-badge ${maintenanceStatusClass(entry.status)}`}>{maintenanceStatusLabel(entry.status)}</span>
+                          <span className={`maintenance-badge ${maintenanceStatusClass(entry.status)}`}>{t(`vehicles.maintenance.status.${normalizeMaintenanceStatus(entry.status)}`)}</span>
                         </div>
                         <dl className="maintenance-meta">
                           <div>
-                            <dt>Fällig</dt>
+                            <dt>{t("vehicles.maintenance.due")}</dt>
                             <dd>{formatDate(entry.dueDate)}</dd>
                           </div>
                           <div>
-                            <dt>Durchgeführt</dt>
+                            <dt>{t("vehicles.maintenance.completedAt")}</dt>
                             <dd>{formatDate(entry.completedAt)}</dd>
                           </div>
                           <div>
-                            <dt>Zustand</dt>
+                            <dt>{t("vehicles.maintenance.condition")}</dt>
                             <dd>{entry.conditionRating || "-"}</dd>
                           </div>
                           <div>
-                            <dt>Kosten</dt>
+                            <dt>{t("vehicles.maintenance.cost")}</dt>
                             <dd>{formatMaintenanceCost(entry.cost)}</dd>
                           </div>
                         </dl>
                         {(linkedImages > 0 || linkedAttachments > 0) && (
-                          <div className="maintenance-linked-media" aria-label="Verknüpfte Medien">
+                          <div className="maintenance-linked-media" aria-label={t("vehicles.maintenance.linkedMedia")}>
                             {linkedImages > 0 && (
-                              <span><Image size={14} aria-hidden="true" /> {linkedImages} Bilder</span>
+                              <span><Image size={14} aria-hidden="true" /> {linkedImages} {t("vehicles.maintenance.images")}</span>
                             )}
                             {linkedAttachments > 0 && (
-                              <span><FileText size={14} aria-hidden="true" /> {linkedAttachments} Beilagen</span>
+                              <span><FileText size={14} aria-hidden="true" /> {linkedAttachments} {t("vehicles.maintenance.attachments")}</span>
                             )}
                           </div>
                         )}
                         <div className="maintenance-card-actions">
                           {entry.status !== "erledigt" && (
                             <button type="button" className="secondary-button" onClick={() => completeMaintenance(entry)} disabled={readonly || saving}>
-                              Erledigt
+                              {t("vehicles.maintenance.done")}
                             </button>
                           )}
-                          <button type="button" className="icon-button" onClick={() => editMaintenance(entry)} disabled={readonly || saving} aria-label="Wartung bearbeiten" title="Wartung bearbeiten">
+                          <button type="button" className="icon-button" onClick={() => editMaintenance(entry)} disabled={readonly || saving} aria-label={t("vehicles.maintenance.edit")} title={t("vehicles.maintenance.edit")}>
                             <Pencil size={15} />
                           </button>
-                          <button type="button" className="icon-button danger" onClick={() => deleteMaintenance(entry)} disabled={readonly || saving} aria-label="Wartung löschen" title="Wartung löschen">
+                          <button type="button" className="icon-button danger" onClick={() => deleteMaintenance(entry)} disabled={readonly || saving} aria-label={t("vehicles.maintenance.delete")} title={t("vehicles.maintenance.delete")}>
                             <Trash2 size={15} />
                           </button>
                         </div>
@@ -4353,15 +4371,15 @@ export function VehiclesView() {
               {message && <p className="form-message">{message}</p>}
               {readonly ? (
                 <button type="button" className="primary-button" onClick={() => setMode("edit")}>
-                  Bearbeiten
+                  {t("vehicles.edit")}
                 </button>
               ) : (
                 <>
                   <button type="button" className="secondary-button" onClick={closeModal}>
-                    Abbrechen
+                    {t("vehicles.cancel")}
                   </button>
                   <button className="primary-button" disabled={saving}>
-                    {saving ? "Wird gespeichert..." : "Speichern"}
+                    {saving ? t("vehicles.saving") : t("vehicles.save")}
                   </button>
                 </>
               )}
@@ -4417,11 +4435,11 @@ export function VehiclesView() {
       )}
 
       {deleteCandidate && (
-        <div className="confirm-layer" role="dialog" aria-modal="true" aria-label="Fahrzeug löschen">
+        <div className="confirm-layer" role="dialog" aria-modal="true" aria-label={t("vehicles.delete.aria")}>
           <section className="confirm-card">
             <div className="panel-head form-head">
-              <h2>Fahrzeug löschen?</h2>
-              <button type="button" className="icon-button" onClick={() => setDeleteCandidate(null)} aria-label="Schließen">
+              <h2>{t("vehicles.delete.title")}</h2>
+              <button type="button" className="icon-button" onClick={() => setDeleteCandidate(null)} aria-label={t("vehicles.close")}>
                 <X size={17} />
               </button>
             </div>
@@ -4430,10 +4448,10 @@ export function VehiclesView() {
             </p>
             <div className="confirm-actions">
               <button type="button" className="secondary-button" onClick={() => setDeleteCandidate(null)}>
-                Abbrechen
+                {t("vehicles.cancel")}
               </button>
               <button type="button" className="danger-button" onClick={confirmDelete}>
-                Löschen
+                {t("vehicles.delete")}
               </button>
             </div>
           </section>

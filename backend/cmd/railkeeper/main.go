@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	version               = "0.1.0-dev"
+	version               = "0.1.0"
 	defaultUpdateCheckURL = "https://api.github.com/repos/ichwars/RailKeeper2/releases/latest"
 )
 
@@ -83,6 +83,7 @@ func main() {
 		InventoryNumbers:            application.NewInventoryNumberService(db),
 		BackupService:               application.NewBackupService(db, dataDir),
 		ExhibitionService:           application.NewExhibitionService(db),
+		ECoSService:                 application.NewECoSService(),
 		RateLimitService:            application.NewRateLimitService(db),
 		CookieSecure:                cookieSecure,
 	})

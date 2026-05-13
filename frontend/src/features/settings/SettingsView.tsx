@@ -44,8 +44,6 @@ import { applyStoredThemeOptions, applyThemePreference, readThemePreference, The
 type SettingsTab = "general" | "data" | "importExport" | "appearance" | "auth";
 type MasterDataType = {
   type: string;
-  label: string;
-  description: string;
 };
 
 const settingsTabs: { id: SettingsTab; labelKey: string }[] = [
@@ -57,41 +55,13 @@ const settingsTabs: { id: SettingsTab; labelKey: string }[] = [
 ];
 
 const masterDataTypes: MasterDataType[] = [
-  {
-    type: "manufacturer",
-    label: "Hersteller",
-    description: "Hersteller mit optionaler Nenngröße, Spurweite oder Webseite pflegen."
-  },
-  {
-    type: "vehicle_category",
-    label: "Kategorie",
-    description: "Fahrzeugkategorien für die Erfassung verwalten."
-  },
-  {
-    type: "vehicle_gattung",
-    label: "Gattung",
-    description: "Gattungen passend zu den Fahrzeugkategorien pflegen."
-  },
-  {
-    type: "epoch",
-    label: "Epoche",
-    description: "Epochen für die Fahrzeugauswahl verwalten."
-  },
-  {
-    type: "gauge",
-    label: "Spur",
-    description: "Spurweiten und Maßstäbe für Dropdowns pflegen."
-  },
-  {
-    type: "railway_company",
-    label: "Bahngesellschaft",
-    description: "Bahngesellschaften mit Abkürzungen und Zusatzdaten pflegen."
-  },
-  {
-    type: "symbols",
-    label: "Symbole",
-    description: "Funktionssymbole für Digitalfunktionen verwalten."
-  }
+  { type: "manufacturer" },
+  { type: "vehicle_category" },
+  { type: "vehicle_gattung" },
+  { type: "epoch" },
+  { type: "gauge" },
+  { type: "railway_company" },
+  { type: "symbols" }
 ];
 
 const loadableMasterDataTypes = masterDataTypes;
@@ -117,14 +87,6 @@ const localSettingKeys = {
 
 const sidebarOrderChangedEvent = "railkeeper-sidebar-order-changed";
 const defaultSidebarOrder: AppView[] = ["overview", "vehicles", "exhibition", "importExport", "settings"];
-const sidebarLabels: Record<AppView, string> = {
-  overview: "Übersicht",
-  vehicles: "Bestand",
-  exhibition: "Messeliste",
-  importExport: "Import/Export",
-  settings: "Einstellungen"
-};
-
 function formatBytes(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "0 KB";
   if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toLocaleString("de-DE", { maximumFractionDigits: 1 })} MB`;
@@ -188,37 +150,6 @@ const emptyPasswordForm = {
 };
 
 type PasswordFormState = typeof emptyPasswordForm;
-
-const roleDescriptions: Record<string, string> = {
-  Admin: "Vollzugriff auf Einstellungen, Backup und Benutzerverwaltung.",
-  Editor: "Bestand, Stammdaten, Wartung, Uploads und CV-Daten bearbeiten.",
-  Viewer: "Lesender Zugriff auf Bestand und Stammdaten.",
-  Messe: "Zugriff auf Messelisten, Einträge und Messe-Druck."
-};
-
-const auditActionLabels: Record<string, string> = {
-  Login: "Anmeldung",
-  Logout: "Abmeldung",
-  LoginFailed: "Fehlgeschlagene Anmeldung",
-  SetupAdminCreated: "Admin eingerichtet",
-  UserCreated: "Benutzer angelegt",
-  UserUpdated: "Benutzer geändert",
-  UserDeleted: "Benutzer gelöscht",
-  PasswordChanged: "Passwort geändert",
-  PasswordChangeFailed: "Passwortwechsel fehlgeschlagen",
-  SessionRevoked: "Sitzung widerrufen",
-  VehicleCreated: "Fahrzeug angelegt",
-  VehicleUpdated: "Fahrzeug geändert",
-  VehicleDeleted: "Fahrzeug gelöscht",
-  ExhibitionListCreated: "Messeliste angelegt",
-  ExhibitionListUpdated: "Messeliste geändert",
-  ExhibitionListDeleted: "Messeliste gelöscht",
-  ExhibitionListLocked: "Messeliste gesperrt",
-  ExhibitionListUnlocked: "Messeliste entsperrt",
-  ExhibitionEntryCreated: "Messe-Eintrag angelegt",
-  ExhibitionEntryUpdated: "Messe-Eintrag geändert",
-  ExhibitionEntryDeleted: "Messe-Eintrag gelöscht"
-};
 
 function auditActor(entry: AuditLogEntry) {
   return entry.actorUsername || entry.actorUserId || (entry.action === "LoginFailed" ? "Unbekannt" : "System");
@@ -396,6 +327,51 @@ export function SettingsView() {
     () => masterDataTypes.find((item) => item.type === activeType) || masterDataTypes[0],
     [activeType]
   );
+  const masterLabel = (type: string) => t(`settings.master.${type}`);
+  const masterDescription = (type: string) => t(`settings.master.${type}Desc`);
+  const auditLabel = (action: string) => {
+    const label = t(`settings.auditAction.${action}`);
+    return label === `settings.auditAction.${action}` ? action : label;
+  };
+  const roleDescription = (role: string) => {
+    const description = t(`settings.role.${role}`);
+    return description === `settings.role.${role}` ? t("settings.roles.custom") : description;
+  };
+  const inventoryCategoryLabel = (category: string) => {
+    const label = t(`settings.category.${category}`);
+    return label === `settings.category.${category}` ? category : label;
+  };
+  const storageCategoryLabel = (key: string, label: string) => {
+    const normalized = `${key} ${label}`.toLocaleLowerCase("de-DE");
+    const categoryKey =
+      normalized.includes("database") || normalized.includes("datenbank") ? "database" :
+      normalized.includes("thumbnail") || normalized.includes("vorschau") ? "thumbnails" :
+      normalized.includes("image") || normalized.includes("bild") ? "images" :
+      normalized.includes("attachment") || normalized.includes("beilage") ? "attachments" :
+      normalized.includes("other") || normalized.includes("sonstig") ? "other" : "";
+    if (!categoryKey) return label;
+    return t(`settings.storage.category.${categoryKey}`);
+  };
+  const fileCountLabel = (count: number, bytes: number) =>
+    t("settings.storage.fileCount", {
+      count,
+      suffix: count === 1 ? "" : language === "de" ? "en" : "s",
+      size: formatBytes(bytes)
+    });
+  const versionStatusLabel = (info: VersionInfo) => {
+    if (info.updateAvailable) return t("settings.updates.status.updateAvailable");
+    if (info.status === "current") return betaUpdates ? t("settings.updates.status.currentBeta") : t("settings.updates.status.current");
+    if (info.status === "no_release") return t("settings.updates.status.noRelease");
+    if (info.status === "unavailable") return t("settings.updates.status.offline");
+    return t("settings.updates.status.local");
+  };
+  const localizedStatusMessage = (message: string) => {
+    if (message.includes("Windows-Systemdrucker")) return t("settings.printer.messageLoaded");
+    if (message.includes("Keine Release-Information")) return t("settings.updates.message.noRelease");
+    return message;
+  };
+  const activeDataLabel = masterLabel(activeDataType.type);
+  const activeDataDescription = masterDescription(activeDataType.type);
   const storageFileCount = useMemo(
     () => (storageUsage?.categories || []).reduce((total, category) => total + category.files, 0),
     [storageUsage]
@@ -585,7 +561,7 @@ export function SettingsView() {
       .version(shouldCheck, includeBeta)
       .then((info) => {
         setVersionInfo(info);
-        setVersionMessage(info.message || `RailKeeper ist erreichbar. Aktuelle Version: ${info.version || "unbekannt"}.`);
+        setVersionMessage(info.message || t("settings.updates.message.reachable", { version: info.version || t("settings.unknown") }));
       })
       .catch((error: Error) => setVersionMessage(error.message))
       .finally(() => setVersionLoading(false));
@@ -982,17 +958,17 @@ export function SettingsView() {
                 <label>
                   {t("settings.dateFormat")}
                   <select value={dateFormat} onChange={(event) => setLocalSetting(localSettingKeys.dateFormat, event.target.value, setDateFormat)}>
-                    <option value="system">Systemstandard</option>
-                    <option value="de">Deutsch: 31.12.2026</option>
-                    <option value="iso">ISO: 2026-12-31</option>
+                    <option value="system">{t("settings.option.systemDefault")}</option>
+                    <option value="de">{t("settings.option.dateDe")}</option>
+                    <option value="iso">{t("settings.option.dateIso")}</option>
                   </select>
                 </label>
                 <label>
                   {t("settings.timeFormat")}
                   <select value={timeFormat} onChange={(event) => setLocalSetting(localSettingKeys.timeFormat, event.target.value, setTimeFormat)}>
-                    <option value="system">Systemstandard</option>
-                    <option value="24h">24 Stunden</option>
-                    <option value="12h">12 Stunden</option>
+                    <option value="system">{t("settings.option.systemDefault")}</option>
+                    <option value="24h">{t("settings.option.hours24")}</option>
+                    <option value="12h">{t("settings.option.hours12")}</option>
                   </select>
                 </label>
                 <label className="settings-field-wide">
@@ -1001,7 +977,7 @@ export function SettingsView() {
                     <option value="system-dialog">{t("settings.printer.system")}</option>
                     {(systemPrinters?.printers || []).map((printer) => (
                       <option key={printer.id} value={`printer:${printer.name}`}>
-                        {printer.name}{printer.isDefault ? " (Standard)" : ""}
+                        {printer.name}{printer.isDefault ? ` (${t("settings.defaultPrinter.default")})` : ""}
                       </option>
                     ))}
                     <option value="ask">{t("settings.printer.ask")}</option>
@@ -1010,7 +986,7 @@ export function SettingsView() {
                 </label>
               </div>
               <div className="settings-action-row">
-                <p>{printerMessage || t("settings.printer.message")}</p>
+                <p>{printerMessage ? localizedStatusMessage(printerMessage) : t("settings.printer.message")}</p>
                 <button type="button" className="secondary-button" onClick={() => window.print()}>
                   <Printer size={17} />
                   {t("settings.printer.open")}
@@ -1029,10 +1005,10 @@ export function SettingsView() {
                     <div key={view}>
                       <span>{index + 1}</span>
                       <strong>{t(`nav.${view}`)}</strong>
-                      <button type="button" className="icon-button" onClick={() => moveSidebarItem(view, -1)} disabled={index === 0} aria-label={t(`nav.${view}`) + " nach oben"} title="Nach oben">
+                      <button type="button" className="icon-button" onClick={() => moveSidebarItem(view, -1)} disabled={index === 0} aria-label={t("overview.widget.forward", { label: t(`nav.${view}`) })} title={t("overview.moveForward")}>
                         <ChevronUp size={15} />
                       </button>
-                      <button type="button" className="icon-button" onClick={() => moveSidebarItem(view, 1)} disabled={index === sidebarOrder.length - 1} aria-label={t(`nav.${view}`) + " nach unten"} title="Nach unten">
+                      <button type="button" className="icon-button" onClick={() => moveSidebarItem(view, 1)} disabled={index === sidebarOrder.length - 1} aria-label={t("overview.widget.backward", { label: t(`nav.${view}`) })} title={t("overview.moveBackward")}>
                         <ChevronDown size={15} />
                       </button>
                     </div>
@@ -1047,10 +1023,10 @@ export function SettingsView() {
             <section className="panel settings-card settings-tool-card">
               <div className="settings-section-head">
                 <div>
-                  <h2>Inventarnummern</h2>
-                  <p>Präfixe, laufende Nummern und Stellen je Fahrzeugtyp verwalten.</p>
+                  <h2>{t("settings.inventoryNumbers.title")}</h2>
+                  <p>{t("settings.inventoryNumbers.subtitle")}</p>
                 </div>
-                <button type="button" className="icon-button" onClick={loadInventorySchemes} aria-label="Aktualisieren" title="Aktualisieren" disabled={inventorySchemesLoading}>
+                <button type="button" className="icon-button" onClick={loadInventorySchemes} aria-label={t("settings.inventoryNumbers.refresh")} title={t("settings.inventoryNumbers.refresh")} disabled={inventorySchemesLoading}>
                   <RefreshCw size={16} />
                 </button>
               </div>
@@ -1059,28 +1035,28 @@ export function SettingsView() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Kategorie</th>
-                      <th>Präfix</th>
-                      <th>Nächste Nr.</th>
-                      <th>Stellen</th>
-                      <th>Aktiv</th>
-                      <th>Vorschau</th>
-                      <th>Aktion</th>
+                      <th>{t("settings.inventoryNumbers.category")}</th>
+                      <th>{t("settings.inventoryNumbers.prefix")}</th>
+                      <th>{t("settings.inventoryNumbers.next")}</th>
+                      <th>{t("settings.inventoryNumbers.padding")}</th>
+                      <th>{t("common.active")}</th>
+                      <th>{t("settings.inventoryNumbers.preview")}</th>
+                      <th>{t("exhibition.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {inventorySchemesLoading && inventorySchemes.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="loading-cell">Lade Nummernschemata...</td>
+                        <td colSpan={7} className="loading-cell">{t("settings.inventoryNumbers.loading")}</td>
                       </tr>
                     ) : inventorySchemes.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="loading-cell">Keine Nummernschemata gefunden.</td>
+                        <td colSpan={7} className="loading-cell">{t("settings.inventoryNumbers.empty")}</td>
                       </tr>
                     ) : (
                       inventorySchemes.map((scheme) => (
                         <tr key={scheme.id}>
-                          <td><strong>{scheme.category}</strong></td>
+                          <td><strong>{inventoryCategoryLabel(scheme.category)}</strong></td>
                           <td>
                             <input value={scheme.prefix} onChange={(event) => updateInventoryScheme(scheme.category, { prefix: event.target.value })} />
                           </td>
@@ -1091,7 +1067,7 @@ export function SettingsView() {
                             <input type="number" min={1} max={12} value={scheme.padding} onChange={(event) => updateInventoryScheme(scheme.category, { padding: Number(event.target.value) })} />
                           </td>
                           <td>
-                            <label className="switch-field" aria-label={scheme.category + " aktiv"}>
+                            <label className="switch-field" aria-label={t("settings.inventoryNumbers.activeAria", { category: inventoryCategoryLabel(scheme.category) })}>
                               <input type="checkbox" checked={scheme.active} onChange={(event) => updateInventoryScheme(scheme.category, { active: event.target.checked })} />
                               <span />
                             </label>
@@ -1099,7 +1075,7 @@ export function SettingsView() {
                           <td><code>{scheme.preview}</code></td>
                           <td>
                             <button type="button" className="secondary-button compact-action" onClick={() => saveInventoryScheme(scheme)}>
-                              Speichern
+                              {t("vehicles.save")}
                             </button>
                           </td>
                         </tr>
@@ -1116,12 +1092,12 @@ export function SettingsView() {
             <section className="panel settings-card settings-tool-card">
               <div className="settings-card-title">
                 <Database size={17} />
-                <h2>Artikeldaten-Websuche</h2>
+                <h2>{t("settings.articleSearch.title")}</h2>
               </div>
               <label className="settings-toggle-row">
                 <span>
-                  <strong>Websuche aktiv</strong>
-                  <small>Erlaubt die Suche nach externen Artikeldaten und Bildern.</small>
+                  <strong>{t("settings.articleSearch.active")}</strong>
+                  <small>{t("settings.articleSearch.help")}</small>
                 </span>
                 <span className="switch-field">
                   <input type="checkbox" checked={articleSearchEnabled} onChange={(event) => updateArticleSearchEnabled(event.target.checked)} />
@@ -1133,12 +1109,12 @@ export function SettingsView() {
             <section className="panel settings-card settings-tool-card">
               <div className="settings-card-title">
                 <RefreshCw size={17} />
-                <h2>Updates</h2>
+                <h2>{t("settings.updates.title")}</h2>
               </div>
               <label className="settings-toggle-row">
                 <span>
-                  <strong>Nach Updates suchen</strong>
-                  <small>Prüft die lokale RailKeeper-Version.</small>
+                  <strong>{t("settings.updates.check")}</strong>
+                  <small>{t("settings.updates.checkHelp")}</small>
                 </span>
                 <span className="switch-field">
                   <input type="checkbox" checked={updateChecks} onChange={(event) => setLocalBool(localSettingKeys.updateChecks, event.target.checked, setUpdateChecks)} />
@@ -1147,8 +1123,8 @@ export function SettingsView() {
               </label>
               <label className="settings-toggle-row">
                 <span>
-                  <strong>Beta-Versionen einschließen</strong>
-                  <small>Berücksichtigt auch Prereleases, wenn der Update-Endpunkt GitHub-Releases liefert.</small>
+                  <strong>{t("settings.updates.beta")}</strong>
+                  <small>{t("settings.updates.betaHelp")}</small>
                 </span>
                 <span className="switch-field">
                   <input type="checkbox" checked={betaUpdates} onChange={(event) => updateBetaUpdates(event.target.checked)} />
@@ -1157,42 +1133,42 @@ export function SettingsView() {
               </label>
               <div className="settings-action-row">
                 <p>
-                  Aktuelle Version: <strong>{versionInfo?.version || "unbekannt"}</strong>
-                  {versionInfo?.latestVersion && <> · Neueste Version: <strong>{versionInfo.latestVersion}</strong></>}
+                  {t("settings.updates.currentVersion")}: <strong>{versionInfo?.version || t("settings.unknown")}</strong>
+                  {versionInfo?.latestVersion && <> · {t("settings.updates.latestVersion")}: <strong>{versionInfo.latestVersion}</strong></>}
                 </p>
                 {versionInfo?.status && (
                   <span className={`settings-pill ${versionInfo.updateAvailable ? "active" : ["unavailable", "no_release"].includes(versionInfo.status) ? "muted" : ""}`}>
-                    {versionInfo.updateAvailable ? "Update verfügbar" : versionInfo.status === "current" ? (betaUpdates ? "aktuell inkl. Beta" : "aktuell") : versionInfo.status === "not_configured" ? "lokal" : versionInfo.status === "no_release" ? "kein Release" : versionInfo.status === "unavailable" ? "offline" : "lokal"}
+                    {versionStatusLabel(versionInfo)}
                   </span>
                 )}
                 <button type="button" className="secondary-button" onClick={() => loadVersionInfo(true)} disabled={versionLoading}>
                   <RefreshCw size={17} />
-                  {versionLoading ? "Prüft..." : "Jetzt prüfen"}
+                  {versionLoading ? t("settings.updates.checking") : t("settings.updates.checkNow")}
                 </button>
               </div>
               {versionInfo?.releaseUrl && (
                 <a className="settings-link-row" href={versionInfo.releaseUrl} target="_blank" rel="noreferrer">
                   <ExternalLink size={15} />
-                  Release öffnen
+                  {t("settings.updates.openRelease")}
                 </a>
               )}
-              {versionMessage && <p className="form-message">{versionMessage}</p>}
+              {versionMessage && <p className="form-message">{localizedStatusMessage(versionMessage)}</p>}
             </section>
 
             <section className="panel settings-card settings-tool-card">
               <div className="settings-section-head">
                 <div className="settings-card-title">
                   <HardDrive size={17} />
-                  <h2>Speichernutzung</h2>
+                  <h2>{t("settings.storage.title")}</h2>
                 </div>
-                <button type="button" className="icon-button" onClick={loadStorageUsage} aria-label="Speichernutzung aktualisieren" title="Aktualisieren" disabled={storageLoading}>
+                <button type="button" className="icon-button" onClick={loadStorageUsage} aria-label={t("settings.storage.refresh")} title={t("settings.data.refresh")} disabled={storageLoading}>
                   <RefreshCw size={16} />
                 </button>
               </div>
-              <p>Aufschlüsselung der lokalen Datenablage nach Kategorie.</p>
+              <p>{t("settings.storage.subtitle")}</p>
               <div className="storage-total">
                 <strong>{formatBytes(storageUsage?.totalBytes || 0)}</strong>
-                <span>{storageUsage?.updatedAt ? "Aktualisiert " + formatDateTime(storageUsage.updatedAt) : "Noch nicht aktualisiert"}</span>
+                <span>{storageUsage?.updatedAt ? t("settings.storage.updated", { date: formatDateTime(storageUsage.updatedAt) }) : t("settings.storage.notUpdated")}</span>
               </div>
               <div className="storage-list">
                 {(storageUsage?.categories || []).map((category) => {
@@ -1200,17 +1176,17 @@ export function SettingsView() {
                   return (
                     <div className="storage-row" key={category.key}>
                       <div>
-                        <strong>{category.label}</strong>
-                        <span>{category.files} Dateien · {formatBytes(category.bytes)}</span>
+                        <strong>{storageCategoryLabel(category.key, category.label)}</strong>
+                        <span>{fileCountLabel(category.files, category.bytes)}</span>
                       </div>
-                      <div className="storage-bar" aria-label={category.label + ": " + percent + "%"}>
+                      <div className="storage-bar" aria-label={storageCategoryLabel(category.key, category.label) + ": " + percent + "%"}>
                         <span style={{ width: Math.max(2, percent) + "%" }} />
                       </div>
                     </div>
                   );
                 })}
-                {storageLoading && <p className="empty-state compact">Speichernutzung wird gelesen...</p>}
-                {!storageLoading && !storageUsage && <p className="empty-state compact">Noch keine Speichernutzung geladen.</p>}
+                {storageLoading && <p className="empty-state compact">{t("settings.storage.loading")}</p>}
+                {!storageLoading && !storageUsage && <p className="empty-state compact">{t("settings.storage.empty")}</p>}
               </div>
               {storageMessage && <p className="form-message">{storageMessage}</p>}
             </section>
@@ -1220,10 +1196,10 @@ export function SettingsView() {
 
       {activeSettingsTab === "data" && (
         <section className="panel settings-card data-card">
-          <h2>Daten</h2>
-          <p>Pflege hier die Auswahlwerte für Dropdowns und Symbol-Listen.</p>
+          <h2>{t("settings.data.title")}</h2>
+          <p>{t("settings.data.subtitle")}</p>
 
-          <nav className="settings-secondary-tabs" aria-label="Stammdaten">
+          <nav className="settings-secondary-tabs" aria-label={t("settings.data.nav")}>
             {masterDataTypes.map((item) => (
               <button
                 key={item.type}
@@ -1231,7 +1207,7 @@ export function SettingsView() {
                 className={item.type === activeType ? "active" : ""}
                 onClick={() => setActiveType(item.type)}
               >
-                {item.label}
+                {masterLabel(item.type)}
               </button>
             ))}
           </nav>
@@ -1239,28 +1215,28 @@ export function SettingsView() {
           <section className="master-data-panel">
             <div className="master-data-head">
               <div>
-                <h3>{activeDataType.label} verwalten</h3>
-                <p>{activeDataType.description}</p>
+                <h3>{t("settings.data.manage", { label: activeDataLabel })}</h3>
+                <p>{activeDataDescription}</p>
               </div>
-              <button type="button" className="icon-button" onClick={reloadActiveType} aria-label="Aktualisieren" title="Aktualisieren" disabled={loading}>
+              <button type="button" className="icon-button" onClick={reloadActiveType} aria-label={t("settings.data.refresh")} title={t("settings.data.refresh")} disabled={loading}>
                 <RefreshCw size={16} />
               </button>
             </div>
 
             <>
               <label className="settings-search">
-                Suche
-                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Stammdaten durchsuchen" />
+                {t("settings.data.search")}
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("settings.data.searchPlaceholder")} />
               </label>
 
                 <form className={activeType === "manufacturer" ? "master-data-create manufacturer-create" : isSymbolData ? "master-data-create symbol-create" : "master-data-create"} onSubmit={submit}>
-                  <strong>{editing ? "Eintrag bearbeiten" : "Neuer Eintrag"}</strong>
-                  <input value={form.label} onChange={(event) => update({ label: event.target.value })} placeholder={`${activeDataType.label} eintragen`} required />
+                  <strong>{editing ? t("settings.data.editEntry") : t("settings.data.newEntry")}</strong>
+                  <input value={form.label} onChange={(event) => update({ label: event.target.value })} placeholder={t("settings.data.entryPlaceholder", { label: activeDataLabel })} required />
                   {activeType === "manufacturer" && (
                     <input
                       value={form.nominalScalesText}
                       onChange={(event) => update({ nominalScalesText: event.target.value })}
-                      placeholder="Nenngröße / Spurweite, z. B. H0, TT, 1:87"
+                      placeholder={t("settings.data.nominalPlaceholder")}
                     />
                   )}
                   {isSymbolData ? (
@@ -1268,12 +1244,12 @@ export function SettingsView() {
                       <textarea
                         value={form.description}
                         onChange={(event) => update({ description: event.target.value })}
-                        placeholder="Beschreibung optional"
+                        placeholder={t("settings.data.descriptionPlaceholder")}
                         rows={2}
                       />
                       <label className="symbol-upload-field">
                         <Upload size={15} aria-hidden="true" />
-                        <span>Bild hochladen</span>
+                        <span>{t("settings.data.uploadImage")}</span>
                         <input
                           type="file"
                           accept="image/svg+xml,image/png,image/jpeg,image/webp,.svg"
@@ -1285,13 +1261,13 @@ export function SettingsView() {
                       </label>
                     </>
                   ) : (
-                    <input value={form.sourceUrl} onChange={(event) => update({ sourceUrl: event.target.value })} placeholder="Webseite optional" />
+                    <input value={form.sourceUrl} onChange={(event) => update({ sourceUrl: event.target.value })} placeholder={t("settings.data.websitePlaceholder")} />
                   )}
                   <button className="primary-button" disabled={saving}>
-                    {saving ? "Speichert..." : editing ? "Speichern" : "+ Hinzufügen"}
+                    {saving ? t("vehicles.saving") : editing ? t("vehicles.save") : "+ " + t("settings.data.add")}
                   </button>
                   {editing && (
-                    <button type="button" className="icon-button" onClick={startCreate} aria-label="Abbrechen" title="Abbrechen">
+                    <button type="button" className="icon-button" onClick={startCreate} aria-label={t("vehicles.cancel")} title={t("vehicles.cancel")}>
                       <X size={16} />
                     </button>
                   )}
@@ -1300,29 +1276,29 @@ export function SettingsView() {
                 {isSymbolData && form.imageData && (
                   <div className="symbol-preview-card">
                     <img src={form.imageData} alt="" />
-                    <span>Gespeichertes Symbolbild</span>
-                    <button type="button" className="icon-button danger" onClick={() => update({ imageData: "" })} aria-label="Bild entfernen" title="Bild entfernen">
+                    <span>{t("settings.data.savedSymbol")}</span>
+                    <button type="button" className="icon-button danger" onClick={() => update({ imageData: "" })} aria-label={t("settings.data.removeImage")} title={t("settings.data.removeImage")}>
                       <Trash2 size={16} />
                     </button>
                   </div>
                 )}
 
                 <details className="advanced-master-data">
-                  <summary>Erweiterte Felder</summary>
+                  <summary>{t("settings.data.advanced")}</summary>
                   <form className="settings-form" onSubmit={submit}>
                     <div className="form-row">
                       <label>
-                        Schlüssel
+                        {t("settings.data.key")}
                         <input value={form.key} onChange={(event) => update({ key: event.target.value })} disabled={Boolean(editing)} />
                       </label>
                       <label>
-                        Sortierung
+                        {t("settings.data.sortOrder")}
                         <input type="number" value={form.sortOrder} onChange={(event) => update({ sortOrder: Number(event.target.value) })} />
                       </label>
                     </div>
                     <label className="checkbox-field">
                       <input type="checkbox" checked={form.active} onChange={(event) => update({ active: event.target.checked })} />
-                      Aktiv
+                      {t("common.active")}
                     </label>
                     {message && <p className="form-message">{message}</p>}
                   </form>
@@ -1332,12 +1308,12 @@ export function SettingsView() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Aktionen</th>
-                        {isSymbolData && <th>Symbol</th>}
-                        <th>Name</th>
-                        {activeType === "manufacturer" && <th>Nenngröße / Spurweite</th>}
-                        {!isSymbolData && <th>Link</th>}
-                        {isSymbolData && <th>Beschreibung</th>}
+                        <th>{t("settings.data.actions")}</th>
+                        {isSymbolData && <th>{t("settings.data.symbol")}</th>}
+                        <th>{t("settings.data.name")}</th>
+                        {activeType === "manufacturer" && <th>{t("settings.data.nominalScales")}</th>}
+                        {!isSymbolData && <th>{t("settings.data.link")}</th>}
+                        {isSymbolData && <th>{t("settings.data.description")}</th>}
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -1348,7 +1324,7 @@ export function SettingsView() {
                         </tr>
                       ) : filteredItems.length === 0 ? (
                         <tr>
-                          <td colSpan={masterDataColumnCount} className="loading-cell">Keine Einträge gefunden.</td>
+                          <td colSpan={masterDataColumnCount} className="loading-cell">{t("settings.data.noEntries")}</td>
                         </tr>
                       ) : (
                         filteredItems.map((entry) => {
@@ -1358,10 +1334,10 @@ export function SettingsView() {
                             <tr key={entry.id}>
                               <td>
                                 <div className="table-actions">
-                                  <button type="button" className="icon-button" onClick={() => startEdit(entry)} aria-label="Bearbeiten" title="Bearbeiten">
+                                  <button type="button" className="icon-button" onClick={() => startEdit(entry)} aria-label={t("vehicles.edit")} title={t("vehicles.edit")}>
                                     <Pencil size={16} />
                                   </button>
-                                  <button type="button" className="icon-button danger" onClick={() => deleteEntry(entry)} aria-label="Löschen" title="Löschen">
+                                  <button type="button" className="icon-button danger" onClick={() => deleteEntry(entry)} aria-label={t("vehicles.delete")} title={t("vehicles.delete")}>
                                     <Trash2 size={16} />
                                   </button>
                                 </div>
@@ -1705,7 +1681,7 @@ export function SettingsView() {
             <label className="settings-toggle-row">
               <span>
                 <strong>{t("settings.auth.local")}</strong>
-                <small>Benutzername und Passwort über RailKeeper.</small>
+                <small>{t("settings.auth.localToggleHelp")}</small>
               </span>
               <span className="switch-field">
                 <input type="checkbox" checked readOnly disabled />
@@ -1714,8 +1690,8 @@ export function SettingsView() {
             </label>
             <label className="settings-toggle-row disabled">
               <span>
-                <strong>Zwei-Faktor-Auth vorbereiten</strong>
-                <small>UI-Vormerkung. Backend-Erzwingung folgt in einem späteren Schritt.</small>
+                <strong>{t("settings.auth.twoFactorPrepare")}</strong>
+                <small>{t("settings.auth.twoFactorPrepareHelp")}</small>
               </span>
               <span className="switch-field">
                 <input type="checkbox" checked={twoFactorPrepared} onChange={(event) => setLocalBool(localSettingKeys.twoFactorPrepared, event.target.checked, setTwoFactorPrepared)} />
@@ -1731,7 +1707,7 @@ export function SettingsView() {
               <h2>{t("settings.currentUser")}</h2>
             </div>
             <div className="current-user-card">
-              <strong>{currentSession?.username || "Nicht geladen"}</strong>
+              <strong>{currentSession?.username || t("settings.notLoaded")}</strong>
               <div className="role-chip-row">
                 {(currentSession?.roles || []).map((role) => <span className="settings-pill" key={role}>{role}</span>)}
                 {(!currentSession?.roles || currentSession.roles.length === 0) && <span className="settings-pill muted">{t("common.noRoles")}</span>}
@@ -1743,10 +1719,10 @@ export function SettingsView() {
               </button>
             </div>
             <form className="password-change-form" onSubmit={changePassword}>
-              <h3>Passwort ändern</h3>
+              <h3>{t("settings.password.title")}</h3>
               <div className="password-field-grid">
                 <label>
-                  Aktuelles Passwort
+                  {t("settings.password.current")}
                   <input
                     type="password"
                     value={passwordForm.currentPassword}
@@ -1755,7 +1731,7 @@ export function SettingsView() {
                   />
                 </label>
                 <label>
-                  Neues Passwort
+                  {t("settings.password.new")}
                   <input
                     type="password"
                     value={passwordForm.newPassword}
@@ -1765,7 +1741,7 @@ export function SettingsView() {
                   />
                 </label>
                 <label>
-                  Neues Passwort wiederholen
+                  {t("settings.password.confirm")}
                   <input
                     type="password"
                     value={passwordForm.confirmPassword}
@@ -1777,7 +1753,7 @@ export function SettingsView() {
               </div>
               <button type="submit" className="primary-button" disabled={passwordSaving || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}>
                 <KeyRound size={16} />
-                Passwort speichern
+                {t("settings.password.save")}
               </button>
               {passwordMessage && <p className="form-message">{passwordMessage}</p>}
             </form>
@@ -1788,46 +1764,46 @@ export function SettingsView() {
               <div className="settings-card-title">
                 <Users size={18} />
                 <div>
-                  <h2>Benutzerverwaltung</h2>
-                  <p>Lokale Benutzer anlegen, Rollen vergeben und Messe-Zugriff steuern.</p>
+                  <h2>{t("settings.users.title")}</h2>
+                  <p>{t("settings.users.subtitle")}</p>
                 </div>
               </div>
               {canManageUsers && (
                 <button type="button" className="secondary-button" onClick={startUserCreate}>
                   <UserCog size={16} />
-                  Neuer Benutzer
+                  {t("settings.users.new")}
                 </button>
               )}
             </div>
 
             {!canManageUsers ? (
               <div className="current-user-card">
-                <strong>Admin erforderlich</strong>
-                <span>Nur Admins dürfen Benutzer anlegen, Rollen ändern oder Konten löschen.</span>
+                <strong>{t("settings.users.adminRequired")}</strong>
+                <span>{t("settings.users.adminHelp")}</span>
               </div>
             ) : (
               <div className="user-management-grid">
                 <form className="settings-form user-form" onSubmit={saveUser}>
-                  <h3>{editingUser ? "Benutzer bearbeiten" : "Benutzer anlegen"}</h3>
+                  <h3>{editingUser ? t("settings.users.edit") : t("settings.users.create")}</h3>
                   <label>
-                    Benutzername
+                    {t("settings.users.username")}
                     <input
                       value={userForm.username}
                       onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))}
-                      placeholder="z. B. messe-leipzig"
+                      placeholder={t("settings.users.usernamePlaceholder")}
                     />
                   </label>
                   <label>
-                    Passwort
+                    {t("auth.password")}
                     <input
                       type="password"
                       value={userForm.password}
                       onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}
-                      placeholder={editingUser ? "Leer lassen, um es nicht zu ändern" : "Mindestens 12 Zeichen"}
+                      placeholder={editingUser ? t("settings.users.passwordPlaceholderEdit") : t("settings.users.passwordPlaceholderNew")}
                       autoComplete="new-password"
                     />
                   </label>
-                  <div className="role-select-grid" aria-label="Rollen">
+                  <div className="role-select-grid" aria-label={t("settings.users.roles")}>
                     {availableRoles.map((role) => (
                       <label className="checkbox-field" key={role.id}>
                         <input
@@ -1841,11 +1817,11 @@ export function SettingsView() {
                   </div>
                   <div className="settings-action-row">
                     <button type="submit" className="primary-button" disabled={userSaving || userForm.roles.length === 0}>
-                      {userSaving ? "Speichert..." : "Speichern"}
+                      {userSaving ? t("vehicles.saving") : t("vehicles.save")}
                     </button>
                     {editingUser && (
                       <button type="button" className="secondary-button" onClick={startUserCreate}>
-                        Abbrechen
+                        {t("vehicles.cancel")}
                       </button>
                     )}
                   </div>
@@ -1855,17 +1831,17 @@ export function SettingsView() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Benutzer</th>
-                        <th>Rollen</th>
-                        <th>Angelegt</th>
-                        <th>Aktionen</th>
+                        <th>{t("settings.users.username")}</th>
+                        <th>{t("settings.users.roles")}</th>
+                        <th>{t("settings.users.created")}</th>
+                        <th>{t("settings.sessions.actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {usersLoading ? (
-                        <tr><td colSpan={4} className="loading-cell">Benutzer werden geladen...</td></tr>
+                        <tr><td colSpan={4} className="loading-cell">{t("settings.users.loading")}</td></tr>
                       ) : users.length === 0 ? (
-                        <tr><td colSpan={4} className="loading-cell">Keine Benutzer gefunden.</td></tr>
+                        <tr><td colSpan={4} className="loading-cell">{t("settings.users.empty")}</td></tr>
                       ) : (
                         users.map((user) => (
                           <tr key={user.id} className={editingUser?.id === user.id ? "selected-row" : ""}>
@@ -1878,10 +1854,10 @@ export function SettingsView() {
                             <td>{formatDateTime(user.createdAt)}</td>
                             <td>
                               <div className="table-actions">
-                                <button type="button" className="icon-button" onClick={() => startUserEdit(user)} aria-label="Bearbeiten" title="Bearbeiten">
+                                <button type="button" className="icon-button" onClick={() => startUserEdit(user)} aria-label={t("vehicles.edit")} title={t("vehicles.edit")}>
                                   <Pencil size={16} />
                                 </button>
-                                <button type="button" className="icon-button danger" onClick={() => deleteUser(user)} aria-label="Löschen" title="Löschen">
+                                <button type="button" className="icon-button danger" onClick={() => deleteUser(user)} aria-label={t("vehicles.delete")} title={t("vehicles.delete")}>
                                   <Trash2 size={16} />
                                 </button>
                               </div>
@@ -1901,12 +1877,12 @@ export function SettingsView() {
               <div className="settings-card-title">
                 <KeyRound size={18} />
                 <div>
-                  <h2>Sitzungen</h2>
-                  <p>Aktive lokale Anmeldungen prüfen und bei Bedarf widerrufen.</p>
+                  <h2>{t("settings.sessions.title")}</h2>
+                  <p>{t("settings.sessions.subtitle")}</p>
                 </div>
               </div>
               {canManageUsers && (
-                <button type="button" className="icon-button" onClick={loadSessions} disabled={sessionsLoading} aria-label="Sitzungen aktualisieren" title="Sitzungen aktualisieren">
+                <button type="button" className="icon-button" onClick={loadSessions} disabled={sessionsLoading} aria-label={t("settings.sessions.refresh")} title={t("settings.sessions.refresh")}>
                   <RefreshCw size={16} />
                 </button>
               )}
@@ -1914,8 +1890,8 @@ export function SettingsView() {
 
             {!canManageUsers ? (
               <div className="current-user-card">
-                <strong>Admin erforderlich</strong>
-                <span>Nur Admins dürfen Sitzungen einsehen oder widerrufen.</span>
+                <strong>{t("settings.users.adminRequired")}</strong>
+                <span>{t("settings.sessions.adminHelp")}</span>
               </div>
             ) : (
               <>
@@ -1923,27 +1899,27 @@ export function SettingsView() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Benutzer</th>
-                        <th>Status</th>
-                        <th>Erstellt</th>
-                        <th>Ablauf</th>
-                        <th>Aktionen</th>
+                        <th>{t("settings.sessions.user")}</th>
+                        <th>{t("settings.sessions.status")}</th>
+                        <th>{t("settings.sessions.created")}</th>
+                        <th>{t("settings.sessions.expires")}</th>
+                        <th>{t("settings.sessions.actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {sessionsLoading ? (
-                        <tr><td colSpan={5} className="loading-cell">Sitzungen werden geladen...</td></tr>
+                        <tr><td colSpan={5} className="loading-cell">{t("settings.sessions.loading")}</td></tr>
                       ) : sessions.length === 0 ? (
-                        <tr><td colSpan={5} className="loading-cell">Keine Sitzungen gefunden.</td></tr>
+                        <tr><td colSpan={5} className="loading-cell">{t("settings.sessions.empty")}</td></tr>
                       ) : (
                         sessions.map((session) => (
                           <tr key={session.id} className={session.active ? "" : "muted-row"}>
                             <td><strong>{session.username}</strong></td>
-                            <td><span className={session.active ? "settings-pill active" : "settings-pill muted"}>{session.active ? "aktiv" : "beendet"}</span></td>
+                            <td><span className={session.active ? "settings-pill active" : "settings-pill muted"}>{session.active ? t("common.active") : t("settings.sessions.ended")}</span></td>
                             <td>{formatDateTime(session.createdAt)}</td>
-                            <td>{session.revokedAt ? "Widerrufen " + formatDateTime(session.revokedAt) : formatDateTime(session.expiresAt)}</td>
+                            <td>{session.revokedAt ? t("settings.sessions.revoked", { date: formatDateTime(session.revokedAt) }) : formatDateTime(session.expiresAt)}</td>
                             <td>
-                              <button type="button" className="icon-button danger" onClick={() => revokeSession(session)} disabled={!session.active || sessionsLoading} aria-label="Sitzung widerrufen" title="Sitzung widerrufen">
+                              <button type="button" className="icon-button danger" onClick={() => revokeSession(session)} disabled={!session.active || sessionsLoading} aria-label={t("settings.sessions.revoke")} title={t("settings.sessions.revoke")}>
                                 <X size={16} />
                               </button>
                             </td>
@@ -1963,12 +1939,12 @@ export function SettingsView() {
               <div className="settings-card-title">
                 <History size={18} />
                 <div>
-                  <h2>Sicherheitsereignisse</h2>
-                  <p>Letzte Anmeldungen, Benutzeraktionen und sicherheitsrelevante Änderungen.</p>
+                  <h2>{t("settings.audit.title")}</h2>
+                  <p>{t("settings.audit.subtitle")}</p>
                 </div>
               </div>
               {canManageUsers && (
-                <button type="button" className="icon-button" onClick={loadAuditLog} disabled={auditLogLoading} aria-label="Ereignisse aktualisieren" title="Ereignisse aktualisieren">
+                <button type="button" className="icon-button" onClick={loadAuditLog} disabled={auditLogLoading} aria-label={t("settings.audit.refresh")} title={t("settings.audit.refresh")}>
                   <RefreshCw size={16} />
                 </button>
               )}
@@ -1976,8 +1952,8 @@ export function SettingsView() {
 
             {!canManageUsers ? (
               <div className="current-user-card">
-                <strong>Admin erforderlich</strong>
-                <span>Nur Admins dürfen Sicherheitsereignisse einsehen.</span>
+                <strong>{t("settings.users.adminRequired")}</strong>
+                <span>{t("settings.audit.adminHelp")}</span>
               </div>
             ) : (
               <>
@@ -1985,23 +1961,23 @@ export function SettingsView() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Zeit</th>
-                        <th>Ereignis</th>
-                        <th>Benutzer</th>
-                        <th>Ziel</th>
-                        <th>Details</th>
+                        <th>{t("settings.audit.time")}</th>
+                        <th>{t("settings.audit.event")}</th>
+                        <th>{t("settings.sessions.user")}</th>
+                        <th>{t("settings.audit.target")}</th>
+                        <th>{t("settings.audit.details")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {auditLogLoading ? (
-                        <tr><td colSpan={5} className="loading-cell">Ereignisse werden geladen...</td></tr>
+                        <tr><td colSpan={5} className="loading-cell">{t("settings.audit.loading")}</td></tr>
                       ) : auditLog.length === 0 ? (
-                        <tr><td colSpan={5} className="loading-cell">Keine Ereignisse gefunden.</td></tr>
+                        <tr><td colSpan={5} className="loading-cell">{t("settings.audit.empty")}</td></tr>
                       ) : (
                         auditLog.slice(0, 10).map((entry) => (
                           <tr key={entry.id}>
                             <td>{formatDateTime(entry.createdAt)}</td>
-                            <td><span className="settings-pill">{auditActionLabels[entry.action] || entry.action}</span></td>
+                            <td><span className="settings-pill">{auditLabel(entry.action)}</span></td>
                             <td>{auditActor(entry)}</td>
                             <td>{auditTarget(entry)}</td>
                             <td><code>{entry.detailsJson && entry.detailsJson !== "{}" ? entry.detailsJson : "-"}</code></td>
@@ -2020,15 +1996,15 @@ export function SettingsView() {
             <div className="settings-section-head">
               <div className="settings-card-title">
                 <Users size={18} />
-                <h2>Rollen</h2>
+                <h2>{t("settings.roles.title")}</h2>
               </div>
-              <span className="settings-pill active">aktiv</span>
+              <span className="settings-pill active">{t("common.active")}</span>
             </div>
             <div className="role-list">
               {(availableRoles.length > 0 ? availableRoles.map((role) => role.name) : ["Admin", "Editor", "Viewer", "Messe"]).map((role) => (
                 <article key={role}>
                   <strong>{role}</strong>
-                  <span>{roleDescriptions[role] || "Individuelle lokale Rolle."}</span>
+                  <span>{roleDescription(role)}</span>
                 </article>
               ))}
             </div>
@@ -2038,8 +2014,8 @@ export function SettingsView() {
             <div className="settings-card-title">
               <ShieldAlert size={18} />
               <div>
-                <h2>Geplante Integrationen</h2>
-                <p>Vorgemerkte Authentifizierungswege ohne aktive Backend-Erzwingung.</p>
+                <h2>{t("settings.integrations.title")}</h2>
+                <p>{t("settings.integrations.subtitle")}</p>
               </div>
             </div>
             <div className="integration-list">
@@ -2047,21 +2023,21 @@ export function SettingsView() {
                 <Shield size={17} />
                 <div>
                   <strong>LDAP</strong>
-                  <span>Vorbereitet, aktuell deaktiviert.</span>
+                  <span>{t("settings.integrations.preparedDisabled")}</span>
                 </div>
               </article>
               <article>
                 <UserCog size={17} />
                 <div>
                   <strong>SSO / OIDC</strong>
-                  <span>Für spätere zentrale Anmeldung vorgemerkt.</span>
+                  <span>{t("settings.integrations.ssoHelp")}</span>
                 </div>
               </article>
               <article>
                 <KeyRound size={17} />
                 <div>
-                  <strong>Passwort zurücksetzen</strong>
-                  <span>Login-Hinweis vorhanden, Mail-Flow noch nicht aktiviert.</span>
+                  <strong>{t("settings.integrations.resetPassword")}</strong>
+                  <span>{t("settings.integrations.resetPasswordHelp")}</span>
                 </div>
               </article>
             </div>

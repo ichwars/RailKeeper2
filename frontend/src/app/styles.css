@@ -2519,6 +2519,85 @@ h1 {
   margin-bottom: 16px;
 }
 
+.ecos-panel {
+  margin-bottom: 16px;
+}
+
+.ecos-connection-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(120px, 180px) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.ecos-connection-grid label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.ecos-connection-grid input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.ecos-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.ecos-actions .secondary-button,
+.ecos-actions .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.ecos-status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ecos-status-strip span {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--panel-subtle);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.ecos-status-strip .status-ok {
+  background: color-mix(in srgb, var(--accent-bright) 18%, var(--panel));
+  color: var(--accent-strong);
+}
+
+.ecos-status-strip .status-error {
+  background: color-mix(in srgb, var(--danger) 12%, var(--panel));
+  color: var(--danger);
+}
+
+.ecos-loco-preview {
+  max-height: 340px;
+}
+
 .column-mapping-panel {
   display: grid;
   gap: 14px;
@@ -5937,6 +6016,14 @@ td {
 
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ecos-connection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ecos-actions {
+    justify-content: flex-start;
   }
 
   .user-management-grid,

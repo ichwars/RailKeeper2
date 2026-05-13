@@ -1,6 +1,7 @@
 import { ChangeEvent, Fragment, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Database, Download, FileInput, Printer, Save, Upload } from "lucide-react";
-import { api, CreateVehicleRequest, Vehicle } from "../../shared/api";
+import { api, CreateVehicleRequest, ECoSConnectionResult, ECoSLocomotivePreview, Vehicle } from "../../shared/api";
+import { useI18n } from "../../shared/i18n";
 
 type ImportRow = {
   id: string;
@@ -101,8 +102,6 @@ const booleanImportFields = new Set<VehicleImportField>([
   "smokeGeneratorEnabled",
   "qrCodeEnabled"
 ]);
-
-const importFieldLabels = new Map(vehicleImportFields.map((field) => [field.key, field.label]));
 
 const columnAliases: Record<string, VehicleImportField> = {
   inventar: "inventoryNumber",
@@ -380,7 +379,17 @@ function detectDelimiter(text: string) {
   return semicolon >= comma ? ";" : ",";
 }
 
-function importRowsFromTable(table: string[][], existing: Vehicle[], mappings = defaultColumnMappings(table)) {
+function importRowsFromTable(
+  table: string[][],
+  existing: Vehicle[],
+  mappings = defaultColumnMappings(table),
+  labels = {
+    missingManufacturer: "Hersteller fehlt",
+    missingName: "Bezeichnung fehlt",
+    missingGauge: "Spur fehlt",
+    duplicate: "Bestehendes Fahrzeug gefunden"
+  }
+) {
   const existingByInventory = new Map(existing.map((vehicle) => [vehicle.inventoryNumber.toLowerCase(), vehicle]));
   return table.slice(1).map((cells, index) => {
     const vehicle: CreateVehicleRequest = { manufacturer: "", name: "", gauge: "" };
@@ -405,12 +414,12 @@ function importRowsFromTable(table: string[][], existing: Vehicle[], mappings = 
     const issues: string[] = [];
     const duplicate = vehicle.inventoryNumber ? existingByInventory.get(vehicle.inventoryNumber.toLowerCase()) : undefined;
     if (!duplicate) {
-      if (!vehicle.manufacturer) issues.push("Hersteller fehlt");
-      if (!vehicle.name) issues.push("Bezeichnung fehlt");
-      if (!vehicle.gauge) issues.push("Spur fehlt");
+      if (!vehicle.manufacturer) issues.push(labels.missingManufacturer);
+      if (!vehicle.name) issues.push(labels.missingName);
+      if (!vehicle.gauge) issues.push(labels.missingGauge);
     }
     if (duplicate) {
-      issues.push("Bestehendes Fahrzeug gefunden");
+      issues.push(labels.duplicate);
     }
 
     return {
@@ -500,9 +509,9 @@ function mergeImportedVehicle(existing: Vehicle, incoming: CreateVehicleRequest,
   return merged;
 }
 
-function displayImportValue(value: unknown) {
+function displayImportValue(value: unknown, yes = "ja", no = "nein") {
   if (typeof value === "boolean") {
-    return value ? "ja" : "nein";
+    return value ? yes : no;
   }
   if (typeof value === "string") {
     return value.trim() || "-";
@@ -517,7 +526,13 @@ function valuesEqual(current: unknown, incoming: unknown) {
   return String(current ?? "").trim() === String(incoming ?? "").trim();
 }
 
-function getImportChanges(row: ImportRow, existing?: Vehicle): ImportChange[] {
+function getImportChanges(
+  row: ImportRow,
+  existing: Vehicle | undefined,
+  fieldLabel: (key: VehicleImportField) => string,
+  yes: string,
+  no: string
+): ImportChange[] {
   if (!existing) {
     return [];
   }
@@ -526,11 +541,11 @@ function getImportChanges(row: ImportRow, existing?: Vehicle): ImportChange[] {
     .map((key) => {
       const current = existing[key as keyof Vehicle];
       const incoming = row.vehicle[key];
-      const currentText = displayImportValue(current);
-      const incomingText = displayImportValue(incoming);
+      const currentText = displayImportValue(current, yes, no);
+      const incomingText = displayImportValue(incoming, yes, no);
       return {
         key,
-        label: importFieldLabels.get(key) || String(key),
+        label: fieldLabel(key),
         current: currentText,
         incoming: incomingText,
         status: valuesEqual(current, incoming) ? "same" : currentText === "-" ? "fill" : "overwrite"
@@ -538,11 +553,11 @@ function getImportChanges(row: ImportRow, existing?: Vehicle): ImportChange[] {
     });
 }
 
-function vehiclesToCSV(vehicles: Vehicle[]) {
-  const headers = vehicleImportFields.map((field) => field.label);
+function vehiclesToCSV(vehicles: Vehicle[], fieldLabel: (key: VehicleImportField) => string, yes: string, no: string) {
+  const headers = vehicleImportFields.map((field) => fieldLabel(field.key));
   const rows = vehicles.map((vehicle) => {
     const request = vehicleToRequest(vehicle);
-    return vehicleImportFields.map((field) => displayImportValue(request[field.key]).replace(/^-$/, ""));
+    return vehicleImportFields.map((field) => displayImportValue(request[field.key], yes, no).replace(/^-$/, ""));
   });
   return [headers, ...rows].map((row) => row.map(csvEscape).join(";")).join("\n");
 }
@@ -565,10 +580,15 @@ function htmlEscape(value: unknown) {
     .replace(/"/g, "&quot;");
 }
 
-function printInventory(vehicles: Vehicle[]) {
+function printInventory(
+  vehicles: Vehicle[],
+  fieldLabel: (key: VehicleImportField) => string,
+  language: string,
+  t: (key: string, values?: Record<string, string | number>) => string
+) {
   const printWindow = window.open("", "railkeeper-bestand-druck");
   if (!printWindow) {
-    window.alert("Die Druckansicht konnte nicht geöffnet werden. Bitte Popups für RailKeeper erlauben.");
+    window.alert(t("importExport.print.blocked"));
     return;
   }
 
@@ -590,10 +610,10 @@ function printInventory(vehicles: Vehicle[]) {
 
   printWindow.document.open();
   printWindow.document.write(`<!doctype html>
-    <html lang="de">
+    <html lang="${htmlEscape(language)}">
       <head>
         <meta charset="utf-8" />
-        <title>RailKeeper Bestand</title>
+        <title>${htmlEscape(t("importExport.print.title"))}</title>
         <style>
           @page { size: A4 landscape; margin: 14mm; }
           * { box-sizing: border-box; }
@@ -613,11 +633,11 @@ function printInventory(vehicles: Vehicle[]) {
       <body>
         <header>
           <div>
-            <h1>RailKeeper Bestand</h1>
-            <p>Fahrzeugliste, erstellt am ${htmlEscape(new Date().toLocaleString("de-DE"))}</p>
+            <h1>${htmlEscape(t("importExport.print.title"))}</h1>
+            <p>${htmlEscape(t("importExport.print.footer", { date: new Date().toLocaleString(language === "en" ? "en-US" : "de-DE") }))}</p>
           </div>
           <div class="stats">
-            <span>${vehicles.length} Fahrzeuge</span>
+            <span>${htmlEscape(t("importExport.print.summary", { total: vehicles.length, digital, analog }))}</span>
             <span>${digital} digital</span>
             <span>${analog} analog</span>
           </div>
@@ -625,20 +645,20 @@ function printInventory(vehicles: Vehicle[]) {
         <table>
           <thead>
             <tr>
-              <th>Inventar</th>
-              <th>Hersteller</th>
-              <th>Artikel</th>
-              <th>Bezeichnung</th>
-              <th>Spur</th>
-              <th>Epoche</th>
-              <th>Kategorie</th>
-              <th>Digital</th>
-              <th>Listenpreis</th>
+              <th>${htmlEscape(t("importExport.review.inventory"))}</th>
+              <th>${htmlEscape(fieldLabel("manufacturer"))}</th>
+              <th>${htmlEscape(t("importExport.review.article"))}</th>
+              <th>${htmlEscape(fieldLabel("name"))}</th>
+              <th>${htmlEscape(fieldLabel("gauge"))}</th>
+              <th>${htmlEscape(fieldLabel("epoch"))}</th>
+              <th>${htmlEscape(fieldLabel("category"))}</th>
+              <th>${htmlEscape(fieldLabel("digital"))}</th>
+              <th>${htmlEscape(fieldLabel("listPrice"))}</th>
             </tr>
           </thead>
-          <tbody>${rows || `<tr><td colspan="9">Keine Fahrzeuge vorhanden.</td></tr>`}</tbody>
+          <tbody>${rows || `<tr><td colspan="9">${htmlEscape(t("importExport.review.empty"))}</td></tr>`}</tbody>
         </table>
-        <footer>RailKeeper2 lokale Druckansicht. Im Druckdialog kann diese Ansicht als PDF gespeichert werden.</footer>
+        <footer>${htmlEscape(t("importExport.export.print"))}</footer>
         <script>
           window.addEventListener("load", () => {
             window.focus();
@@ -651,6 +671,7 @@ function printInventory(vehicles: Vehicle[]) {
 }
 
 export function ImportExportView() {
+  const { language, t } = useI18n();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -661,6 +682,19 @@ export function ImportExportView() {
   const [masterDataFile, setMasterDataFile] = useState<File | null>(null);
   const [masterDataSaving, setMasterDataSaving] = useState(false);
   const [masterDataMessage, setMasterDataMessage] = useState("");
+  const [ecosHost, setEcosHost] = useState(window.localStorage.getItem("railkeeper.ecos.host") || "");
+  const [ecosPort, setEcosPort] = useState(window.localStorage.getItem("railkeeper.ecos.port") || "15471");
+  const [ecosBusy, setEcosBusy] = useState(false);
+  const [ecosResult, setEcosResult] = useState<ECoSConnectionResult | null>(null);
+  const [ecosPreview, setEcosPreview] = useState<ECoSLocomotivePreview | null>(null);
+  const [ecosMessage, setEcosMessage] = useState("");
+  const fieldLabel = (key: VehicleImportField) => t(`vehicle.field.${key}`);
+  const issueLabels = {
+    missingManufacturer: t("importExport.issue.missingManufacturer"),
+    missingName: t("importExport.issue.missingName"),
+    missingGauge: t("importExport.issue.missingGauge"),
+    duplicate: t("importExport.issue.duplicate")
+  };
 
   useEffect(() => {
     api.vehicles().then(setVehicles).catch((error: Error) => setMessage(error.message)).finally(() => setLoading(false));
@@ -689,15 +723,15 @@ export function ImportExportView() {
     if (table.length === 0) {
       setImportTable(null);
       setRows([]);
-      setMessage("Die Datei enthält keine auswertbaren Zeilen.");
+      setMessage(t("importExport.error.emptyFile"));
       return;
     }
     const mappings = defaultColumnMappings(table);
-    const importedRows = importRowsFromTable(table, vehicles, mappings);
+    const importedRows = importRowsFromTable(table, vehicles, mappings, issueLabels);
     const unmapped = mappings.filter((mapping) => !mapping.key && mapping.header.trim()).length;
     setImportTable({ fileName, table, mappings });
     setRows(importedRows);
-    setMessage(unmapped > 0 ? `${unmapped} Spalten nicht automatisch zugeordnet. Bitte bei Bedarf in der Spaltenzuordnung auswählen.` : "");
+    setMessage(unmapped > 0 ? t("importExport.message.unmapped", { count: unmapped }) : "");
   };
 
   const setColumnMapping = (columnIndex: number, key: VehicleImportField | "") => {
@@ -711,7 +745,7 @@ export function ImportExportView() {
       return key && mapping.key === key ? { ...mapping, key: "" } : mapping;
     });
     setImportTable({ ...importTable, mappings });
-    setRows(importRowsFromTable(importTable.table, vehicles, mappings));
+    setRows(importRowsFromTable(importTable.table, vehicles, mappings, issueLabels));
   };
 
   const updateRow = (rowID: string, patch: Partial<ImportRow["vehicle"]>) => {
@@ -724,7 +758,7 @@ export function ImportExportView() {
       const duplicate = vehicle.inventoryNumber ? vehicles.find((existing) => existing.inventoryNumber.toLowerCase() === vehicle.inventoryNumber?.toLowerCase()) : undefined;
       const importedKeys = Array.from(new Set([...row.importedKeys, ...Object.keys(patch) as (keyof CreateVehicleRequest)[]]));
       if (duplicate) {
-        issues.push("Bestehendes Fahrzeug gefunden");
+        issues.push(t("importExport.issue.duplicate"));
         return {
           ...row,
           vehicle,
@@ -736,9 +770,9 @@ export function ImportExportView() {
           selected: row.selected
         };
       }
-      if (!vehicle.manufacturer) issues.push("Hersteller fehlt");
-      if (!vehicle.name) issues.push("Bezeichnung fehlt");
-      if (!vehicle.gauge) issues.push("Spur fehlt");
+      if (!vehicle.manufacturer) issues.push(t("importExport.issue.missingManufacturer"));
+      if (!vehicle.name) issues.push(t("importExport.issue.missingName"));
+      if (!vehicle.gauge) issues.push(t("importExport.issue.missingGauge"));
       return {
         ...row,
         vehicle,
@@ -760,10 +794,10 @@ export function ImportExportView() {
     setRows((current) => current.map((row) => {
       if (row.id !== rowID) return row;
       if (mode === "create" && row.duplicateVehicleId) {
-        return { ...row, mode, selected: false, status: "error", issues: ["Inventarnummer existiert bereits"] };
+        return { ...row, mode, selected: false, status: "error", issues: [t("importExport.issue.inventoryExists")] };
       }
       if (mode === "update" && row.duplicateVehicleId) {
-        return { ...row, mode, status: "warning", issues: ["Bestehendes Fahrzeug gefunden"] };
+        return { ...row, mode, status: "warning", issues: [t("importExport.issue.duplicate")] };
       }
       return { ...row, mode };
     }));
@@ -787,10 +821,10 @@ export function ImportExportView() {
         } else {
           setRows([]);
           setImportTable(null);
-          setMessage("Die Tabellendatei enthält keine auswertbaren Zeilen.");
+          setMessage(t("importExport.error.emptyTable"));
         }
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Tabellendatei konnte nicht ausgewertet werden.");
+        setMessage(error instanceof Error ? error.message : t("importExport.error.tableRead"));
       } finally {
         setPreviewLoading(false);
       }
@@ -802,8 +836,21 @@ export function ImportExportView() {
       const parsed = JSON.parse(text) as Vehicle[] | { vehicles?: Vehicle[] };
       const source = Array.isArray(parsed) ? parsed : parsed.vehicles || [];
       const table = [
-        ["Inventarnummer", "Hersteller", "Artikel-Nr.", "Bezeichnung", "Spur", "Epoche", "Bahngesellschaft", "Kategorie", "Gattung", "Digital", "Decoder-Nr.", "Listenpreis"],
-        ...source.map((vehicle) => [vehicle.inventoryNumber, vehicle.manufacturer, vehicle.articleNumber || "", vehicle.name, vehicle.gauge, vehicle.epoch || "", vehicle.railwayCompany || "", vehicle.category || "", vehicle.gattung || "", vehicle.digital ? "ja" : "nein", vehicle.digitalDecoderNumber || "", vehicle.listPrice || ""])
+        [
+          fieldLabel("inventoryNumber"),
+          fieldLabel("manufacturer"),
+          fieldLabel("articleNumber"),
+          fieldLabel("name"),
+          fieldLabel("gauge"),
+          fieldLabel("epoch"),
+          fieldLabel("railwayCompany"),
+          fieldLabel("category"),
+          fieldLabel("gattung"),
+          fieldLabel("digital"),
+          fieldLabel("digitalDecoderNumber"),
+          fieldLabel("listPrice")
+        ],
+        ...source.map((vehicle) => [vehicle.inventoryNumber, vehicle.manufacturer, vehicle.articleNumber || "", vehicle.name, vehicle.gauge, vehicle.epoch || "", vehicle.railwayCompany || "", vehicle.category || "", vehicle.gattung || "", vehicle.digital ? t("common.yes") : t("common.no"), vehicle.digitalDecoderNumber || "", vehicle.listPrice || ""])
       ];
       loadImportTable(table, file.name);
       return;
@@ -833,28 +880,71 @@ export function ImportExportView() {
         });
         setRows((current) => current.map((item) => item.id === row.id ? { ...item, selected: false, status: "saved", issues: [] } : item));
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Import fehlgeschlagen";
+        const message = error instanceof Error ? error.message : t("importExport.error.importFailed");
         setRows((current) => current.map((item) => item.id === row.id ? { ...item, status: "error", issues: [message] } : item));
       }
     }
     setSaving(false);
   };
 
+  const ecosInput = () => ({
+    host: ecosHost.trim(),
+    port: Number(ecosPort) || 15471
+  });
+
+  const rememberECoSSettings = () => {
+    window.localStorage.setItem("railkeeper.ecos.host", ecosHost.trim());
+    window.localStorage.setItem("railkeeper.ecos.port", ecosPort.trim() || "15471");
+  };
+
+  const testECoSConnection = async () => {
+    setEcosBusy(true);
+    setEcosMessage("");
+    setEcosResult(null);
+    setEcosPreview(null);
+    try {
+      rememberECoSSettings();
+      const result = await api.testECoSConnection(ecosInput());
+      setEcosResult(result);
+      setEcosMessage(result.message);
+    } catch (error) {
+      setEcosMessage(error instanceof Error ? error.message : t("importExport.ecos.error"));
+    } finally {
+      setEcosBusy(false);
+    }
+  };
+
+  const previewECoSLocomotives = async () => {
+    setEcosBusy(true);
+    setEcosMessage("");
+    setEcosPreview(null);
+    try {
+      rememberECoSSettings();
+      const preview = await api.previewECoSLocomotives(ecosInput());
+      setEcosPreview(preview);
+      setEcosMessage(preview.message);
+    } catch (error) {
+      setEcosMessage(error instanceof Error ? error.message : t("importExport.ecos.error"));
+    } finally {
+      setEcosBusy(false);
+    }
+  };
+
   const importMasterData = async () => {
     if (!masterDataFile) {
-      setMasterDataMessage("Bitte zuerst eine Stammdaten-Datei auswählen.");
+      setMasterDataMessage(t("importExport.error.masterMissing"));
       return;
     }
-    if (!window.confirm("Stammdaten wirklich importieren? Bestehende Stammdaten und Kategorie/Gattung-Abhängigkeiten werden ersetzt. Bestand und Uploads bleiben unverändert.")) {
+    if (!window.confirm(t("importExport.master.confirm"))) {
       return;
     }
     setMasterDataSaving(true);
     setMasterDataMessage("");
     try {
       const result = await api.importMasterData(masterDataFile);
-      setMasterDataMessage(`Stammdaten importiert: ${result.importedEntries} Einträge, ${result.importedRelations} Abhängigkeiten.`);
+      setMasterDataMessage(t("importExport.master.done", { entries: result.importedEntries, relations: result.importedRelations }));
     } catch (error) {
-      setMasterDataMessage(error instanceof Error ? error.message : "Stammdaten-Import fehlgeschlagen.");
+      setMasterDataMessage(error instanceof Error ? error.message : t("importExport.error.masterFailed"));
     } finally {
       setMasterDataSaving(false);
     }
@@ -863,9 +953,9 @@ export function ImportExportView() {
   return (
     <>
       <section className="page-head">
-        <p className="eyebrow">Bestandsdaten</p>
-        <h1>Import/Export</h1>
-        <p>Bestandslisten auswerten, korrigieren und kontrolliert in die lokale Datenbank übernehmen.</p>
+        <p className="eyebrow">{t("importExport.eyebrow")}</p>
+        <h1>{t("importExport.title")}</h1>
+        <p>{t("importExport.subtitle")}</p>
       </section>
 
       {message && <p className="form-message">{message}</p>}
@@ -874,58 +964,130 @@ export function ImportExportView() {
         <article className="panel transfer-panel">
           <div className="panel-head">
             <div>
-              <h2>Import</h2>
-              <p>CSV, TSV, XLSX, XLS, ODS und RailKeeper-JSON werden ausgewertet.</p>
+              <h2>{t("importExport.import.title")}</h2>
+              <p>{t("importExport.import.subtitle")}</p>
             </div>
             <FileInput size={20} aria-hidden="true" />
           </div>
           <label className="file-drop compact-drop">
             <Upload size={18} aria-hidden="true" />
-            Datei auswählen
+            {t("importExport.file.choose")}
             <input type="file" accept=".csv,.tsv,.json,.xlsx,.xls,.ods" onChange={handleFile} />
           </label>
           <div className="import-summary">
-            <span>{importSummary.total} Zeilen</span>
-            <span>{previewLoading ? "liest Datei..." : `${importSummary.selected} bereit`}</span>
-            <span>{importSummary.updates} Updates</span>
-            <span className={importSummary.errors ? "danger" : ""}>{importSummary.errors} Hinweise</span>
-            <span>{importSummary.saved} gespeichert</span>
-            {importTable && <span>{mappingSummary.mapped} Spalten erkannt</span>}
-            {importTable && <span className={mappingSummary.unmapped ? "danger" : ""}>{mappingSummary.unmapped} offen</span>}
+            <span>{t("importExport.summary.rows", { count: importSummary.total })}</span>
+            <span>{previewLoading ? t("importExport.summary.reading") : t("importExport.summary.ready", { count: importSummary.selected })}</span>
+            <span>{t("importExport.summary.updates", { count: importSummary.updates })}</span>
+            <span className={importSummary.errors ? "danger" : ""}>{t("importExport.summary.notes", { count: importSummary.errors })}</span>
+            <span>{t("importExport.summary.saved", { count: importSummary.saved })}</span>
+            {importTable && <span>{t("importExport.summary.mapped", { count: mappingSummary.mapped })}</span>}
+            {importTable && <span className={mappingSummary.unmapped ? "danger" : ""}>{t("importExport.summary.open", { count: mappingSummary.unmapped })}</span>}
           </div>
         </article>
 
         <article className="panel transfer-panel">
           <div className="panel-head">
             <div>
-              <h2>Export</h2>
-              <p>CSV für Tabellenprogramme oder JSON als verlustärmeres RailKeeper-Format.</p>
+              <h2>{t("importExport.export.title")}</h2>
+              <p>{t("importExport.export.subtitle")}</p>
             </div>
             <Download size={20} aria-hidden="true" />
           </div>
           <div className="export-actions">
-            <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => downloadText("railkeeper-bestand.csv", `\uFEFF${vehiclesToCSV(vehicles)}`, "text/csv;charset=utf-8")}>
+            <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => downloadText("railkeeper-bestand.csv", `\uFEFF${vehiclesToCSV(vehicles, fieldLabel, t("common.yes"), t("common.no"))}`, "text/csv;charset=utf-8")}>
               <Download size={15} aria-hidden="true" />
-              CSV exportieren
+              {t("importExport.export.csv")}
             </button>
             <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => downloadText("railkeeper-bestand.json", JSON.stringify({ format: "railkeeper-vehicles", version: 1, vehicles }, null, 2), "application/json;charset=utf-8")}>
               <Download size={15} aria-hidden="true" />
-              JSON exportieren
+              {t("importExport.export.json")}
             </button>
-            <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => printInventory(vehicles)}>
+            <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => printInventory(vehicles, fieldLabel, language, t)}>
               <Printer size={15} aria-hidden="true" />
-              PDF/Druckansicht
+              {t("importExport.export.print")}
             </button>
           </div>
         </article>
+      </section>
+
+      <section className="panel transfer-panel ecos-panel">
+        <div className="panel-head">
+          <div>
+            <h2>{t("importExport.ecos.title")}</h2>
+            <p>{t("importExport.ecos.subtitle")}</p>
+          </div>
+          <Database size={20} aria-hidden="true" />
+        </div>
+        <div className="ecos-connection-grid">
+          <label>
+            {t("importExport.ecos.host")}
+            <input value={ecosHost} onChange={(event) => setEcosHost(event.target.value)} placeholder={t("importExport.ecos.hostPlaceholder")} />
+          </label>
+          <label>
+            {t("importExport.ecos.port")}
+            <input value={ecosPort} onChange={(event) => setEcosPort(event.target.value)} inputMode="numeric" placeholder="15471" />
+          </label>
+          <div className="ecos-actions">
+            <button type="button" className="secondary-button" onClick={testECoSConnection} disabled={ecosBusy || !ecosHost.trim()}>
+              <Check size={15} aria-hidden="true" />
+              {t("importExport.ecos.test")}
+            </button>
+            <button type="button" className="primary-button" onClick={previewECoSLocomotives} disabled={ecosBusy || !ecosHost.trim()}>
+              <Download size={15} aria-hidden="true" />
+              {t("importExport.ecos.readLocos")}
+            </button>
+          </div>
+        </div>
+        <div className="ecos-status-strip">
+          <span className={ecosResult?.connected ? "status-ok" : ecosResult ? "status-error" : ""}>
+            {ecosResult ? (ecosResult.connected ? t("importExport.ecos.connected") : t("importExport.ecos.notConnected")) : t("importExport.ecos.idle")}
+          </span>
+          {ecosResult?.status && <span>{t("importExport.ecos.status", { status: ecosResult.status })}</span>}
+          {ecosResult?.protocolVersion && <span>{t("importExport.ecos.protocol", { version: ecosResult.protocolVersion })}</span>}
+          {ecosResult?.applicationVersion && <span>{t("importExport.ecos.application", { version: ecosResult.applicationVersion })}</span>}
+          {ecosPreview && <span>{t("importExport.ecos.locoCount", { count: ecosPreview.locomotives.length })}</span>}
+        </div>
+        {ecosMessage && <p className="form-message">{ecosMessage}</p>}
+        <p className="source-note backup-note">{t("importExport.ecos.note")}</p>
+        {ecosPreview && (
+          <div className="table-wrap ecos-loco-preview">
+            <table>
+              <thead>
+                <tr>
+                  <th>{t("importExport.ecos.objectId")}</th>
+                  <th>{t("importExport.ecos.name")}</th>
+                  <th>{t("importExport.ecos.address")}</th>
+                  <th>{t("importExport.ecos.protocolColumn")}</th>
+                  <th>{t("importExport.ecos.match")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ecosPreview.locomotives.length === 0 ? (
+                  <tr><td colSpan={5}>{t("importExport.ecos.empty")}</td></tr>
+                ) : ecosPreview.locomotives.map((locomotive) => {
+                  const match = vehicles.find((vehicle) => vehicle.name.toLowerCase() === (locomotive.name || "").toLowerCase() || vehicle.digitalDecoderNumber === String(locomotive.address || ""));
+                  return (
+                    <tr key={locomotive.objectId}>
+                      <td>{locomotive.objectId}</td>
+                      <td>{locomotive.name || "-"}</td>
+                      <td>{locomotive.address || "-"}</td>
+                      <td>{locomotive.protocol || "-"}</td>
+                      <td>{match ? `${match.inventoryNumber} · ${match.name}` : t("importExport.ecos.noMatch")}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {importTable && (
         <section className="panel column-mapping-panel">
           <div className="panel-head">
             <div>
-              <h2>Spaltenzuordnung</h2>
-              <p>{importTable.fileName}: nicht erkannte Tabellenköpfe können hier vor dem Speichern manuell zugeordnet werden.</p>
+              <h2>{t("importExport.mapping.title")}</h2>
+              <p>{t("importExport.mapping.subtitle", { file: importTable.fileName })}</p>
             </div>
             <Database size={20} aria-hidden="true" />
           </div>
@@ -933,38 +1095,38 @@ export function ImportExportView() {
             {importTable.mappings.map((mapping) => (
               <label key={mapping.index} className={mapping.key ? "" : "unmapped"}>
                 <span>
-                  <strong title={mapping.header}>{mapping.header || `Spalte ${mapping.index + 1}`}</strong>
-                  <small>{mapping.key ? "zugeordnet" : "nicht erkannt"}</small>
+                  <strong title={mapping.header}>{mapping.header || t("importExport.mapping.column", { number: mapping.index + 1 })}</strong>
+                  <small>{mapping.key ? t("importExport.mapping.mapped") : t("importExport.mapping.unmapped")}</small>
                 </span>
                 <select value={mapping.key} onChange={(event) => setColumnMapping(mapping.index, event.target.value as VehicleImportField | "")}>
-                  <option value="">Ignorieren</option>
+                  <option value="">{t("importExport.mapping.ignore")}</option>
                   {vehicleImportFields.map((field) => (
-                    <option key={field.key} value={field.key}>{field.label}</option>
+                    <option key={field.key} value={field.key}>{fieldLabel(field.key)}</option>
                   ))}
                 </select>
               </label>
             ))}
           </div>
-          <p className="source-note backup-note">Wenn zwei Spalten demselben Zielfeld zugeordnet werden, bleibt die zuletzt gewählte Zuordnung aktiv. Die Importprüfung wird sofort neu berechnet.</p>
+          <p className="source-note backup-note">{t("importExport.mapping.note")}</p>
         </section>
       )}
 
       <section className="panel transfer-panel master-transfer-panel">
         <div className="panel-head">
           <div>
-            <h2>Stammdaten</h2>
-            <p>Hersteller, Spurweiten, Epochen, Kategorien, Gattungen, Bahngesellschaften, Symbole und Abhängigkeiten als RailKeeper-JSON sichern oder wiederherstellen.</p>
+            <h2>{t("importExport.master.title")}</h2>
+            <p>{t("importExport.master.subtitle")}</p>
           </div>
           <Database size={20} aria-hidden="true" />
         </div>
         <div className="master-transfer-actions">
           <a className="secondary-button" href={api.masterDataExportUrl()}>
             <Download size={15} aria-hidden="true" />
-            Stammdaten herunterladen
+            {t("importExport.master.download")}
           </a>
           <label className="file-drop inline-file-drop">
             <Upload size={16} aria-hidden="true" />
-            {masterDataFile ? masterDataFile.name : "Stammdaten-Datei auswählen"}
+            {masterDataFile ? masterDataFile.name : t("importExport.master.choose")}
             <input
               type="file"
               accept="application/json,.json"
@@ -976,60 +1138,60 @@ export function ImportExportView() {
           </label>
           <button type="button" className="primary-button" onClick={importMasterData} disabled={masterDataSaving || !masterDataFile}>
             {masterDataSaving ? (
-              "Importiert..."
+              t("importExport.master.importing")
             ) : (
               <>
                 <Upload size={15} aria-hidden="true" />
-                Stammdaten einspielen
+                {t("importExport.master.import")}
               </>
             )}
           </button>
         </div>
-        <p className="source-note backup-note">Der Stammdaten-Import ersetzt nur Stammdaten und deren Abhängigkeiten. Bestand, Wartung, Bilder, Dateien und Backups bleiben unberührt.</p>
+        <p className="source-note backup-note">{t("importExport.master.note")}</p>
         {masterDataMessage && <p className="form-message">{masterDataMessage}</p>}
       </section>
 
       <section className="panel import-review-panel">
         <div className="panel-head">
           <div>
-            <h2>Importprüfung</h2>
-            <p>Jede Zeile kann vor dem Speichern korrigiert oder abgewählt werden.</p>
+            <h2>{t("importExport.review.title")}</h2>
+            <p>{t("importExport.review.subtitle")}</p>
           </div>
           <button type="button" className="primary-button" disabled={saving || importSummary.selected === 0} onClick={saveSelected}>
             <Save size={15} aria-hidden="true" />
-            Auswahl speichern
+            {t("importExport.review.saveSelection")}
           </button>
         </div>
 
         {rows.length === 0 ? (
-          <p className="empty-state">Noch keine Bestandsliste ausgewählt.</p>
+          <p className="empty-state">{t("importExport.review.empty")}</p>
         ) : (
           <div className="table-wrap import-table">
             <table>
               <thead>
                 <tr>
-                  <th>Übernehmen</th>
-                  <th>Aktion</th>
-                  <th>Inventar</th>
-                  <th>Hersteller</th>
-                  <th>Artikel</th>
-                  <th>Bezeichnung</th>
-                  <th>Spur</th>
-                  <th>Status</th>
+                  <th>{t("importExport.review.apply")}</th>
+                  <th>{t("importExport.review.action")}</th>
+                  <th>{t("importExport.review.inventory")}</th>
+                  <th>{fieldLabel("manufacturer")}</th>
+                  <th>{t("importExport.review.article")}</th>
+                  <th>{fieldLabel("name")}</th>
+                  <th>{fieldLabel("gauge")}</th>
+                  <th>{t("exhibition.status")}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => {
                   const existing = row.duplicateVehicleId ? vehicles.find((vehicle) => vehicle.id === row.duplicateVehicleId) : undefined;
-                  const changes = getImportChanges(row, existing);
+                  const changes = getImportChanges(row, existing, fieldLabel, t("common.yes"), t("common.no"));
                   return (
                     <Fragment key={row.id}>
                       <tr className={row.status === "error" ? "import-row-error" : row.status === "warning" ? "import-row-warning" : row.status === "saved" ? "import-row-saved" : ""}>
                         <td><input type="checkbox" checked={row.selected} disabled={row.status === "saved" || row.status === "error"} onChange={(event) => setRowSelected(row.id, event.target.checked)} /></td>
                         <td>
                           <select value={row.mode} disabled={row.status === "saved"} onChange={(event) => setRowMode(row.id, event.target.value as ImportRow["mode"])}>
-                            <option value="create">Neu</option>
-                            <option value="update" disabled={!row.duplicateVehicleId}>Aktualisieren</option>
+                            <option value="create">{t("importExport.review.create")}</option>
+                            <option value="update" disabled={!row.duplicateVehicleId}>{t("importExport.review.update")}</option>
                           </select>
                         </td>
                         <td><input value={row.vehicle.inventoryNumber || ""} onChange={(event) => updateRow(row.id, { inventoryNumber: event.target.value })} /></td>
@@ -1040,7 +1202,7 @@ export function ImportExportView() {
                         <td>
                           <span className={`import-status ${row.status}`}>
                             {row.status === "saved" ? <Check size={14} /> : row.status === "error" || row.status === "warning" ? <AlertTriangle size={14} /> : <Check size={14} />}
-                            {row.status === "saved" ? "gespeichert" : row.issues[0] || "bereit"}
+                            {row.status === "saved" ? t("common.saved") : row.issues[0] || t("common.ready")}
                           </span>
                         </td>
                       </tr>
@@ -1049,19 +1211,19 @@ export function ImportExportView() {
                           <td colSpan={8}>
                             <div className="import-change-panel">
                               <div>
-                                <strong>Feldvorschau für Update</strong>
-                                <span>{changes.filter((change) => change.status === "overwrite").length} Überschreibungen, {changes.filter((change) => change.status === "fill").length} Ergänzungen</span>
+                                <strong>{t("importExport.review.updatePreview")}</strong>
+                                <span>{t("importExport.review.overwrites", { count: changes.filter((change) => change.status === "overwrite").length })}, {t("importExport.review.fills", { count: changes.filter((change) => change.status === "fill").length })}</span>
                               </div>
                               {changes.length === 0 ? (
-                                <p>Keine importierten Feldwerte für diese Update-Zeile.</p>
+                                <p>{t("importExport.review.noValues")}</p>
                               ) : (
                                 <table>
                                   <thead>
                                     <tr>
-                                      <th>Feld</th>
-                                      <th>Aktuell</th>
-                                      <th>Import</th>
-                                      <th>Status</th>
+                                      <th>{t("importExport.review.field")}</th>
+                                      <th>{t("importExport.review.current")}</th>
+                                      <th>{t("importExport.review.import")}</th>
+                                      <th>{t("exhibition.status")}</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1070,7 +1232,7 @@ export function ImportExportView() {
                                         <td>{change.label}</td>
                                         <td>{change.current}</td>
                                         <td>{change.incoming}</td>
-                                        <td>{change.status === "same" ? "gleich" : change.status === "fill" ? "ergänzt leeres Feld" : "überschreibt"}</td>
+                                        <td>{t(`importExport.review.status.${change.status}`)}</td>
                                       </tr>
                                     ))}
                                   </tbody>

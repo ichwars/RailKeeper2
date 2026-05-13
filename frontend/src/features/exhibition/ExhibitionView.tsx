@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { api, ExhibitionEntry, ExhibitionEntryInput, ExhibitionList, ExhibitionListInput, MasterDataEntry } from "../../shared/api";
 import { FunctionSymbolPicker, functionSymbolIcon, functionSymbolMetadata } from "../../shared/functionSymbols";
+import { useI18n } from "../../shared/i18n";
 
 type ListSortKey = "designation" | "date" | "entryCount" | "locked";
 type EntrySortKey = "owner" | "locomotiveName" | "dtDecoder" | "decoderNumber" | "functionKeys";
@@ -50,9 +51,9 @@ function hasAdmin(roles: string[]) {
   return roles.includes("Admin");
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, language: string) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${value}T00:00:00`));
 }
 
 function sortValue(value: unknown) {
@@ -118,7 +119,13 @@ function fileToDataURL(file: File) {
   });
 }
 
-function printList(list: ExhibitionList, entries: ExhibitionEntry[], symbols: MasterDataEntry[] = []) {
+function printList(
+  list: ExhibitionList,
+  entries: ExhibitionEntry[],
+  symbols: MasterDataEntry[] = [],
+  language = "de",
+  t: (key: string, values?: Record<string, string | number>) => string = (key) => key
+) {
   const rows = entries.map((entry) => `
     <tr>
       <td class="image-cell">${entry.imageUrl ? `<img src="${escapeHTML(entry.imageUrl)}" alt="" />` : `<span>-</span>`}</td>
@@ -127,7 +134,7 @@ function printList(list: ExhibitionList, entries: ExhibitionEntry[], symbols: Ma
         <strong>${escapeHTML(entry.locomotiveName)}</strong>
         ${entry.notes ? `<small>${escapeHTML(entry.notes)}</small>` : ""}
       </td>
-      <td>${entry.dtDecoder ? "Ja" : "Nein"}</td>
+      <td>${entry.dtDecoder ? t("exhibition.yes") : t("exhibition.no")}</td>
       <td>${escapeHTML(entry.decoderNumber || "-")}</td>
       <td class="function-cell">${printFunctionChips(entry.functionKeys, symbols)}</td>
     </tr>
@@ -135,7 +142,7 @@ function printList(list: ExhibitionList, entries: ExhibitionEntry[], symbols: Ma
   const win = window.open("", "_blank", "noopener,noreferrer");
   if (!win) return;
   win.document.write(`<!doctype html>
-    <html lang="de">
+    <html lang="${escapeHTML(language)}">
       <head>
         <meta charset="utf-8" />
         <title>${escapeHTML(list.designation)}</title>
@@ -160,14 +167,14 @@ function printList(list: ExhibitionList, entries: ExhibitionEntry[], symbols: Ma
       </head>
       <body>
         <h1>${escapeHTML(list.designation)}</h1>
-        <p>${escapeHTML(formatDate(list.date))} · ${entries.length} Einträge</p>
+        <p>${escapeHTML(t("exhibition.entriesCountWithDate", { date: formatDate(list.date, language), count: entries.length }))}</p>
         <table>
           <thead>
-            <tr><th>Bild</th><th>Besitzer</th><th>Lok Bezeichnung</th><th>DT</th><th>Decoder-Nr.</th><th>Funktionstasten</th></tr>
+            <tr><th>${escapeHTML(t("exhibition.image"))}</th><th>${escapeHTML(t("exhibition.owner"))}</th><th>${escapeHTML(t("exhibition.locomotiveName"))}</th><th>DT</th><th>${escapeHTML(t("exhibition.decoderNumber"))}</th><th>${escapeHTML(t("exhibition.functionKeys"))}</th></tr>
           </thead>
-          <tbody>${rows || `<tr><td colspan="6">Keine Einträge.</td></tr>`}</tbody>
+          <tbody>${rows || `<tr><td colspan="6">${escapeHTML(t("exhibition.printEmpty"))}</td></tr>`}</tbody>
         </table>
-        <footer>RailKeeper2 Messeliste · ${list.locked ? "gesperrt" : "offen"}</footer>
+        <footer>${escapeHTML(t("exhibition.printFooter", { status: list.locked ? t("exhibition.locked") : t("exhibition.open") }))}</footer>
         <script>window.print();</script>
       </body>
     </html>`);
@@ -175,6 +182,7 @@ function printList(list: ExhibitionList, entries: ExhibitionEntry[], symbols: Ma
 }
 
 export function ExhibitionView({ roles }: { roles: string[] }) {
+  const { language, t } = useI18n();
   const canManageLists = hasAdmin(roles);
   const [lists, setLists] = useState<ExhibitionList[]>([]);
   const [selectedID, setSelectedID] = useState("");
@@ -265,14 +273,14 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
       setSelectedID(saved.id);
       load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Messeliste konnte nicht gespeichert werden.");
+      setMessage(error instanceof Error ? error.message : t("exhibition.saveListError"));
     } finally {
       setSaving(false);
     }
   };
 
   const deleteList = async (list: ExhibitionList) => {
-    if (!canManageLists || !window.confirm(`Messeliste "${list.designation}" wirklich löschen?`)) return;
+    if (!canManageLists || !window.confirm(t("exhibition.deleteListConfirm", { name: list.designation }))) return;
     await api.deleteExhibitionList(list.id);
     if (selectedID === list.id) setSelectedID("");
     load();
@@ -296,7 +304,7 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
   };
 
   const printListByID = async (list: ExhibitionList) => {
-    printList(list, await entriesForList(list), symbols);
+    printList(list, await entriesForList(list), symbols, language, t);
   };
 
   const openEntryDialog = (mode: "create" | "edit", entry?: ExhibitionEntry) => {
@@ -336,14 +344,14 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
       setEntryDialog(null);
       await reloadEntries();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Eintrag konnte nicht gespeichert werden.");
+      setMessage(error instanceof Error ? error.message : t("exhibition.saveEntryError"));
     } finally {
       setSaving(false);
     }
   };
 
   const deleteEntry = async (entry: ExhibitionEntry) => {
-    if (!selectedID || !canDeleteEntries || !window.confirm(`Eintrag "${entry.locomotiveName}" wirklich löschen?`)) return;
+    if (!selectedID || !canDeleteEntries || !window.confirm(t("exhibition.deleteEntryConfirm", { name: entry.locomotiveName }))) return;
     await api.deleteExhibitionEntry(selectedID, entry.id);
     await reloadEntries();
   };
@@ -363,14 +371,14 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
     <>
       <section className="inventory-head">
         <div>
-          <p className="eyebrow">Messebetrieb</p>
-          <h1>Messeliste</h1>
-          <p>Listen für Messe- und Fahrtage anlegen, sperren, pflegen und drucken.</p>
+          <p className="eyebrow">{t("exhibition.eyebrow")}</p>
+          <h1>{t("exhibition.title")}</h1>
+          <p>{t("exhibition.subtitle")}</p>
         </div>
         {canManageLists && (
           <button type="button" className="primary-button new-vehicle-button" onClick={() => openListDialog("create")}>
             <Plus size={16} aria-hidden="true" />
-            Neue Liste
+            {t("exhibition.newList")}
           </button>
         )}
       </section>
@@ -381,41 +389,41 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
         <article className="panel exhibition-list-panel">
           <div className="inventory-list-head">
             <div>
-              <h2>Listen</h2>
-              <p>{loading ? "Wird geladen..." : `${lists.length} Messelisten`}</p>
+              <h2>{t("exhibition.lists")}</h2>
+              <p>{loading ? t("exhibition.loading") : t("exhibition.listCount", { count: lists.length })}</p>
             </div>
           </div>
           <div className="table-wrap">
             <table className="inventory-table exhibition-table">
               <thead>
                 <tr>
-                  <th><button type="button" className={listSort.key === "designation" ? "sort-button active" : "sort-button"} onClick={() => setListSortKey("designation")}>Bezeichnung</button></th>
-                  <th><button type="button" className={listSort.key === "date" ? "sort-button active" : "sort-button"} onClick={() => setListSortKey("date")}>Datum</button></th>
-                  <th><button type="button" className={listSort.key === "entryCount" ? "sort-button active" : "sort-button"} onClick={() => setListSortKey("entryCount")}>Einträge</button></th>
-                  <th><button type="button" className={listSort.key === "locked" ? "sort-button active" : "sort-button"} onClick={() => setListSortKey("locked")}>Status</button></th>
-                  <th>Aktionen</th>
+                  <th><button type="button" className={listSort.key === "designation" ? "sort-button active" : "sort-button"} onClick={() => setListSortKey("designation")}>{t("exhibition.designation")}</button></th>
+                  <th><button type="button" className={listSort.key === "date" ? "sort-button active" : "sort-button"} onClick={() => setListSortKey("date")}>{t("exhibition.date")}</button></th>
+                  <th><button type="button" className={listSort.key === "entryCount" ? "sort-button active" : "sort-button"} onClick={() => setListSortKey("entryCount")}>{t("exhibition.entries")}</button></th>
+                  <th><button type="button" className={listSort.key === "locked" ? "sort-button active" : "sort-button"} onClick={() => setListSortKey("locked")}>{t("exhibition.status")}</button></th>
+                  <th>{t("exhibition.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedLists.map((list) => (
                   <tr key={list.id} className={selectedID === list.id ? "selected-row" : ""} onClick={() => setSelectedID(list.id)}>
                     <td><strong>{list.designation}</strong></td>
-                    <td>{formatDate(list.date)}</td>
+                    <td>{formatDate(list.date, language)}</td>
                     <td>{list.entryCount}</td>
-                    <td><span className={list.locked ? "settings-pill muted" : "settings-pill active"}>{list.locked ? "gesperrt" : "offen"}</span></td>
+                    <td><span className={list.locked ? "settings-pill muted" : "settings-pill active"}>{list.locked ? t("exhibition.locked") : t("exhibition.open")}</span></td>
                     <td>
                       <div className="table-actions">
-                        <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); openListView(list); }} aria-label="Ansehen" title="Ansehen"><Eye size={15} /></button>
-                        {canManageLists && <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); openListDialog("edit", list); }} aria-label="Bearbeiten" title="Bearbeiten"><Edit3 size={15} /></button>}
-                        <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); printListByID(list); }} aria-label="Drucken" title="Drucken"><Printer size={15} /></button>
-                        {canManageLists && <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); toggleLock(list); }} aria-label={list.locked ? "Entsperren" : "Sperren"} title={list.locked ? "Entsperren" : "Sperren"}>{list.locked ? <LockOpen size={15} /> : <Lock size={15} />}</button>}
-                        {canManageLists && <button type="button" className="icon-button danger" onClick={(event) => { event.stopPropagation(); deleteList(list); }} aria-label="Löschen" title="Löschen"><Trash2 size={15} /></button>}
+                        <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); openListView(list); }} aria-label={t("exhibition.view")} title={t("exhibition.view")}><Eye size={15} /></button>
+                        {canManageLists && <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); openListDialog("edit", list); }} aria-label={t("exhibition.edit")} title={t("exhibition.edit")}><Edit3 size={15} /></button>}
+                        <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); printListByID(list); }} aria-label={t("exhibition.print")} title={t("exhibition.print")}><Printer size={15} /></button>
+                        {canManageLists && <button type="button" className="icon-button" onClick={(event) => { event.stopPropagation(); toggleLock(list); }} aria-label={list.locked ? t("exhibition.unlock") : t("exhibition.lock")} title={list.locked ? t("exhibition.unlock") : t("exhibition.lock")}>{list.locked ? <LockOpen size={15} /> : <Lock size={15} />}</button>}
+                        {canManageLists && <button type="button" className="icon-button danger" onClick={(event) => { event.stopPropagation(); deleteList(list); }} aria-label={t("exhibition.delete")} title={t("exhibition.delete")}><Trash2 size={15} /></button>}
                       </div>
                     </td>
                   </tr>
                 ))}
                 {sortedLists.length === 0 && (
-                  <tr><td colSpan={5}>Noch keine Messeliste angelegt.</td></tr>
+                  <tr><td colSpan={5}>{t("exhibition.noLists")}</td></tr>
                 )}
               </tbody>
             </table>
@@ -425,25 +433,25 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
         <article className="panel exhibition-entry-panel">
           <div className="inventory-list-head">
             <div>
-              <h2>{selectedList ? selectedList.designation : "Einträge"}</h2>
-              <p>{selectedList ? `${formatDate(selectedList.date)} · ${entries.length} Einträge` : "Bitte eine Liste auswählen."}</p>
+              <h2>{selectedList ? selectedList.designation : t("exhibition.entries")}</h2>
+              <p>{selectedList ? t("exhibition.entriesCountWithDate", { date: formatDate(selectedList.date, language), count: entries.length }) : t("exhibition.selectList")}</p>
             </div>
             <div className="table-actions">
-              {selectedList && <button type="button" className="icon-button" onClick={() => printList(selectedList, sortedEntries, symbols)} aria-label="Liste drucken" title="Liste drucken"><Printer size={15} /></button>}
-              {selectedList && <button type="button" className="primary-button" onClick={() => openEntryDialog("create")} disabled={!canEditEntries}>Eintrag</button>}
+              {selectedList && <button type="button" className="icon-button" onClick={() => printList(selectedList, sortedEntries, symbols, language, t)} aria-label={t("exhibition.printList")} title={t("exhibition.printList")}><Printer size={15} /></button>}
+              {selectedList && <button type="button" className="primary-button" onClick={() => openEntryDialog("create")} disabled={!canEditEntries}>{t("exhibition.entry")}</button>}
             </div>
           </div>
           <div className="table-wrap">
             <table className="inventory-table exhibition-table">
               <thead>
                 <tr>
-                  <th>Bild</th>
-                  <th><button type="button" className={entrySort.key === "owner" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("owner")}>Besitzer</button></th>
-                  <th><button type="button" className={entrySort.key === "locomotiveName" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("locomotiveName")}>Lok Bezeichnung</button></th>
+                  <th>{t("exhibition.image")}</th>
+                  <th><button type="button" className={entrySort.key === "owner" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("owner")}>{t("exhibition.owner")}</button></th>
+                  <th><button type="button" className={entrySort.key === "locomotiveName" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("locomotiveName")}>{t("exhibition.locomotiveName")}</button></th>
                   <th><button type="button" className={entrySort.key === "dtDecoder" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("dtDecoder")}>DT</button></th>
-                  <th><button type="button" className={entrySort.key === "decoderNumber" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("decoderNumber")}>Decoder-Nr.</button></th>
-                  <th><button type="button" className={entrySort.key === "functionKeys" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("functionKeys")}>Funktionstasten</button></th>
-                  <th>Aktionen</th>
+                  <th><button type="button" className={entrySort.key === "decoderNumber" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("decoderNumber")}>{t("exhibition.decoderNumber")}</button></th>
+                  <th><button type="button" className={entrySort.key === "functionKeys" ? "sort-button active" : "sort-button"} onClick={() => setEntrySortKey("functionKeys")}>{t("exhibition.functionKeys")}</button></th>
+                  <th>{t("exhibition.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -452,22 +460,22 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
                     <td>{entry.imageUrl ? <img className="exhibition-thumb" src={entry.imageUrl} alt="" /> : <span className="image-placeholder mini">-</span>}</td>
                     <td>{entry.owner}</td>
                     <td><strong>{entry.locomotiveName}</strong>{entry.notes && <small>{entry.notes}</small>}</td>
-                    <td>{entry.dtDecoder ? "Ja" : "Nein"}</td>
-                    <td>{entry.decoderNumber || "-"}</td>
+                    <td>{entry.dtDecoder ? t("exhibition.yes") : t("exhibition.no")}</td>
+                    <td>{entry.decoderNumber || t("common.placeholder")}</td>
                     <td>{displayFunctions(entry.functionKeys)}</td>
                     <td>
                       <div className="table-actions">
-                        <button type="button" className="icon-button" onClick={() => openEntryDialog("edit", entry)} disabled={!canEditEntries} aria-label="Bearbeiten" title="Bearbeiten"><Edit3 size={15} /></button>
-                        {canManageLists && <button type="button" className="icon-button danger" onClick={() => deleteEntry(entry)} disabled={!canDeleteEntries} aria-label="Löschen" title="Löschen"><Trash2 size={15} /></button>}
+                        <button type="button" className="icon-button" onClick={() => openEntryDialog("edit", entry)} disabled={!canEditEntries} aria-label={t("exhibition.edit")} title={t("exhibition.edit")}><Edit3 size={15} /></button>
+                        {canManageLists && <button type="button" className="icon-button danger" onClick={() => deleteEntry(entry)} disabled={!canDeleteEntries} aria-label={t("exhibition.delete")} title={t("exhibition.delete")}><Trash2 size={15} /></button>}
                       </div>
                     </td>
                   </tr>
                 ))}
                 {selectedList && sortedEntries.length === 0 && (
-                  <tr><td colSpan={7}>Noch keine Einträge in dieser Liste.</td></tr>
+                  <tr><td colSpan={7}>{t("exhibition.noEntries")}</td></tr>
                 )}
                 {!selectedList && (
-                  <tr><td colSpan={7}>Keine Liste ausgewählt.</td></tr>
+                  <tr><td colSpan={7}>{t("exhibition.noList")}</td></tr>
                 )}
               </tbody>
             </table>
@@ -479,22 +487,22 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
         <div className="modal-layer">
           <form className="vehicle-modal compact-modal" onSubmit={(event) => { event.preventDefault(); saveList(); }}>
             <div className="modal-head">
-              <h2>{listDialog.mode === "edit" ? "Messeliste bearbeiten" : "Messeliste anlegen"}</h2>
-              <button type="button" className="icon-button" onClick={() => setListDialog(null)} aria-label="Schließen">×</button>
+              <h2>{listDialog.mode === "edit" ? t("exhibition.listEdit") : t("exhibition.listCreate")}</h2>
+              <button type="button" className="icon-button" onClick={() => setListDialog(null)} aria-label={t("exhibition.close")}>×</button>
             </div>
             <div className="modal-body simple-form">
               <label>
-                <span>Bezeichnung</span>
+                <span>{t("exhibition.designation")}</span>
                 <input value={listForm.designation} onChange={(event) => setListForm({ ...listForm, designation: event.target.value })} required />
               </label>
               <label>
-                <span>Datum</span>
+                <span>{t("exhibition.date")}</span>
                 <input type="date" value={listForm.date} onChange={(event) => setListForm({ ...listForm, date: event.target.value })} required />
               </label>
             </div>
             <div className="modal-actions">
-              <button type="button" className="secondary-button" onClick={() => setListDialog(null)}>Abbrechen</button>
-              <button type="submit" className="primary-button" disabled={saving}>Speichern</button>
+              <button type="button" className="secondary-button" onClick={() => setListDialog(null)}>{t("exhibition.cancel")}</button>
+              <button type="submit" className="primary-button" disabled={saving}>{t("exhibition.save")}</button>
             </div>
           </form>
         </div>
@@ -506,21 +514,21 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
             <div className="modal-head">
               <div>
                 <h2>{viewDialog.list.designation}</h2>
-                <p>{formatDate(viewDialog.list.date)} · {viewDialog.entries.length} Einträge</p>
+                <p>{t("exhibition.entriesCountWithDate", { date: formatDate(viewDialog.list.date, language), count: viewDialog.entries.length })}</p>
               </div>
-              <button type="button" className="icon-button" onClick={() => setViewDialog(null)} aria-label="Schließen">×</button>
+              <button type="button" className="icon-button" onClick={() => setViewDialog(null)} aria-label={t("exhibition.close")}>×</button>
             </div>
             <div className="modal-body">
               <div className="table-wrap">
                 <table className="inventory-table exhibition-table">
                   <thead>
                     <tr>
-                      <th>Bild</th>
-                      <th>Besitzer</th>
-                      <th>Lok Bezeichnung</th>
+                      <th>{t("exhibition.image")}</th>
+                      <th>{t("exhibition.owner")}</th>
+                      <th>{t("exhibition.locomotiveName")}</th>
                       <th>DT</th>
-                      <th>Decoder-Nr.</th>
-                      <th>Funktionstasten</th>
+                      <th>{t("exhibition.decoderNumber")}</th>
+                      <th>{t("exhibition.functionKeys")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -529,19 +537,19 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
                         <td>{entry.imageUrl ? <img className="exhibition-thumb" src={entry.imageUrl} alt="" /> : <span className="image-placeholder mini">-</span>}</td>
                         <td>{entry.owner}</td>
                         <td><strong>{entry.locomotiveName}</strong>{entry.notes && <small>{entry.notes}</small>}</td>
-                        <td>{entry.dtDecoder ? "Ja" : "Nein"}</td>
-                        <td>{entry.decoderNumber || "-"}</td>
+                        <td>{entry.dtDecoder ? t("exhibition.yes") : t("exhibition.no")}</td>
+                        <td>{entry.decoderNumber || t("common.placeholder")}</td>
                         <td>{displayFunctions(entry.functionKeys)}</td>
                       </tr>
                     ))}
-                    {viewDialog.entries.length === 0 && <tr><td colSpan={6}>Keine Einträge vorhanden.</td></tr>}
+                    {viewDialog.entries.length === 0 && <tr><td colSpan={6}>{t("exhibition.noEntriesShort")}</td></tr>}
                   </tbody>
                 </table>
               </div>
             </div>
             <div className="modal-actions">
-              <button type="button" className="secondary-button" onClick={() => printList(viewDialog.list, viewDialog.entries, symbols)}>Drucken</button>
-              <button type="button" className="primary-button" onClick={() => setViewDialog(null)}>Schließen</button>
+              <button type="button" className="secondary-button" onClick={() => printList(viewDialog.list, viewDialog.entries, symbols, language, t)}>{t("exhibition.print")}</button>
+              <button type="button" className="primary-button" onClick={() => setViewDialog(null)}>{t("exhibition.close")}</button>
             </div>
           </section>
         </div>
@@ -551,27 +559,27 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
         <div className="modal-layer">
           <form className="vehicle-modal exhibition-entry-modal" onSubmit={(event) => { event.preventDefault(); saveEntry(); }}>
             <div className="modal-head">
-              <h2>{entryDialog.mode === "edit" ? "Eintrag bearbeiten" : "Eintrag erfassen"}</h2>
-              <button type="button" className="icon-button" onClick={() => setEntryDialog(null)} aria-label="Schließen">×</button>
+              <h2>{entryDialog.mode === "edit" ? t("exhibition.entryEdit") : t("exhibition.entryCreate")}</h2>
+              <button type="button" className="icon-button" onClick={() => setEntryDialog(null)} aria-label={t("exhibition.close")}>×</button>
             </div>
-            <div className="modal-tabs exhibition-entry-tabs" role="tablist" aria-label="Eintrag bearbeiten">
-              <button type="button" className={activeEntryTab === "general" ? "active" : ""} onClick={() => setActiveEntryTab("general")}>Allgemein</button>
-              <button type="button" className={activeEntryTab === "images" ? "active" : ""} onClick={() => setActiveEntryTab("images")}>Bilder upload</button>
-              <button type="button" className={activeEntryTab === "functions" ? "active" : ""} onClick={() => setActiveEntryTab("functions")}>Funktionstasten</button>
+            <div className="modal-tabs exhibition-entry-tabs" role="tablist" aria-label={t("exhibition.entryTabs")}>
+              <button type="button" className={activeEntryTab === "general" ? "active" : ""} onClick={() => setActiveEntryTab("general")}>{t("exhibition.tab.general")}</button>
+              <button type="button" className={activeEntryTab === "images" ? "active" : ""} onClick={() => setActiveEntryTab("images")}>{t("exhibition.tab.images")}</button>
+              <button type="button" className={activeEntryTab === "functions" ? "active" : ""} onClick={() => setActiveEntryTab("functions")}>{t("exhibition.tab.functions")}</button>
             </div>
             <div className="modal-body">
               {activeEntryTab === "general" && (
                 <div className="exhibition-entry-form">
                   <section>
-                    <h3>Basisdaten</h3>
-                    <label><span>Besitzer</span><input value={entryForm.owner} onChange={(event) => setEntryForm({ ...entryForm, owner: event.target.value })} required /></label>
-                    <label><span>Lok Bezeichnung</span><input value={entryForm.locomotiveName} onChange={(event) => setEntryForm({ ...entryForm, locomotiveName: event.target.value })} required /></label>
+                    <h3>{t("exhibition.basicData")}</h3>
+                    <label><span>{t("exhibition.owner")}</span><input value={entryForm.owner} onChange={(event) => setEntryForm({ ...entryForm, owner: event.target.value })} required /></label>
+                    <label><span>{t("exhibition.locomotiveName")}</span><input value={entryForm.locomotiveName} onChange={(event) => setEntryForm({ ...entryForm, locomotiveName: event.target.value })} required /></label>
                   </section>
                   <section>
-                    <h3>Digitaltechnik</h3>
-                    <label className="checkbox-line"><input type="checkbox" checked={entryForm.dtDecoder} onChange={(event) => setEntryForm({ ...entryForm, dtDecoder: event.target.checked })} /> <span>DT vorhanden</span></label>
-                    <label><span>Decoder-Nr.</span><input value={entryForm.decoderNumber || ""} onChange={(event) => setEntryForm({ ...entryForm, decoderNumber: event.target.value })} /></label>
-                    <label><span>Notizen</span><textarea value={entryForm.notes || ""} onChange={(event) => setEntryForm({ ...entryForm, notes: event.target.value })} /></label>
+                    <h3>{t("exhibition.digitalTech")}</h3>
+                    <label className="checkbox-line"><input type="checkbox" checked={entryForm.dtDecoder} onChange={(event) => setEntryForm({ ...entryForm, dtDecoder: event.target.checked })} /> <span>{t("exhibition.dtAvailable")}</span></label>
+                    <label><span>{t("exhibition.decoderNumber")}</span><input value={entryForm.decoderNumber || ""} onChange={(event) => setEntryForm({ ...entryForm, decoderNumber: event.target.value })} /></label>
+                    <label><span>{t("exhibition.notes")}</span><textarea value={entryForm.notes || ""} onChange={(event) => setEntryForm({ ...entryForm, notes: event.target.value })} /></label>
                   </section>
                 </div>
               )}
@@ -579,12 +587,12 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
                 <section className="exhibition-image-tab">
                   <div className="upload-head">
                     <div>
-                      <h3>Bilder</h3>
-                      <p>Bild direkt am Messelisteneintrag pflegen.</p>
+                      <h3>{t("exhibition.images")}</h3>
+                      <p>{t("exhibition.imagesHelp")}</p>
                     </div>
                     <label className="primary-button">
                       <Upload size={16} aria-hidden="true" />
-                      Bild hochladen
+                      {t("exhibition.uploadImage")}
                       <input type="file" accept="image/png,image/jpeg,image/webp" className="visually-hidden" onChange={(event) => uploadEntryImage(event.target.files)} />
                     </label>
                   </div>
@@ -592,13 +600,13 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
                     {entryForm.imageUrl ? (
                       <img src={entryForm.imageUrl} alt="" />
                     ) : (
-                      <div className="image-placeholder large"><ImageIcon size={24} aria-hidden="true" />Keine Vorschau</div>
+                      <div className="image-placeholder large"><ImageIcon size={24} aria-hidden="true" />{t("exhibition.noPreview")}</div>
                     )}
                     <label>
-                      <span>Bildquelle oder Data-URL</span>
+                      <span>{t("exhibition.imageSource")}</span>
                       <input value={entryForm.imageUrl || ""} onChange={(event) => setEntryForm({ ...entryForm, imageUrl: event.target.value })} placeholder="https://..." />
                     </label>
-                    {entryForm.imageUrl && <button type="button" className="secondary-button" onClick={() => setEntryForm({ ...entryForm, imageUrl: "" })}>Bild entfernen</button>}
+                    {entryForm.imageUrl && <button type="button" className="secondary-button" onClick={() => setEntryForm({ ...entryForm, imageUrl: "" })}>{t("exhibition.removeImage")}</button>}
                   </div>
                 </section>
               )}
@@ -607,9 +615,9 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
                   <div className="function-list">
                     <div className="function-toolbar">
                       <div className="function-summary">
-                        <span><strong>{entryFunctions.filter((item) => item.name.trim()).length}</strong> belegt</span>
-                        <span><strong>{entryFunctions.filter((item) => item.type === "sound" && item.name.trim()).length}</strong> Sound</span>
-                        <span><strong>{entryFunctions.filter((item) => item.type === "licht" && item.name.trim()).length}</strong> Licht</span>
+                        <span><strong>{entryFunctions.filter((item) => item.name.trim()).length}</strong> {t("exhibition.assigned")}</span>
+                        <span><strong>{entryFunctions.filter((item) => item.type === "sound" && item.name.trim()).length}</strong> {t("exhibition.sound")}</span>
+                        <span><strong>{entryFunctions.filter((item) => item.type === "licht" && item.name.trim()).length}</strong> {t("exhibition.light")}</span>
                       </div>
                     </div>
                     {entryFunctions.map((item) => (
@@ -618,15 +626,15 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
                           {functionSymbolIcon(item.symbolKey, item.type, functionSymbolMetadata(symbols, item.symbolKey))}
                           {item.key}
                         </strong>
-                        <input value={item.name} onChange={(event) => updateEntryFunction(item.key, { name: event.target.value })} placeholder="Funktionsname" aria-label={`${item.key} Funktionsname`} />
+                        <input value={item.name} onChange={(event) => updateEntryFunction(item.key, { name: event.target.value })} placeholder={t("exhibition.functionName")} aria-label={t("exhibition.functionNameAria", { key: item.key })} />
                         <FunctionSymbolPicker
                           value={item.symbolKey || ""}
                           functionType={item.type}
                           symbols={symbols}
-                          label={`${item.key} Symbol`}
+                          label={t("exhibition.functionSymbolAria", { key: item.key })}
                           onChange={(symbolKey) => updateEntryFunction(item.key, { symbolKey })}
                         />
-                        <select value={item.type} onChange={(event) => updateEntryFunction(item.key, { type: event.target.value })} aria-label={`${item.key} Typ`}>
+                        <select value={item.type} onChange={(event) => updateEntryFunction(item.key, { type: event.target.value })} aria-label={t("exhibition.functionTypeAria", { key: item.key })}>
                           {functionTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                         </select>
                       </article>
@@ -636,8 +644,8 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
               )}
             </div>
             <div className="modal-actions">
-              <button type="button" className="secondary-button" onClick={() => setEntryDialog(null)}>Abbrechen</button>
-              <button type="submit" className="primary-button" disabled={saving}>Speichern</button>
+              <button type="button" className="secondary-button" onClick={() => setEntryDialog(null)}>{t("exhibition.cancel")}</button>
+              <button type="submit" className="primary-button" disabled={saving}>{t("exhibition.save")}</button>
             </div>
           </form>
         </div>

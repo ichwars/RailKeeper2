@@ -47,6 +47,7 @@ type Config struct {
 	InventoryNumbers            *application.InventoryNumberService
 	BackupService               *application.BackupService
 	ExhibitionService           *application.ExhibitionService
+	ECoSService                 *application.ECoSService
 	RateLimitService            *application.RateLimitService
 	CookieSecure                bool
 }
@@ -68,6 +69,7 @@ type App struct {
 	inventoryNumbers            *application.InventoryNumberService
 	backupService               *application.BackupService
 	exhibitionService           *application.ExhibitionService
+	ecosService                 *application.ECoSService
 	cookieSecure                bool
 	rateLimits                  rateLimitStore
 }
@@ -96,6 +98,7 @@ func NewRouter(config Config) http.Handler {
 		inventoryNumbers:            config.InventoryNumbers,
 		backupService:               config.BackupService,
 		exhibitionService:           config.ExhibitionService,
+		ecosService:                 config.ECoSService,
 		cookieSecure:                config.CookieSecure,
 		rateLimits:                  config.RateLimitService,
 	}
@@ -107,6 +110,9 @@ func NewRouter(config Config) http.Handler {
 	}
 	if app.backupService == nil {
 		app.backupService = application.NewBackupService(nil, app.dataDir)
+	}
+	if app.ecosService == nil {
+		app.ecosService = application.NewECoSService()
 	}
 	if app.vehicleService != nil {
 		app.vehicleService.SetImageLocalizer(app.localizeVehicleImages)
@@ -138,6 +144,8 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("PUT /api/v1/sessions/{id}/revoke", app.require("Admin", app.revokeSession))
 	mux.HandleFunc("GET /api/v1/vehicles", app.require("Viewer", app.listVehicles))
 	mux.HandleFunc("POST /api/v1/vehicle-import/preview", app.require("Editor", app.previewVehicleImport))
+	mux.HandleFunc("POST /api/v1/ecos/test", app.require("Admin", app.testECoSConnection))
+	mux.HandleFunc("POST /api/v1/ecos/locomotives/preview", app.require("Admin", app.previewECoSLocomotives))
 	mux.HandleFunc("POST /api/v1/vehicles", app.require("Editor", app.createVehicle))
 	mux.HandleFunc("GET /api/v1/vehicles/{id}", app.require("Viewer", app.getVehicle))
 	mux.HandleFunc("PUT /api/v1/vehicles/{id}", app.require("Editor", app.updateVehicle))
@@ -874,6 +882,38 @@ func (a *App) listVehicles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, vehicles)
+}
+
+func (a *App) testECoSConnection(w http.ResponseWriter, r *http.Request) {
+	var input application.ECoSConnectionInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+
+	result, err := a.ecosService.TestConnection(r.Context(), input)
+	if err != nil {
+		respondProblem(w, http.StatusBadRequest, "ecos_validation", err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, result)
+}
+
+func (a *App) previewECoSLocomotives(w http.ResponseWriter, r *http.Request) {
+	var input application.ECoSConnectionInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+
+	preview, err := a.ecosService.PreviewLocomotives(r.Context(), input)
+	if err != nil {
+		respondProblem(w, http.StatusBadGateway, "ecos_preview_failed", err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, preview)
 }
 
 func (a *App) createVehicle(w http.ResponseWriter, r *http.Request) {
