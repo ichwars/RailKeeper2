@@ -25,6 +25,13 @@ const emptyEntryForm: ExhibitionEntryInput = {
 };
 const functionKeys = Array.from({ length: 32 }, (_, index) => `F${index}`);
 const functionTypes = ["standard", "licht", "sound", "kupplung", "rauch", "sonderfunktion"];
+const htmlEscapes: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  "\"": "&quot;",
+  "'": "&#39;"
+};
 const emptyFunctions = () => functionKeys.map((key) => ({ key, name: key === "F0" ? "Fahrlicht" : "", type: key === "F0" ? "licht" : "standard" }));
 
 function hasAdmin(roles: string[]) {
@@ -71,6 +78,10 @@ function displayFunctions(value?: string) {
   return configured.map((item) => `${item.key} ${item.name}`).join(", ");
 }
 
+function escapeHTML(value: unknown) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => htmlEscapes[char] || char);
+}
+
 function fileToDataURL(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -83,11 +94,11 @@ function fileToDataURL(file: File) {
 function printList(list: ExhibitionList, entries: ExhibitionEntry[]) {
   const rows = entries.map((entry) => `
     <tr>
-      <td>${entry.owner}</td>
-      <td>${entry.locomotiveName}</td>
+      <td>${escapeHTML(entry.owner)}</td>
+      <td>${escapeHTML(entry.locomotiveName)}</td>
       <td>${entry.dtDecoder ? "Ja" : "Nein"}</td>
-      <td>${entry.decoderNumber || "-"}</td>
-      <td>${displayFunctions(entry.functionKeys)}</td>
+      <td>${escapeHTML(entry.decoderNumber || "-")}</td>
+      <td>${escapeHTML(displayFunctions(entry.functionKeys))}</td>
     </tr>
   `).join("");
   const win = window.open("", "_blank", "noopener,noreferrer");
@@ -96,7 +107,7 @@ function printList(list: ExhibitionList, entries: ExhibitionEntry[]) {
     <html lang="de">
       <head>
         <meta charset="utf-8" />
-        <title>${list.designation}</title>
+        <title>${escapeHTML(list.designation)}</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 28px; color: #111; }
           h1 { margin: 0 0 6px; }
@@ -107,8 +118,8 @@ function printList(list: ExhibitionList, entries: ExhibitionEntry[]) {
         </style>
       </head>
       <body>
-        <h1>${list.designation}</h1>
-        <p>${formatDate(list.date)} · ${entries.length} Einträge</p>
+        <h1>${escapeHTML(list.designation)}</h1>
+        <p>${escapeHTML(formatDate(list.date))} · ${entries.length} Einträge</p>
         <table>
           <thead>
             <tr><th>Besitzer</th><th>Lok Bezeichnung</th><th>DT</th><th>Decoder-Nr.</th><th>Funktionstasten</th></tr>
