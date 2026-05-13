@@ -289,6 +289,41 @@ func TestSessionListAndRevokeEndpoints(t *testing.T) {
 	}
 }
 
+func TestSessionListEndpointHonorsLimit(t *testing.T) {
+	db := testRouterDB(t)
+	setup := application.NewSetupService(db)
+	auth := application.NewAuthService(db)
+	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	router := NewRouter(Config{SetupService: setup, AuthService: auth})
+	var cookies []*http.Cookie
+	for range 4 {
+		_, cookies = loginTestUser(t, router, "admin", "very-secure-password")
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/sessions?limit=2", nil)
+	for _, cookie := range cookies {
+		request.AddCookie(cookie)
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected limited session list success, got %d: %s", response.Code, response.Body.String())
+	}
+	var sessions []application.SessionRecord
+	if err := json.NewDecoder(response.Body).Decode(&sessions); err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions) != 2 {
+		t.Fatalf("expected two sessions from limited endpoint, got %#v", sessions)
+	}
+}
+
 func TestExhibitionEndpointsAllowMesseRole(t *testing.T) {
 	db := testRouterDB(t)
 	setup := application.NewSetupService(db)
