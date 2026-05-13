@@ -98,17 +98,30 @@ func TestArticleSearchQueriesPreferFocusedManufacturerAndRawSearch(t *testing.T)
 	}
 	queries := articleSearchQueries(input, articleSearchQuery(input))
 
-	expectedStart := []string{
-		"13639 Tillig TT site:tillig.com",
-		"Y-Wagen Nirosta 13639 Tillig TT site:tillig.com",
-		"13639 Tillig TT",
-		"Y-Wagen Nirosta 13639 Tillig TT",
+	expectedStart := []articleSearchQuerySpec{
+		{Query: "13639 Tillig TT site:tillig.com", Source: "Herstellerseiten"},
+		{Query: "Y-Wagen Nirosta 13639 Tillig TT site:tillig.com", Source: "Herstellerseiten"},
 	}
 	for index, expected := range expectedStart {
 		if len(queries) <= index || queries[index] != expected {
-			t.Fatalf("expected query %d to be %q, got %#v", index, expected, queries)
+			t.Fatalf("expected query %d to be %#v, got %#v", index, expected, queries)
 		}
 	}
+	if !containsArticleSearchQuery(queries, articleSearchQuerySpec{Query: "13639 Tillig TT", Source: "DuckDuckGo"}) {
+		t.Fatalf("expected focused web query, got %#v", queries)
+	}
+	if !containsArticleSearchQuery(queries, articleSearchQuerySpec{Query: "Y-Wagen Nirosta 13639 Tillig TT site:modellbau-wiki.de", Source: "Modellbau-Wiki"}) {
+		t.Fatalf("expected wiki query, got %#v", queries)
+	}
+}
+
+func containsArticleSearchQuery(queries []articleSearchQuerySpec, expected articleSearchQuerySpec) bool {
+	for _, query := range queries {
+		if query == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func TestArticleSearchBoostsManufacturerDomains(t *testing.T) {

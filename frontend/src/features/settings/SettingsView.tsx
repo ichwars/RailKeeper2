@@ -66,6 +66,14 @@ const masterDataTypes: MasterDataType[] = [
 
 const loadableMasterDataTypes = masterDataTypes;
 const articleSearchSettingKey = "railkeeper.articleSearchEnabled";
+const articleSearchSourcesSettingKey = "railkeeper.articleSearchSources";
+const defaultArticleSearchSources = ["web", "manufacturer", "dealers", "wiki"];
+const articleSearchSourceOptions = [
+  { id: "web", labelKey: "settings.articleSearch.source.web", helpKey: "settings.articleSearch.source.webHelp" },
+  { id: "manufacturer", labelKey: "settings.articleSearch.source.manufacturer", helpKey: "settings.articleSearch.source.manufacturerHelp" },
+  { id: "dealers", labelKey: "settings.articleSearch.source.dealers", helpKey: "settings.articleSearch.source.dealersHelp" },
+  { id: "wiki", labelKey: "settings.articleSearch.source.wiki", helpKey: "settings.articleSearch.source.wikiHelp" }
+];
 
 const localSettingKeys = {
   language: "railkeeper.settings.language",
@@ -102,6 +110,17 @@ function readLocalBool(key: string, fallback: boolean) {
   const value = window.localStorage.getItem(key);
   if (value === null) return fallback;
   return value === "true";
+}
+
+function readArticleSearchSources() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(articleSearchSourcesSettingKey) || "[]") as string[];
+    const allowed = new Set(articleSearchSourceOptions.map((option) => option.id));
+    const sources = stored.filter((source) => allowed.has(source));
+    return sources.length > 0 ? sources : defaultArticleSearchSources;
+  } catch {
+    return defaultArticleSearchSources;
+  }
 }
 
 function readSidebarOrder() {
@@ -266,6 +285,7 @@ export function SettingsView() {
   const [articleSearchEnabled, setArticleSearchEnabled] = useState(
     () => window.localStorage.getItem(articleSearchSettingKey) !== "false"
   );
+  const [articleSearchSources, setArticleSearchSources] = useState<string[]>(readArticleSearchSources);
   const [design, setDesign] = useState<ThemePreference>(readThemePreference);
   const [inventorySchemes, setInventorySchemes] = useState<InventoryNumberScheme[]>([]);
   const [inventorySchemesLoading, setInventorySchemesLoading] = useState(false);
@@ -372,6 +392,7 @@ export function SettingsView() {
   const localizedStatusMessage = (message: string) => {
     if (message.includes("Windows-Systemdrucker")) return t("settings.printer.messageLoaded");
     if (message.includes("Keine Release-Information")) return t("settings.updates.message.noRelease");
+    if (message.includes("RailKeeper ist aktuell")) return t("settings.updates.message.current");
     return message;
   };
   const updateIgnored = Boolean(versionInfo?.updateAvailable && versionInfo.latestVersion && versionInfo.latestVersion === ignoredUpdate);
@@ -551,6 +572,14 @@ export function SettingsView() {
   const updateArticleSearchEnabled = (enabled: boolean) => {
     setArticleSearchEnabled(enabled);
     window.localStorage.setItem(articleSearchSettingKey, String(enabled));
+  };
+  const updateArticleSearchSource = (source: string, enabled: boolean) => {
+    setArticleSearchSources((current) => {
+      const next = enabled ? [...new Set([...current, source])] : current.filter((item) => item !== source);
+      const normalized = next.length > 0 ? next : ["web"];
+      window.localStorage.setItem(articleSearchSourcesSettingKey, JSON.stringify(normalized));
+      return normalized;
+    });
   };
 
   const updateDesign = (preference: ThemePreference) => {
@@ -1130,6 +1159,22 @@ export function SettingsView() {
                   <span />
                 </span>
               </label>
+              <div className="article-source-grid" aria-label={t("settings.articleSearch.sources")}>
+                {articleSearchSourceOptions.map((option) => (
+                  <label key={option.id} className="article-source-option">
+                    <input
+                      type="checkbox"
+                      checked={articleSearchSources.includes(option.id)}
+                      onChange={(event) => updateArticleSearchSource(option.id, event.target.checked)}
+                      disabled={!articleSearchEnabled}
+                    />
+                    <span>
+                      <strong>{t(option.labelKey)}</strong>
+                      <small>{t(option.helpKey)}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
             </section>
 
             <section className="panel settings-card settings-tool-card">
@@ -1328,27 +1373,6 @@ export function SettingsView() {
                   </div>
                 )}
 
-                <details className="advanced-master-data">
-                  <summary>{t("settings.data.advanced")}</summary>
-                  <form className="settings-form" onSubmit={submit}>
-                    <div className="form-row">
-                      <label>
-                        {t("settings.data.key")}
-                        <input value={form.key} onChange={(event) => update({ key: event.target.value })} disabled={Boolean(editing)} />
-                      </label>
-                      <label>
-                        {t("settings.data.sortOrder")}
-                        <input type="number" value={form.sortOrder} onChange={(event) => update({ sortOrder: Number(event.target.value) })} />
-                      </label>
-                    </div>
-                    <label className="checkbox-field">
-                      <input type="checkbox" checked={form.active} onChange={(event) => update({ active: event.target.checked })} />
-                      {t("common.active")}
-                    </label>
-                    {message && <p className="form-message">{message}</p>}
-                  </form>
-                </details>
-
                 <div className="table-wrap master-data-table">
                   <table>
                     <thead>
@@ -1473,9 +1497,14 @@ export function SettingsView() {
 
           <div className="backup-grid">
             <section className="backup-box">
-              <div>
-                <h3>{t("settings.backup.export.title")}</h3>
-                <p>{t("settings.backup.export.subtitle")}</p>
+              <div className="backup-box-head">
+                <div>
+                  <h3>{t("settings.backup.export.title")}</h3>
+                  <p>{t("settings.backup.export.subtitle")}</p>
+                </div>
+                <a className="icon-button" href={api.backupExportUrl()} aria-label={t("settings.backup.download")} title={t("settings.backup.download")}>
+                  <Download size={16} />
+                </a>
               </div>
               <div className="backup-summary-strip">
                 <span>
@@ -1490,10 +1519,6 @@ export function SettingsView() {
                   <RefreshCw size={15} />
                 </button>
               </div>
-              <a className="primary-button" href={api.backupExportUrl()}>
-                <Download size={17} />
-                {t("settings.backup.download")}
-              </a>
             </section>
 
             <section className="backup-box warning">
@@ -1702,9 +1727,7 @@ export function SettingsView() {
             </div>
             <div className="auth-provider-tabs" aria-label={t("settings.auth.provider")}>
               <button type="button" className="active"><Mail size={15} /> E-Mail / Lokal</button>
-              <button type="button" disabled><Shield size={15} /> LDAP</button>
               <button type="button" disabled><KeyRound size={15} /> Zwei-Faktor-Auth</button>
-              <button type="button" disabled><UserCog size={15} /> SSO / OIDC</button>
             </div>
             <div className="auth-status-grid" aria-label={t("settings.auth.status")}>
               <article>

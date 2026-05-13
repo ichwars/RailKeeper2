@@ -1,6 +1,6 @@
 import { ChangeEvent, Fragment, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Database, Download, FileInput, Printer, Save, Upload } from "lucide-react";
-import { api, CreateVehicleRequest, ECoSConnectionResult, ECoSLocomotive, ECoSLocomotivePreview, Vehicle } from "../../shared/api";
+import { AlertTriangle, Check, ClipboardCheck, Database, Download, FileInput, Printer, Save, Upload } from "lucide-react";
+import { api, CreateVehicleRequest, ECoSConnectionResult, ECoSLocomotive, ECoSLocomotivePreview, Vehicle, VehicleExternalMapping, VehicleExternalMappingInput } from "../../shared/api";
 import { useI18n } from "../../shared/i18n";
 
 type ImportRow = {
@@ -11,7 +11,13 @@ type ImportRow = {
   issues: string[];
   importedKeys: (keyof CreateVehicleRequest)[];
   duplicateVehicleId?: string;
+  externalMapping?: VehicleExternalMappingInput;
   vehicle: CreateVehicleRequest;
+};
+
+type ECoSMatch = {
+  vehicle: Vehicle;
+  source: "mapping" | "decoder" | "name";
 };
 
 type VehicleImportField = keyof CreateVehicleRequest;
@@ -510,22 +516,49 @@ function vehicleToRequest(vehicle: Vehicle): CreateVehicleRequest {
   };
 }
 
-function findECoSMatch(locomotive: ECoSLocomotive, vehicles: Vehicle[]) {
+function ecosExternalMapping(locomotive: ECoSLocomotive): VehicleExternalMappingInput {
+  return {
+    provider: "ecos",
+    externalId: String(locomotive.objectId),
+    externalName: locomotive.name || "",
+    externalAddress: locomotive.address ? String(locomotive.address) : "",
+    externalProtocol: locomotive.protocol || "",
+    syncStatus: "linked"
+  };
+}
+
+function mergeExternalMapping(vehicle: Vehicle, mapping: VehicleExternalMapping): Vehicle {
+  const mappings = (vehicle.externalMappings || []).filter((item) => !(item.provider === mapping.provider && item.externalId === mapping.externalId));
+  return { ...vehicle, externalMappings: [...mappings, mapping] };
+}
+
+function findECoSMatch(locomotive: ECoSLocomotive, vehicles: Vehicle[]): ECoSMatch | null {
   const address = locomotive.address ? String(locomotive.address) : "";
+  const objectId = String(locomotive.objectId);
   const name = comparableECoSName(locomotive.name || "");
-  return vehicles.find((vehicle) => {
-    if (address && vehicle.digitalDecoderNumber === address) {
-      return true;
+  for (const vehicle of vehicles) {
+    if (vehicle.externalMappings?.some((mapping) => mapping.provider === "ecos" && mapping.externalId === objectId)) {
+      return { vehicle, source: "mapping" };
     }
+  }
+  for (const vehicle of vehicles) {
+    if (address && vehicle.digitalDecoderNumber === address) {
+      return { vehicle, source: "decoder" };
+    }
+  }
+  for (const vehicle of vehicles) {
     const vehicleName = comparableECoSName(vehicle.name || "");
     const vehicleNumber = comparableECoSName(vehicle.vehicleNumber || "");
-    return Boolean(name && (
+    if (name && (
       vehicleName === name ||
       vehicleNumber === name ||
       (vehicleName.length > 5 && name.includes(vehicleName)) ||
       (vehicleNumber.length > 5 && name.includes(vehicleNumber))
-    ));
-  });
+    )) {
+      return { vehicle, source: "name" };
+    }
+  }
+  return null;
 }
 
 function ecosImportRowsFromPreview(
@@ -539,8 +572,9 @@ function ecosImportRowsFromPreview(
 ): ImportRow[] {
   return preview.locomotives.map((locomotive) => {
     const match = findECoSMatch(locomotive, vehicles);
+    const externalMapping = ecosExternalMapping(locomotive);
     if (match) {
-      const vehicle = vehicleToRequest(match);
+      const vehicle = vehicleToRequest(match.vehicle);
       vehicle.digital = true;
       if (locomotive.address) {
         vehicle.digitalDecoderNumber = String(locomotive.address);
@@ -552,7 +586,8 @@ function ecosImportRowsFromPreview(
         status: "warning" as const,
         issues: [labels.matched],
         importedKeys: ["digital", "digitalDecoderNumber"],
-        duplicateVehicleId: match.id,
+        duplicateVehicleId: match.vehicle.id,
+        externalMapping,
         vehicle
       };
     }
@@ -573,6 +608,7 @@ function ecosImportRowsFromPreview(
       status: "error" as const,
       issues: [labels.missingManufacturer, labels.missingGauge],
       importedKeys: ["name", "category", "digital", "digitalDecoderNumber", "description"],
+      externalMapping,
       vehicle
     };
   });
@@ -759,9 +795,6 @@ export function ImportExportView() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [importTable, setImportTable] = useState<ImportTablePreview | null>(null);
-  const [masterDataFile, setMasterDataFile] = useState<File | null>(null);
-  const [masterDataSaving, setMasterDataSaving] = useState(false);
-  const [masterDataMessage, setMasterDataMessage] = useState("");
   const [ecosHost, setEcosHost] = useState(window.localStorage.getItem("railkeeper.ecos.host") || "");
   const [ecosPort, setEcosPort] = useState(window.localStorage.getItem("railkeeper.ecos.port") || "15471");
   const [ecosBusy, setEcosBusy] = useState(false);
@@ -950,9 +983,13 @@ export function ImportExportView() {
       }
       try {
         const existing = row.duplicateVehicleId ? vehicles.find((vehicle) => vehicle.id === row.duplicateVehicleId) : undefined;
-        const saved = row.mode === "update" && existing
+        let saved = row.mode === "update" && existing
           ? await api.updateVehicle(existing.id, mergeImportedVehicle(existing, row.vehicle, row.importedKeys))
           : await api.createVehicle(row.vehicle);
+        if (row.externalMapping) {
+          const mapping = await api.upsertVehicleExternalMapping(saved.id, row.externalMapping);
+          saved = mergeExternalMapping(saved, mapping);
+        }
         setVehicles((current) => {
           if (row.mode === "update") {
             return current.map((vehicle) => vehicle.id === saved.id ? saved : vehicle);
@@ -1027,26 +1064,6 @@ export function ImportExportView() {
     setMessage(t("importExport.ecos.reviewReady", { count: ecosRows.length, matched, open }));
   };
 
-  const importMasterData = async () => {
-    if (!masterDataFile) {
-      setMasterDataMessage(t("importExport.error.masterMissing"));
-      return;
-    }
-    if (!window.confirm(t("importExport.master.confirm"))) {
-      return;
-    }
-    setMasterDataSaving(true);
-    setMasterDataMessage("");
-    try {
-      const result = await api.importMasterData(masterDataFile);
-      setMasterDataMessage(t("importExport.master.done", { entries: result.importedEntries, relations: result.importedRelations }));
-    } catch (error) {
-      setMasterDataMessage(error instanceof Error ? error.message : t("importExport.error.masterFailed"));
-    } finally {
-      setMasterDataSaving(false);
-    }
-  };
-
   return (
     <>
       <section className="page-head">
@@ -1061,10 +1078,9 @@ export function ImportExportView() {
         <article className="panel transfer-panel">
           <div className="panel-head">
             <div>
-              <h2>{t("importExport.import.title")}</h2>
+              <h2 className="panel-title-inline"><FileInput size={20} aria-hidden="true" />{t("importExport.import.title")}</h2>
               <p>{t("importExport.import.subtitle")}</p>
             </div>
-            <FileInput size={20} aria-hidden="true" />
           </div>
           <label className="file-drop compact-drop">
             <Upload size={18} aria-hidden="true" />
@@ -1085,10 +1101,9 @@ export function ImportExportView() {
         <article className="panel transfer-panel">
           <div className="panel-head">
             <div>
-              <h2>{t("importExport.export.title")}</h2>
+              <h2 className="panel-title-inline"><Download size={20} aria-hidden="true" />{t("importExport.export.title")}</h2>
               <p>{t("importExport.export.subtitle")}</p>
             </div>
-            <Download size={20} aria-hidden="true" />
           </div>
           <div className="export-actions">
             <button type="button" className="secondary-button" disabled={loading || vehicles.length === 0} onClick={() => downloadText("railkeeper-bestand.csv", `\uFEFF${vehiclesToCSV(vehicles, fieldLabel, t("common.yes"), t("common.no"))}`, "text/csv;charset=utf-8")}>
@@ -1110,10 +1125,9 @@ export function ImportExportView() {
       <section className="panel transfer-panel ecos-panel">
         <div className="panel-head">
           <div>
-            <h2>{t("importExport.ecos.title")}</h2>
+            <h2 className="panel-title-inline"><Database size={20} aria-hidden="true" />{t("importExport.ecos.title")}</h2>
             <p>{t("importExport.ecos.subtitle")}</p>
           </div>
-          <Database size={20} aria-hidden="true" />
         </div>
         <div className="ecos-connection-grid">
           <label>
@@ -1146,6 +1160,7 @@ export function ImportExportView() {
         </div>
         {ecosMessage && <p className="form-message">{ecosMessage}</p>}
         <p className="source-note backup-note">{t("importExport.ecos.note")}</p>
+        <p className="source-note backup-note">{t("importExport.ecos.mappingNote")}</p>
         {ecosPreview && (
           <div className="table-wrap ecos-loco-preview">
             <div className="ecos-preview-toolbar">
@@ -1176,7 +1191,7 @@ export function ImportExportView() {
                       <td>{locomotive.name || "-"}</td>
                       <td>{locomotive.address || "-"}</td>
                       <td>{locomotive.protocol || "-"}</td>
-                      <td>{match ? `${match.inventoryNumber} · ${match.name}` : t("importExport.ecos.noMatch")}</td>
+                      <td>{match ? `${match.vehicle.inventoryNumber} - ${match.vehicle.name} (${t(`importExport.ecos.match.${match.source}`)})` : t("importExport.ecos.noMatch")}</td>
                     </tr>
                   );
                 })}
@@ -1215,50 +1230,10 @@ export function ImportExportView() {
         </section>
       )}
 
-      <section className="panel transfer-panel master-transfer-panel">
-        <div className="panel-head">
-          <div>
-            <h2>{t("importExport.master.title")}</h2>
-            <p>{t("importExport.master.subtitle")}</p>
-          </div>
-          <Database size={20} aria-hidden="true" />
-        </div>
-        <div className="master-transfer-actions">
-          <a className="secondary-button" href={api.masterDataExportUrl()}>
-            <Download size={15} aria-hidden="true" />
-            {t("importExport.master.download")}
-          </a>
-          <label className="file-drop inline-file-drop">
-            <Upload size={16} aria-hidden="true" />
-            {masterDataFile ? masterDataFile.name : t("importExport.master.choose")}
-            <input
-              type="file"
-              accept="application/json,.json"
-              onChange={(event) => {
-                setMasterDataFile(event.target.files?.[0] || null);
-                setMasterDataMessage("");
-              }}
-            />
-          </label>
-          <button type="button" className="primary-button" onClick={importMasterData} disabled={masterDataSaving || !masterDataFile}>
-            {masterDataSaving ? (
-              t("importExport.master.importing")
-            ) : (
-              <>
-                <Upload size={15} aria-hidden="true" />
-                {t("importExport.master.import")}
-              </>
-            )}
-          </button>
-        </div>
-        <p className="source-note backup-note">{t("importExport.master.note")}</p>
-        {masterDataMessage && <p className="form-message">{masterDataMessage}</p>}
-      </section>
-
       <section className="panel import-review-panel">
         <div className="panel-head">
           <div>
-            <h2>{t("importExport.review.title")}</h2>
+            <h2 className="panel-title-inline"><ClipboardCheck size={20} aria-hidden="true" />{t("importExport.review.title")}</h2>
             <p>{t("importExport.review.subtitle")}</p>
           </div>
           <button type="button" className="primary-button" disabled={saving || importSummary.selected === 0} onClick={saveSelected}>

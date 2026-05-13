@@ -22,6 +22,7 @@ type ArticleSearchInput struct {
 	ArticleNumber string            `json:"articleNumber"`
 	Name          string            `json:"name"`
 	Gauge         string            `json:"gauge"`
+	SearchSources []string          `json:"searchSources"`
 	Fields        map[string]string `json:"fields"`
 }
 
@@ -60,6 +61,11 @@ type ArticleSearchAdapter interface {
 type ArticleSearchService struct {
 	adapters []ArticleSearchAdapter
 	timeout  time.Duration
+}
+
+type articleSearchQuerySpec struct {
+	Query  string
+	Source string
 }
 
 func NewArticleSearchService() *ArticleSearchService {
@@ -109,6 +115,7 @@ func cleanArticleSearchInput(input ArticleSearchInput) ArticleSearchInput {
 	input.ArticleNumber = strings.TrimSpace(input.ArticleNumber)
 	input.Name = strings.TrimSpace(input.Name)
 	input.Gauge = strings.TrimSpace(input.Gauge)
+	input.SearchSources = cleanArticleSearchSources(input.SearchSources)
 	cleanFields := map[string]string{}
 	for key, value := range input.Fields {
 		value = strings.TrimSpace(value)
@@ -118,6 +125,27 @@ func cleanArticleSearchInput(input ArticleSearchInput) ArticleSearchInput {
 	}
 	input.Fields = cleanFields
 	return input
+}
+
+func cleanArticleSearchSources(sources []string) []string {
+	allowed := map[string]bool{
+		"web":          true,
+		"manufacturer": true,
+		"dealers":      true,
+		"wiki":         true,
+	}
+	cleaned := []string{}
+	for _, source := range sources {
+		source = strings.ToLower(strings.TrimSpace(source))
+		if allowed[source] {
+			cleaned = append(cleaned, source)
+		}
+	}
+	cleaned = uniqueNonEmpty(cleaned)
+	if len(cleaned) == 0 {
+		return []string{"web", "manufacturer", "dealers", "wiki"}
+	}
+	return cleaned
 }
 
 func articleSearchQuery(input ArticleSearchInput) string {
@@ -209,14 +237,14 @@ func NewDuckDuckGoArticleSearchAdapter(client *http.Client) *DuckDuckGoArticleSe
 
 func (a *DuckDuckGoArticleSearchAdapter) Search(ctx context.Context, input ArticleSearchInput, query string) ([]ArticleSearchResult, error) {
 	if isEANOnlyArticleSearch(input, query) {
-		results, err := a.searchDuckDuckGo(ctx, input, query)
+		results, err := a.searchDuckDuckGo(ctx, input, query, "DuckDuckGo")
 		if err == nil && len(results) > 0 {
 			results = dedupeArticleResults(results)
 			a.enrichResultsFromPages(ctx, input, results)
 			return results, nil
 		}
 
-		fallbackResults, fallbackErr := a.searchDuckDuckGo(ctx, input, query+" Modelleisenbahn")
+		fallbackResults, fallbackErr := a.searchDuckDuckGo(ctx, input, query+" Modelleisenbahn", "DuckDuckGo")
 		if fallbackErr != nil {
 			if err != nil {
 				return nil, err
@@ -230,7 +258,7 @@ func (a *DuckDuckGoArticleSearchAdapter) Search(ctx context.Context, input Artic
 
 	results := []ArticleSearchResult{}
 	for _, searchQuery := range articleSearchQueries(input, query) {
-		searchResults, err := a.searchDuckDuckGo(ctx, input, searchQuery)
+		searchResults, err := a.searchDuckDuckGo(ctx, input, searchQuery.Query, searchQuery.Source)
 		if err != nil {
 			if len(results) == 0 {
 				return nil, err
@@ -244,20 +272,70 @@ func (a *DuckDuckGoArticleSearchAdapter) Search(ctx context.Context, input Artic
 	return results, nil
 }
 
-func articleSearchQueries(input ArticleSearchInput, query string) []string {
+func articleSearchQueries(input ArticleSearchInput, query string) []articleSearchQuerySpec {
 	focused := focusedArticleSearchQuery(input)
-	queries := []string{}
-	for _, domain := range preferredManufacturerDomains(input.Manufacturer) {
-		if focused != "" {
-			queries = append(queries, focused+" site:"+domain)
+	sources := cleanArticleSearchSources(input.SearchSources)
+	queries := []articleSearchQuerySpec{}
+	hasSource := func(source string) bool {
+		for _, selected := range sources {
+			if selected == source {
+				return true
+			}
 		}
-		queries = append(queries, query+" site:"+domain)
-		if len(queries) >= 4 {
+		return false
+	}
+	appendQuery := func(searchQuery, source string) {
+		if strings.TrimSpace(searchQuery) == "" {
+			return
+		}
+		queries = append(queries, articleSearchQuerySpec{Query: searchQuery, Source: source})
+	}
+
+	if hasSource("manufacturer") {
+		for _, domain := range preferredManufacturerDomains(input.Manufacturer) {
+			if focused != "" {
+				appendQuery(focused+" site:"+domain, "Herstellerseiten")
+			}
+			appendQuery(query+" site:"+domain, "Herstellerseiten")
+			if len(queries) >= 4 {
+				break
+			}
+		}
+	}
+	if hasSource("dealers") {
+		for _, domain := range dealerArticleDomains {
+			appendQuery(query+" site:"+domain, "Händlerseiten")
+			if len(queries) >= 7 {
+				break
+			}
+		}
+	}
+	if hasSource("wiki") {
+		appendQuery(query+" site:modellbau-wiki.de", "Modellbau-Wiki")
+	}
+	if hasSource("web") {
+		appendQuery(focused, "DuckDuckGo")
+		appendQuery(query, "DuckDuckGo")
+		appendQuery(query+" Modelleisenbahn", "DuckDuckGo")
+	}
+	return uniqueArticleSearchQueries(queries, 9)
+}
+
+func uniqueArticleSearchQueries(queries []articleSearchQuerySpec, limit int) []articleSearchQuerySpec {
+	seen := map[string]bool{}
+	out := []articleSearchQuerySpec{}
+	for _, query := range queries {
+		key := strings.ToLower(strings.TrimSpace(query.Query))
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, query)
+		if limit > 0 && len(out) >= limit {
 			break
 		}
 	}
-	queries = append(queries, focused, query, query+" Modelleisenbahn")
-	return uniqueNonEmpty(queries)
+	return out
 }
 
 func focusedArticleSearchQuery(input ArticleSearchInput) string {
@@ -270,7 +348,7 @@ func focusedArticleSearchQuery(input ArticleSearchInput) string {
 	return strings.Join(uniqueNonEmpty(parts), " ")
 }
 
-func (a *DuckDuckGoArticleSearchAdapter) searchDuckDuckGo(ctx context.Context, input ArticleSearchInput, query string) ([]ArticleSearchResult, error) {
+func (a *DuckDuckGoArticleSearchAdapter) searchDuckDuckGo(ctx context.Context, input ArticleSearchInput, query string, source string) ([]ArticleSearchResult, error) {
 	requestURL := "https://duckduckgo.com/html/?" + url.Values{"q": []string{query}}.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -292,7 +370,7 @@ func (a *DuckDuckGoArticleSearchAdapter) searchDuckDuckGo(ctx context.Context, i
 	if err != nil {
 		return nil, fmt.Errorf("read article search response: %w", err)
 	}
-	results := parseDuckDuckGoResults(string(body), input)
+	results := parseDuckDuckGoResults(string(body), input, source)
 	return results, nil
 }
 
@@ -335,7 +413,14 @@ var manufacturerDomains = map[string][]string{
 	"viessmann":   {"viessmann-modell.com"},
 }
 
-func parseDuckDuckGoResults(body string, input ArticleSearchInput) []ArticleSearchResult {
+var dealerArticleDomains = []string{
+	"elriwa.de",
+	"modellbahnshop-lippe.com",
+	"dm-toys.de",
+	"haertle.de",
+}
+
+func parseDuckDuckGoResults(body string, input ArticleSearchInput, source string) []ArticleSearchResult {
 	blocks := resultBlockPattern.FindAllString(body, 12)
 	results := []ArticleSearchResult{}
 	for rank, block := range blocks {
@@ -356,7 +441,7 @@ func parseDuckDuckGoResults(body string, input ArticleSearchInput) []ArticleSear
 		score := scoreArticleResult(input, title, resultURL, snippet, fields)
 		score += duckDuckGoRankBonus(rank)
 		results = append(results, ArticleSearchResult{
-			Source:  "DuckDuckGo",
+			Source:  source,
 			Title:   title,
 			URL:     resultURL,
 			Snippet: snippet,

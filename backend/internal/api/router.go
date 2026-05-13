@@ -151,6 +151,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("GET /api/v1/vehicles/{id}", app.require("Viewer", app.getVehicle))
 	mux.HandleFunc("PUT /api/v1/vehicles/{id}", app.require("Editor", app.updateVehicle))
 	mux.HandleFunc("DELETE /api/v1/vehicles/{id}", app.require("Editor", app.deleteVehicle))
+	mux.HandleFunc("POST /api/v1/vehicles/{id}/external-mappings", app.require("Editor", app.upsertVehicleExternalMapping))
 	mux.HandleFunc("POST /api/v1/vehicles/{id}/images", app.require("Editor", app.uploadVehicleImage))
 	mux.HandleFunc("DELETE /api/v1/vehicles/{id}/images/{imageID}", app.require("Editor", app.deleteVehicleImage))
 	mux.HandleFunc("GET /api/v1/vehicles/{id}/images/{imageID}/file", app.require("Viewer", app.downloadVehicleImage))
@@ -1031,6 +1032,30 @@ func (a *App) updateVehicle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, vehicle)
+}
+
+func (a *App) upsertVehicleExternalMapping(w http.ResponseWriter, r *http.Request) {
+	var input application.VehicleExternalMapInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+
+	mapping, err := a.vehicleService.UpsertExternalMapping(r.Context(), r.PathValue("id"), input, actorUserID(r))
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrVehicleValidation):
+			respondProblem(w, http.StatusBadRequest, "external_mapping_validation", "Provider and external id are required.")
+		case errors.Is(err, application.ErrVehicleNotFound):
+			respondProblem(w, http.StatusNotFound, "vehicle_not_found", "Vehicle not found.")
+		default:
+			a.logger.Error("vehicle external mapping failed", "error", err)
+			respondProblem(w, http.StatusInternalServerError, "external_mapping_failed", "Could not save external mapping.")
+		}
+		return
+	}
+
+	respondJSON(w, http.StatusOK, mapping)
 }
 
 func (a *App) deleteVehicle(w http.ResponseWriter, r *http.Request) {

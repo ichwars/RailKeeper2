@@ -120,8 +120,32 @@ export type Vehicle = {
   functions?: VehicleFunction[];
   cvValues?: VehicleCVValue[];
   cvFiles?: VehicleCVFile[];
+  externalMappings?: VehicleExternalMapping[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type VehicleExternalMapping = {
+  id: string;
+  vehicleId: string;
+  provider: string;
+  externalId: string;
+  externalName?: string;
+  externalAddress?: string;
+  externalProtocol?: string;
+  syncStatus: string;
+  lastSeenAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehicleExternalMappingInput = {
+  provider: string;
+  externalId: string;
+  externalName?: string;
+  externalAddress?: string;
+  externalProtocol?: string;
+  syncStatus?: string;
 };
 
 export type VehicleImage = {
@@ -418,6 +442,7 @@ export type ArticleSearchInput = {
   articleNumber?: string;
   name?: string;
   gauge?: string;
+  searchSources?: string[];
   fields?: Record<string, string>;
 };
 
@@ -934,6 +959,11 @@ export const api = {
   updateInventoryNumberScheme: (category: string, input: InventoryNumberSchemeInput) =>
     request<InventoryNumberScheme>(`/inventory-number-schemes/${encodeURIComponent(category)}`, {
       method: "PUT",
+      body: JSON.stringify(input)
+    }),
+  upsertVehicleExternalMapping: (vehicleId: string, input: VehicleExternalMappingInput) =>
+    request<VehicleExternalMapping>(`/vehicles/${encodeURIComponent(vehicleId)}/external-mappings`, {
+      method: "POST",
       body: JSON.stringify(input)
     }),
   articleSearch: (input: ArticleSearchInput) =>

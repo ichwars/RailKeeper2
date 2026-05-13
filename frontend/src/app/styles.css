@@ -1033,6 +1033,36 @@ h1 {
   opacity: 0.62;
 }
 
+.article-source-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.article-source-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+}
+
+.article-source-option input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.article-source-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.article-source-option small {
+  color: var(--muted);
+}
+
 .auth-status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1567,6 +1597,11 @@ h1 {
 }
 
 .box-icon-actions .icon-button {
+  border: 0;
+  background: transparent;
+}
+
+.backup-box-head > .icon-button {
   border: 0;
   background: transparent;
 }
@@ -2912,6 +2947,16 @@ h1 {
 .panel-head h2 {
   margin: 0;
   font-size: 18px;
+}
+
+.panel-title-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title-inline svg {
+  flex: 0 0 auto;
 }
 
 .panel-head svg {

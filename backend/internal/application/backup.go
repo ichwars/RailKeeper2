@@ -77,6 +77,7 @@ var backupTableOrder = []string{
 	"inventory_number_schemes",
 	"vehicles",
 	"inventory_number_history",
+	"vehicle_external_mappings",
 	"vehicle_images",
 	"vehicle_attachments",
 	"vehicle_maintenance",
@@ -89,8 +90,9 @@ var backupTableOrder = []string{
 }
 
 var optionalBackupTables = map[string]struct{}{
-	"exhibition_lists":   {},
-	"exhibition_entries": {},
+	"exhibition_lists":          {},
+	"exhibition_entries":        {},
+	"vehicle_external_mappings": {},
 }
 
 func NewBackupService(db *sql.DB, dataDir string) *BackupService {

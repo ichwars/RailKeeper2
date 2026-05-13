@@ -225,6 +225,8 @@ const allowedAttachmentExtensions = new Set(["pdf", "jpg", "jpeg", "png", "webp"
 const allowedCVFileExtensions = new Set(["json", "csv", "txt", "xml", "z21", "esu", "esux", "lokprogrammer", "zip"]);
 const allowedImageExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
 const articleSearchSettingKey = "railkeeper.articleSearchEnabled";
+const articleSearchSourcesSettingKey = "railkeeper.articleSearchSources";
+const defaultArticleSearchSources = ["web", "manufacturer", "dealers", "wiki"];
 const inventoryViewSettingKey = "railkeeper.inventoryViewMode";
 
 const articleFieldLabels: Partial<Record<ArticleFieldKey, string>> = {
@@ -405,6 +407,17 @@ function valueForSort(vehicle: Vehicle, key: SortKey) {
 
 function articleSearchEnabled() {
   return window.localStorage.getItem(articleSearchSettingKey) !== "false";
+}
+
+function articleSearchSources() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(articleSearchSourcesSettingKey) || "[]") as string[];
+    const allowed = new Set(defaultArticleSearchSources);
+    const sources = stored.filter((source) => allowed.has(source));
+    return sources.length > 0 ? sources : defaultArticleSearchSources;
+  } catch {
+    return defaultArticleSearchSources;
+  }
 }
 
 function inventoryViewMode(): InventoryViewMode {
@@ -1875,6 +1888,7 @@ export function VehiclesView() {
         articleNumber: searchForm.articleNumber,
         name: searchForm.name,
         gauge: searchForm.gauge,
+        searchSources: articleSearchSources(),
         fields: vehicleFieldsForSearch(searchForm)
       })
       .then((response) => {
@@ -1908,6 +1922,7 @@ export function VehiclesView() {
     setForm(nextForm);
     setBarcodeSearchOpen(false);
     runArticleSearch(nextForm, {
+      searchSources: articleSearchSources(),
       fields: {
         ean: code
       }
