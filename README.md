@@ -57,7 +57,8 @@ RailKeeper is built around operational views instead of marketing pages:
 ```bash
 git clone https://github.com/ichwars/RailKeeper2.git
 cd RailKeeper2
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Open:
@@ -72,10 +73,23 @@ On first start RailKeeper opens the setup screen. Create the first admin account
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 The SQLite database, uploads and local files stay in the `railkeeper2_data` Docker volume.
+
+To pin a specific release instead of `latest`, set this in `.env`:
+
+```env
+RAILKEEPER_IMAGE=ghcr.io/ichwars/railkeeper2:v0.1.3
+```
+
+If you intentionally want to build the checked-out source tree, use:
+
+```bash
+docker compose up -d --build
+```
 
 ### Optional environment file
 

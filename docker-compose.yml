@@ -1,10 +1,10 @@
 services:
   railkeeper2:
+    image: "${RAILKEEPER_IMAGE:-ghcr.io/ichwars/railkeeper2:latest}"
     build:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    image: railkeeper2:local
     container_name: railkeeper2
     restart: unless-stopped
     ports:
