@@ -31,6 +31,7 @@
 - maintenance radar and dashboard summaries
 - digital function mapping
 - digital function icon picker
+- ESU/ECoS function symbol master data with stored SVG graphics and upload/edit support
 - digital function JSON import/export
 - structured CV values and CV files
 - CV import comparison preview

@@ -18,7 +18,7 @@ The application runs as one Go service that serves both the JSON API and the Rea
 - vehicle create, detail, edit and delete dialogs
 - configurable inventory number schemes with collision checks
 - inventory number change history
-- editable master data for manufacturers, categories, gauges, epochs, railway companies and symbols
+- editable master data for manufacturers, categories, gauges, epochs, railway companies and symbols, including symbol image upload and descriptions
 - category-to-gattung dependencies for vehicle entry
 - dedicated master data JSON import/export without touching inventory or uploads
 - model and technical vehicle fields
@@ -28,7 +28,7 @@ The application runs as one Go service that serves both the JSON API and the Rea
 - QR code generation with PNG/SVG download and print view
 - file attachments for vehicles, including category, notes, download and PDF inline view
 - maintenance and condition history per vehicle
-- decoder function mapping from F0 to F31 with icon picker, editable symbol master data and JSON import/export
+- decoder function mapping from F0 to F31 with icon picker, stored symbol graphics, editable symbol master data and JSON import/export
 - structured CV values with import/export preview, decoder profile suggestions, change history and stored CV files
 - ESU/LokProgrammer project files with metadata preview, CV import review and function mapping import before storing as decoder files
 - local JSON backup/restore for app data and upload files with compatibility preflight and typed restore confirmation

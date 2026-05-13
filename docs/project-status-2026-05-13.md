@@ -15,6 +15,7 @@ Der aktuelle Stand ist lokal gebaut, per Docker Compose gestartet und auf GitHub
 - Backup-Export zeigt kompakt lokale Ablagegröße und Dateianzahl.
 - Beta-/Prerelease-Updateprüfung ist im Backend und in der Settings-UI aktivierbar.
 - Decoder-Preview-Aktionen übernehmen erkannte CV-Werte und Funktionstasten.
+- ESU/ECoS-Funktionstastensymbole werden als Stammdaten mit SVG-Bild, Beschreibung und Upload-Pflege gespeichert.
 - Zusätzliche HTTP-Tests für Passwortwechsel und Session-Management.
 
 ## Letzte Commits

@@ -165,6 +165,8 @@ const emptyForm = {
   sortOrder: 0,
   sourceUrl: "",
   nominalScalesText: "",
+  description: "",
+  imageData: "",
   metadataText: "{}"
 };
 
@@ -226,6 +228,8 @@ function entryToForm(entry: MasterDataEntry): FormState {
     sortOrder: entry.sortOrder,
     sourceUrl: entry.sourceUrl || "",
     nominalScalesText: nominalScalesText(entry),
+    description: metadataString(entry, "description"),
+    imageData: masterDataImage(entry),
     metadataText: JSON.stringify(entry.metadata || {}, null, 2)
   };
 }
@@ -253,6 +257,10 @@ function nominalScalesText(entry: MasterDataEntry) {
   return metadataList(entry, "nominalScales").join(", ");
 }
 
+function masterDataImage(entry: MasterDataEntry) {
+  return metadataString(entry, "imageData") || metadataString(entry, "activeImageData") || metadataString(entry, "svgData");
+}
+
 function parseList(text: string) {
   return text
     .split(/[,;\n]/)
@@ -261,13 +269,31 @@ function parseList(text: string) {
 }
 
 function applyVisibleMetadata(type: string, metadata: Record<string, unknown>, form: FormState) {
-  if (type !== "manufacturer") return metadata;
   const next = { ...metadata };
-  const nominalScales = parseList(form.nominalScalesText);
-  if (nominalScales.length > 0) {
-    next.nominalScales = nominalScales;
-  } else {
-    delete next.nominalScales;
+  if (type === "manufacturer") {
+    const nominalScales = parseList(form.nominalScalesText);
+    if (nominalScales.length > 0) {
+      next.nominalScales = nominalScales;
+    } else {
+      delete next.nominalScales;
+    }
+  }
+  if (type === "symbols") {
+    if (form.description.trim()) {
+      next.description = form.description.trim();
+    } else {
+      delete next.description;
+    }
+    if (form.imageData) {
+      next.imageData = form.imageData;
+      next.activeImageData = form.imageData;
+      next.imageMime = form.imageData.startsWith("data:image/svg+xml") ? "image/svg+xml" : "image";
+    } else {
+      delete next.imageData;
+      delete next.activeImageData;
+      delete next.svgData;
+      delete next.imageMime;
+    }
   }
   return next;
 }
@@ -367,12 +393,14 @@ export function SettingsView() {
   );
   const items = itemsByType[activeType] || [];
   const loading = Boolean(loadingTypes[activeType]);
+  const isSymbolData = activeType === "symbols";
+  const masterDataColumnCount = activeType === "manufacturer" || isSymbolData ? 5 : 4;
 
   const filteredItems = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase("de-DE");
     if (!needle) return items;
     return items.filter((entry) =>
-      `${entry.label} ${entry.key} ${entry.sourceUrl || ""}`.toLocaleLowerCase("de-DE").includes(needle)
+      `${entry.label} ${entry.key} ${entry.sourceUrl || ""} ${metadataString(entry, "description")}`.toLocaleLowerCase("de-DE").includes(needle)
     );
   }, [items, search]);
 
@@ -472,6 +500,30 @@ export function SettingsView() {
 
   const update = (patch: Partial<FormState>) => {
     setForm((current) => ({ ...current, ...patch }));
+  };
+
+  const selectSymbolImage = (file: File | null) => {
+    setMessage("");
+    if (!file) return;
+
+    const isAccepted = file.type.startsWith("image/") || file.name.toLocaleLowerCase("de-DE").endsWith(".svg");
+    if (!isAccepted) {
+      setMessage("Bitte SVG, PNG, JPG oder WebP als Symbolbild auswÃ¤hlen.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setMessage("Symbolbild bitte unter 1 MB halten.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        update({ imageData: reader.result });
+      }
+    };
+    reader.onerror = () => setMessage("Symbolbild konnte nicht gelesen werden.");
+    reader.readAsDataURL(file);
   };
 
   const setLocalSetting = (key: string, value: string, setter: (value: string) => void) => {
@@ -766,7 +818,7 @@ export function SettingsView() {
       label: form.label,
       active: form.active,
       sortOrder: Number(form.sortOrder) || 0,
-      sourceUrl: form.sourceUrl,
+      sourceUrl: isSymbolData ? "" : form.sourceUrl,
       metadata
     };
 
@@ -1189,7 +1241,7 @@ export function SettingsView() {
                 <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Stammdaten durchsuchen" />
               </label>
 
-                <form className={activeType === "manufacturer" ? "master-data-create manufacturer-create" : "master-data-create"} onSubmit={submit}>
+                <form className={activeType === "manufacturer" ? "master-data-create manufacturer-create" : isSymbolData ? "master-data-create symbol-create" : "master-data-create"} onSubmit={submit}>
                   <strong>{editing ? "Eintrag bearbeiten" : "Neuer Eintrag"}</strong>
                   <input value={form.label} onChange={(event) => update({ label: event.target.value })} placeholder={`${activeDataType.label} eintragen`} required />
                   {activeType === "manufacturer" && (
@@ -1199,7 +1251,30 @@ export function SettingsView() {
                       placeholder="Nenngröße / Spurweite, z. B. H0, TT, 1:87"
                     />
                   )}
-                  <input value={form.sourceUrl} onChange={(event) => update({ sourceUrl: event.target.value })} placeholder="Webseite optional" />
+                  {isSymbolData ? (
+                    <>
+                      <textarea
+                        value={form.description}
+                        onChange={(event) => update({ description: event.target.value })}
+                        placeholder="Beschreibung optional"
+                        rows={2}
+                      />
+                      <label className="symbol-upload-field">
+                        <Upload size={15} aria-hidden="true" />
+                        <span>Bild hochladen</span>
+                        <input
+                          type="file"
+                          accept="image/svg+xml,image/png,image/jpeg,image/webp,.svg"
+                          onChange={(event) => {
+                            selectSymbolImage(event.target.files?.[0] || null);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <input value={form.sourceUrl} onChange={(event) => update({ sourceUrl: event.target.value })} placeholder="Webseite optional" />
+                  )}
                   <button className="primary-button" disabled={saving}>
                     {saving ? "Speichert..." : editing ? "Speichern" : "+ Hinzufügen"}
                   </button>
@@ -1209,6 +1284,16 @@ export function SettingsView() {
                     </button>
                   )}
                 </form>
+
+                {isSymbolData && form.imageData && (
+                  <div className="symbol-preview-card">
+                    <img src={form.imageData} alt="" />
+                    <span>Gespeichertes Symbolbild</span>
+                    <button type="button" className="icon-button danger" onClick={() => update({ imageData: "" })} aria-label="Bild entfernen" title="Bild entfernen">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
 
                 <details className="advanced-master-data">
                   <summary>Erweiterte Felder</summary>
@@ -1236,24 +1321,27 @@ export function SettingsView() {
                     <thead>
                       <tr>
                         <th>Aktionen</th>
+                        {isSymbolData && <th>Symbol</th>}
                         <th>Name</th>
                         {activeType === "manufacturer" && <th>Nenngröße / Spurweite</th>}
-                        <th>Link</th>
+                        {!isSymbolData && <th>Link</th>}
+                        {isSymbolData && <th>Beschreibung</th>}
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan={activeType === "manufacturer" ? 5 : 4} className="loading-cell">Lade aus lokaler Stammdatenbank...</td>
+                          <td colSpan={masterDataColumnCount} className="loading-cell">Lade aus lokaler Stammdatenbank...</td>
                         </tr>
                       ) : filteredItems.length === 0 ? (
                         <tr>
-                          <td colSpan={activeType === "manufacturer" ? 5 : 4} className="loading-cell">Keine Einträge gefunden.</td>
+                          <td colSpan={masterDataColumnCount} className="loading-cell">Keine Einträge gefunden.</td>
                         </tr>
                       ) : (
                         filteredItems.map((entry) => {
                           const link = externalLink(entry);
+                          const symbolImage = masterDataImage(entry);
                           return (
                             <tr key={entry.id}>
                               <td>
@@ -1266,15 +1354,23 @@ export function SettingsView() {
                                   </button>
                                 </div>
                               </td>
+                              {isSymbolData && (
+                                <td>
+                                  {symbolImage ? <img className="master-data-symbol-preview" src={symbolImage} alt="" /> : "-"}
+                                </td>
+                              )}
                               <td><strong>{entry.label}</strong></td>
                               {activeType === "manufacturer" && <td>{nominalScalesText(entry) || "-"}</td>}
-                              <td>
-                                {link ? (
-                                  <a className="table-icon-link" href={link.href} target="_blank" rel="noreferrer" aria-label={link.title} title={link.title}>
-                                    <ExternalLink size={16} />
-                                  </a>
-                                ) : "-"}
-                              </td>
+                              {!isSymbolData && (
+                                <td>
+                                  {link ? (
+                                    <a className="table-icon-link" href={link.href} target="_blank" rel="noreferrer" aria-label={link.title} title={link.title}>
+                                      <ExternalLink size={16} />
+                                    </a>
+                                  ) : "-"}
+                                </td>
+                              )}
+                              {isSymbolData && <td>{metadataString(entry, "description") || "-"}</td>}
                               <td>
                                 {entry.active ? (
                                   <CheckCircle2 className="status-icon active" size={17} aria-label="Aktiv" />

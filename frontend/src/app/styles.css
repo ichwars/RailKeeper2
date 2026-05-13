@@ -1143,6 +1143,10 @@ h1 {
   grid-template-columns: minmax(120px, 0.7fr) minmax(220px, 1.1fr) minmax(220px, 1fr) minmax(170px, 0.8fr) auto auto;
 }
 
+.master-data-create.symbol-create {
+  grid-template-columns: minmax(120px, 0.65fr) minmax(220px, 1fr) minmax(260px, 1.2fr) minmax(150px, auto) auto auto;
+}
+
 .master-data-create strong {
   font-size: 13px;
   font-weight: 700;
@@ -1151,6 +1155,84 @@ h1 {
 .master-data-create .primary-button {
   min-height: 36px;
   padding: 0 12px;
+}
+
+.master-data-create textarea {
+  width: 100%;
+  min-height: 40px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.master-data-create textarea:focus {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.symbol-upload-field {
+  position: relative;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-subtle);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.symbol-upload-field input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.symbol-preview-card {
+  display: inline-grid;
+  grid-template-columns: 44px auto 36px;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.symbol-preview-card img,
+.master-data-symbol-preview {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.symbol-preview-card img {
+  padding: 5px;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.master-data-symbol-preview {
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--panel-subtle);
 }
 
 .advanced-master-data {
@@ -4489,6 +4571,13 @@ td {
   white-space: nowrap;
 }
 
+.function-symbol-image {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
 .function-symbol-menu {
   position: absolute;
   z-index: 12;
@@ -5559,6 +5648,9 @@ td {
 
   .appearance-grid,
   .appearance-mode-row,
+  .master-data-create,
+  .master-data-create.manufacturer-create,
+  .master-data-create.symbol-create,
   .settings-field-grid,
   .settings-field-grid.compact,
   .auth-status-grid {
