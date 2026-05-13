@@ -178,6 +178,14 @@ const emptyUserForm = {
 
 type UserFormState = typeof emptyUserForm;
 
+const emptyPasswordForm = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: ""
+};
+
+type PasswordFormState = typeof emptyPasswordForm;
+
 const roleDescriptions: Record<string, string> = {
   Admin: "Vollzugriff auf Einstellungen, Backup und Benutzerverwaltung.",
   Editor: "Bestand, Stammdaten, Wartung, Uploads und CV-Daten bearbeiten.",
@@ -339,6 +347,9 @@ export function SettingsView() {
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [userForm, setUserForm] = useState<UserFormState>(emptyUserForm);
   const [userSaving, setUserSaving] = useState(false);
+  const [passwordForm, setPasswordForm] = useState<PasswordFormState>(emptyPasswordForm);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
   const [twoFactorPrepared, setTwoFactorPrepared] = useState(() => readLocalBool(localSettingKeys.twoFactorPrepared, false));
   const canManageUsers = Boolean(currentSession?.roles.includes("Admin"));
   const backupRestoreConfirmed = backupRestoreConfirm.trim().toLocaleUpperCase("de-DE") === "WIEDERHERSTELLEN";
@@ -581,6 +592,33 @@ export function SettingsView() {
         loadAuditLog();
       })
       .catch((error: Error) => setSessionsMessage(error.message));
+  };
+
+  const changePassword = (event: FormEvent) => {
+    event.preventDefault();
+    setPasswordMessage("");
+    if (passwordForm.newPassword.length < 12) {
+      setPasswordMessage("Das neue Passwort muss mindestens 12 Zeichen lang sein.");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMessage("Die neuen Passwörter stimmen nicht überein.");
+      return;
+    }
+    setPasswordSaving(true);
+    api
+      .changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      })
+      .then(() => {
+        setPasswordForm(emptyPasswordForm);
+        setPasswordMessage("Passwort wurde geändert. Andere Sitzungen dieses Benutzers wurden widerrufen.");
+        loadSessions();
+        loadAuditLog();
+      })
+      .catch((error: Error) => setPasswordMessage(error.message))
+      .finally(() => setPasswordSaving(false));
   };
 
   const startUserCreate = () => {
@@ -1544,6 +1582,43 @@ export function SettingsView() {
               </div>
               <button type="button" className="secondary-button" onClick={loadCurrentSession}>Sitzung prüfen</button>
             </div>
+            <form className="password-change-form" onSubmit={changePassword}>
+              <h3>Passwort ändern</h3>
+              <label>
+                Aktuelles Passwort
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))}
+                  autoComplete="current-password"
+                />
+              </label>
+              <label>
+                Neues Passwort
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(event) => setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))}
+                  autoComplete="new-password"
+                  minLength={12}
+                />
+              </label>
+              <label>
+                Neues Passwort wiederholen
+                <input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(event) => setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))}
+                  autoComplete="new-password"
+                  minLength={12}
+                />
+              </label>
+              <button type="submit" className="primary-button" disabled={passwordSaving || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}>
+                <KeyRound size={16} />
+                Passwort speichern
+              </button>
+              {passwordMessage && <p className="form-message">{passwordMessage}</p>}
+            </form>
           </section>
 
           <section className="panel settings-card settings-tool-card user-management-card">

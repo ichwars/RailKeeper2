@@ -53,6 +53,7 @@
 - system printer discovery with optional configured printer list
 - admin user management for local accounts and Admin, Editor, Viewer and Messe role assignment
 - admin session management with targeted local session revocation
+- current-user password change with automatic revocation of other sessions
 - settings security event review for audit logs
 
 ## Next Practical Milestones

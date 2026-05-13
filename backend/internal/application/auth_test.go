@@ -138,6 +138,60 @@ func TestListAndRevokeSessions(t *testing.T) {
 	}
 }
 
+func TestChangeOwnPasswordKeepsCurrentSessionAndRevokesOthers(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	setup := application.NewSetupService(db)
+	auth := application.NewAuthService(db)
+
+	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	current, err := auth.Login(ctx, application.LoginInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := auth.Login(ctx, application.LoginInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions, err := auth.ListSessions(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions) != 2 {
+		t.Fatalf("expected two sessions, got %#v", sessions)
+	}
+
+	if err := auth.ChangeOwnPassword(ctx, sessions[0].UserID, current.SessionToken, application.ChangePasswordInput{
+		CurrentPassword: "very-secure-password",
+		NewPassword:     "even-more-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.CurrentSession(ctx, current.SessionToken); err != nil {
+		t.Fatalf("current session should remain valid, got %v", err)
+	}
+	if _, err := auth.CurrentSession(ctx, other.SessionToken); !errors.Is(err, application.ErrUnauthorized) {
+		t.Fatalf("other session should be revoked, got %v", err)
+	}
+	if _, err := auth.Login(ctx, application.LoginInput{Username: "admin", Password: "very-secure-password"}); !errors.Is(err, application.ErrInvalidLogin) {
+		t.Fatalf("old password should fail, got %v", err)
+	}
+	if _, err := auth.Login(ctx, application.LoginInput{Username: "admin", Password: "even-more-secure-password"}); err != nil {
+		t.Fatalf("new password should work, got %v", err)
+	}
+}
+
 func TestListAuditLogReturnsRecentSecurityEvents(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()

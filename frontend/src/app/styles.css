@@ -970,7 +970,20 @@ h1 {
   background: var(--panel-subtle);
 }
 
+.password-change-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
 .user-form h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.password-change-form h3 {
   margin: 0;
   font-size: 15px;
 }

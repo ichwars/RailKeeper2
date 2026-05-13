@@ -128,6 +128,7 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", app.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", app.logout)
 	mux.HandleFunc("GET /api/v1/auth/session", app.session)
+	mux.HandleFunc("PUT /api/v1/auth/password", app.require("Viewer", app.changePassword))
 	mux.HandleFunc("GET /api/v1/roles", app.require("Admin", app.listRoles))
 	mux.HandleFunc("GET /api/v1/users", app.require("Admin", app.listUsers))
 	mux.HandleFunc("POST /api/v1/users", app.require("Admin", app.createUser))
@@ -818,6 +819,31 @@ func (a *App) session(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, session)
+}
+
+func (a *App) changePassword(w http.ResponseWriter, r *http.Request) {
+	var input application.ChangePasswordInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondProblem(w, http.StatusBadRequest, "invalid_json", "Request body must be valid JSON.")
+		return
+	}
+
+	if err := a.authService.ChangeOwnPassword(r.Context(), actorUserID(r), cookieValue(r, "rk_session"), input); err != nil {
+		switch {
+		case errors.Is(err, application.ErrUserValidation):
+			respondProblem(w, http.StatusBadRequest, "weak_password", "Das neue Passwort muss mindestens 12 Zeichen lang sein.")
+		case errors.Is(err, application.ErrInvalidLogin):
+			respondProblem(w, http.StatusUnauthorized, "invalid_password", "Das aktuelle Passwort ist nicht korrekt.")
+		case errors.Is(err, application.ErrUserNotFound), errors.Is(err, application.ErrUnauthorized):
+			respondProblem(w, http.StatusUnauthorized, "unauthorized", "Not logged in.")
+		default:
+			a.logger.Error("password change failed", "error", err)
+			respondProblem(w, http.StatusInternalServerError, "password_change_failed", "Passwort konnte nicht geändert werden.")
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (a *App) listVehicles(w http.ResponseWriter, r *http.Request) {

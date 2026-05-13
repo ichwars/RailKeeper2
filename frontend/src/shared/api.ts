@@ -36,6 +36,11 @@ export type UserAccountInput = {
   roles: string[];
 };
 
+export type ChangePasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+};
+
 export type SessionRecord = {
   id: string;
   userId: string;
@@ -658,6 +663,11 @@ export const api = {
     await request<void>("/auth/logout", { method: "POST" });
     csrfToken = "";
   },
+  changePassword: (input: ChangePasswordInput) =>
+    request<void>("/auth/password", {
+      method: "PUT",
+      body: JSON.stringify(input)
+    }),
   roles: () => request<Role[]>("/roles"),
   users: () => request<UserAccount[]>("/users"),
   createUser: (input: UserAccountInput) =>

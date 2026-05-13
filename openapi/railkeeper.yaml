@@ -54,6 +54,15 @@ components:
           type: string
         password:
           type: string
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 12
     Session:
       type: object
       required: [username, roles, csrfToken]
@@ -850,6 +859,30 @@ paths:
       responses:
         "204":
           description: Logged out
+  /auth/password:
+    put:
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password changed and other user sessions revoked
+        "400":
+          description: Weak password or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: Current password invalid or not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /system/printers:
     get:
       tags: [System]

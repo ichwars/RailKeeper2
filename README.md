@@ -8,6 +8,7 @@ The application runs as one Go service that serves both the JSON API and the Rea
 
 - first-run setup without default credentials
 - login, logout, server-side sessions, roles and CSRF protection
+- current-user password change with other sessions revoked
 - admin session review and targeted session revocation
 - overview dashboard with inventory, value, digital/analog, maintenance and data-quality indicators
 - vehicle list with search and sortable columns
