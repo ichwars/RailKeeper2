@@ -212,6 +212,69 @@ func TestChangePasswordEndpoint(t *testing.T) {
 	}
 }
 
+func TestSessionListAndRevokeEndpoints(t *testing.T) {
+	db := testRouterDB(t)
+	setup := application.NewSetupService(db)
+	auth := application.NewAuthService(db)
+	if err := setup.CreateAdmin(t.Context(), application.CreateAdminInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	router := NewRouter(Config{SetupService: setup, AuthService: auth})
+	loginBody := bytes.NewBufferString(`{"username":"admin","password":"very-secure-password"}`)
+	loginRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", loginBody)
+	loginResponse := httptest.NewRecorder()
+	router.ServeHTTP(loginResponse, loginRequest)
+	if loginResponse.Code != http.StatusOK {
+		t.Fatalf("expected login success, got %d", loginResponse.Code)
+	}
+	var session application.SessionView
+	if err := json.NewDecoder(loginResponse.Body).Decode(&session); err != nil {
+		t.Fatal(err)
+	}
+
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/sessions", nil)
+	for _, cookie := range loginResponse.Result().Cookies() {
+		listRequest.AddCookie(cookie)
+	}
+	listResponse := httptest.NewRecorder()
+	router.ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK {
+		t.Fatalf("expected session list success, got %d: %s", listResponse.Code, listResponse.Body.String())
+	}
+	var sessions []application.SessionRecord
+	if err := json.NewDecoder(listResponse.Body).Decode(&sessions); err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions) != 1 || !sessions[0].Active {
+		t.Fatalf("expected one active session, got %#v", sessions)
+	}
+
+	revokeRequest := httptest.NewRequest(http.MethodPut, "/api/v1/sessions/"+sessions[0].ID+"/revoke", nil)
+	revokeRequest.Header.Set("X-CSRF-Token", session.CSRFToken)
+	for _, cookie := range loginResponse.Result().Cookies() {
+		revokeRequest.AddCookie(cookie)
+	}
+	revokeResponse := httptest.NewRecorder()
+	router.ServeHTTP(revokeResponse, revokeRequest)
+	if revokeResponse.Code != http.StatusNoContent {
+		t.Fatalf("expected revoke success, got %d: %s", revokeResponse.Code, revokeResponse.Body.String())
+	}
+
+	currentRequest := httptest.NewRequest(http.MethodGet, "/api/v1/auth/session", nil)
+	for _, cookie := range loginResponse.Result().Cookies() {
+		currentRequest.AddCookie(cookie)
+	}
+	currentResponse := httptest.NewRecorder()
+	router.ServeHTTP(currentResponse, currentRequest)
+	if currentResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("expected revoked session to be unauthorized, got %d", currentResponse.Code)
+	}
+}
+
 func testRouterDB(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := infrastructure.OpenSQLite(t.TempDir())
