@@ -20,6 +20,8 @@
 - vehicle attachments
 - backup and restore
 - backup compatibility preflight
+- backup coverage for vehicle, upload, master-data, maintenance, CV and exhibition data
+- backup compatibility for older exports without newer optional tables
 - typed restore confirmation before destructive backup import
 - overview dashboard
 - vehicle CSV/TSV/XLSX/XLS/ODS/JSON import and export
