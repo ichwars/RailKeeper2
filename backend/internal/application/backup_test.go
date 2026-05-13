@@ -254,6 +254,27 @@ func TestBackupValidationWarnsAboutIgnoredAuthenticationTables(t *testing.T) {
 	}
 }
 
+func TestBackupValidationAllowsMissingOptionalExhibitionTables(t *testing.T) {
+	db := backupTestDB(t, t.TempDir())
+	service := application.NewBackupService(db, t.TempDir())
+	doc := &application.BackupDocument{
+		Format:  "railkeeper2-backup",
+		Version: 1,
+		Tables:  backupDocumentTablesWithout("exhibition_lists", "exhibition_entries"),
+	}
+
+	result, err := service.Validate(context.Background(), doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Compatible {
+		t.Fatalf("expected backup without optional exhibition tables to remain compatible, got %#v", result)
+	}
+	if !containsWarning(result.Warnings, "Optionale Tabelle exhibition_lists fehlt") || !containsWarning(result.Warnings, "Optionale Tabelle exhibition_entries fehlt") {
+		t.Fatalf("expected optional table warnings, got %#v", result.Warnings)
+	}
+}
+
 func TestBackupRejectsUnsafeFilePath(t *testing.T) {
 	db := testDB(t)
 	service := application.NewBackupService(db, t.TempDir())
@@ -299,6 +320,35 @@ func containsWarning(warnings []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+func backupDocumentTablesWithout(excludedTables ...string) map[string][]map[string]any {
+	excluded := map[string]bool{}
+	for _, table := range excludedTables {
+		excluded[table] = true
+	}
+	tables := map[string][]map[string]any{}
+	for _, table := range []string{
+		"master_data_entries",
+		"master_data_relations",
+		"inventory_number_schemes",
+		"vehicles",
+		"inventory_number_history",
+		"vehicle_images",
+		"vehicle_attachments",
+		"vehicle_maintenance",
+		"vehicle_functions",
+		"vehicle_cv_files",
+		"vehicle_cv_values",
+		"vehicle_cv_value_history",
+		"exhibition_lists",
+		"exhibition_entries",
+	} {
+		if !excluded[table] {
+			tables[table] = []map[string]any{}
+		}
+	}
+	return tables
 }
 
 func backupTestDB(t *testing.T, dataDir string) *sql.DB {

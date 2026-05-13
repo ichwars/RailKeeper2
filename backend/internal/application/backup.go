@@ -88,6 +88,11 @@ var backupTableOrder = []string{
 	"exhibition_entries",
 }
 
+var optionalBackupTables = map[string]struct{}{
+	"exhibition_lists":   {},
+	"exhibition_entries": {},
+}
+
 func NewBackupService(db *sql.DB, dataDir string) *BackupService {
 	return &BackupService{db: db, dataDir: dataDir}
 }
@@ -236,7 +241,11 @@ func (s *BackupService) Validate(ctx context.Context, doc *BackupDocument) (*Bac
 		rows, exists := doc.Tables[table]
 		item := BackupValidationTable{Name: table, Rows: len(rows), Missing: !exists}
 		if !exists {
-			result.Errors = append(result.Errors, fmt.Sprintf("Tabelle %s fehlt im Backup.", table))
+			if _, optional := optionalBackupTables[table]; optional {
+				result.Warnings = append(result.Warnings, fmt.Sprintf("Optionale Tabelle %s fehlt im Backup und wird leer wiederhergestellt.", table))
+			} else {
+				result.Errors = append(result.Errors, fmt.Sprintf("Tabelle %s fehlt im Backup.", table))
+			}
 			result.Tables = append(result.Tables, item)
 			continue
 		}
