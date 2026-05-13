@@ -1157,8 +1157,8 @@ export function SettingsView() {
                   {versionInfo?.latestVersion && <> · Neueste Version: <strong>{versionInfo.latestVersion}</strong></>}
                 </p>
                 {versionInfo?.status && (
-                  <span className={`settings-pill ${versionInfo.updateAvailable ? "active" : versionInfo.status === "unavailable" ? "muted" : ""}`}>
-                    {versionInfo.updateAvailable ? "Update verfügbar" : versionInfo.status === "current" ? (betaUpdates ? "aktuell inkl. Beta" : "aktuell") : versionInfo.status === "not_configured" ? "lokal" : versionInfo.status === "unavailable" ? "offline" : "lokal"}
+                  <span className={`settings-pill ${versionInfo.updateAvailable ? "active" : ["unavailable", "no_release"].includes(versionInfo.status) ? "muted" : ""}`}>
+                    {versionInfo.updateAvailable ? "Update verfügbar" : versionInfo.status === "current" ? (betaUpdates ? "aktuell inkl. Beta" : "aktuell") : versionInfo.status === "not_configured" ? "lokal" : versionInfo.status === "no_release" ? "kein Release" : versionInfo.status === "unavailable" ? "offline" : "lokal"}
                   </span>
                 )}
                 <button type="button" className="secondary-button" onClick={() => loadVersionInfo(true)} disabled={versionLoading}>

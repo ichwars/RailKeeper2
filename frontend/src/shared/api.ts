@@ -475,7 +475,7 @@ export type VersionInfo = {
   sourceUrl?: string;
   releaseUrl?: string;
   checkedAt: string;
-  status: "local" | "not_configured" | "current" | "update_available" | "unavailable";
+  status: "local" | "not_configured" | "current" | "update_available" | "unavailable" | "no_release";
   message: string;
 };
 

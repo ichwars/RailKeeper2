@@ -110,8 +110,8 @@ func TestVersionInfoHandlesMissingGithubRelease(t *testing.T) {
 	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body.Status != "unavailable" {
-		t.Fatalf("expected unavailable status, got %q", body.Status)
+	if body.Status != "no_release" {
+		t.Fatalf("expected no_release status, got %q", body.Status)
 	}
 	if body.Message != "Keine Release-Information verfügbar." {
 		t.Fatalf("unexpected message %q", body.Message)
@@ -141,7 +141,7 @@ func TestVersionInfoHandlesEmptyReleaseList(t *testing.T) {
 	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if body.Status != "unavailable" || body.Message != "Keine Release-Information verfügbar." {
+	if body.Status != "no_release" || body.Message != "Keine Release-Information verfügbar." {
 		t.Fatalf("expected no-release response, got %#v", body)
 	}
 }

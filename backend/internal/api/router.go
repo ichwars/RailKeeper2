@@ -276,7 +276,7 @@ func (a *App) versionInfo(w http.ResponseWriter, r *http.Request) {
 	response.SourceURL = updateURL
 	if err != nil {
 		if errors.Is(err, errNoUpdateRelease) {
-			response.Status = "unavailable"
+			response.Status = "no_release"
 			response.Message = "Keine Release-Information verfügbar."
 			respondJSON(w, http.StatusOK, response)
 			return
