@@ -46,6 +46,7 @@
 - login redirect to the overview dashboard
 - configurable update-check endpoint with offline-safe UI status
 - default GitHub release update endpoint for stable release checks
+- system printer discovery with optional configured printer list
 - admin user management for local accounts and Admin, Editor, Viewer and Messe role assignment
 
 ## Next Practical Milestones
@@ -53,7 +54,7 @@
 1. ESU LokProgrammer import
    - only reverse-engineer proprietary ESUX blocks if no supported export path exists
 2. Settings and system integration
-   - wire default printer selection to real system printers where the host platform allows it
+   - decide how far print jobs should be automated beyond the browser system dialog
    - decide whether a separate beta/prerelease update channel is needed
    - decide which authentication options should become functional instead of informational
    - keep storage usage, backup and restore visible without making settings feel overloaded

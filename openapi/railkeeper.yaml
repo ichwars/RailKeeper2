@@ -7,6 +7,7 @@ servers:
 tags:
   - name: Setup
   - name: Auth
+  - name: System
   - name: Users
   - name: Vehicles
   - name: InventoryNumbers
@@ -104,6 +105,29 @@ components:
           minItems: 1
           items:
             type: string
+    SystemPrinters:
+      type: object
+      required: [status, message, printers]
+      properties:
+        status:
+          type: string
+          enum: [available, configured, unavailable]
+        message:
+          type: string
+        defaultPrinter:
+          type: string
+        printers:
+          type: array
+          items:
+            type: object
+            required: [id, name, isDefault]
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              isDefault:
+                type: boolean
     Vehicle:
       type: object
       required: [id, inventoryNumber, manufacturer, name, gauge, createdAt, updatedAt]
@@ -776,6 +800,22 @@ paths:
       responses:
         "204":
           description: Logged out
+  /system/printers:
+    get:
+      tags: [System]
+      responses:
+        "200":
+          description: System printers or configured printer list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemPrinters"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /roles:
     get:
       tags: [Users]

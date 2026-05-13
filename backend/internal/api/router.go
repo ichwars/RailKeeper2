@@ -16,9 +16,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -114,6 +116,7 @@ func NewRouter(config Config) http.Handler {
 
 	mux.HandleFunc("GET /api/v1/version", app.versionInfo)
 	mux.HandleFunc("GET /api/v1/system/storage", app.require("Admin", app.systemStorage))
+	mux.HandleFunc("GET /api/v1/system/printers", app.require("Admin", app.systemPrinters))
 
 	mux.HandleFunc("GET /api/v1/setup/status", app.setupStatus)
 	mux.HandleFunc("POST /api/v1/setup/admin", app.createAdmin)
@@ -195,6 +198,19 @@ type storageUsageCategory struct {
 	Label string `json:"label"`
 	Bytes int64  `json:"bytes"`
 	Files int    `json:"files"`
+}
+
+type systemPrintersResponse struct {
+	Status         string          `json:"status"`
+	Message        string          `json:"message"`
+	DefaultPrinter string          `json:"defaultPrinter,omitempty"`
+	Printers       []systemPrinter `json:"printers"`
+}
+
+type systemPrinter struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	IsDefault bool   `json:"isDefault"`
 }
 
 type versionInfoResponse struct {
@@ -415,6 +431,181 @@ func (a *App) systemStorage(w http.ResponseWriter, r *http.Request) {
 		Categories: result,
 		UpdatedAt:  time.Now().UTC().Format(time.RFC3339),
 	})
+}
+
+func (a *App) systemPrinters(w http.ResponseWriter, r *http.Request) {
+	response := discoverSystemPrinters()
+	respondJSON(w, http.StatusOK, response)
+}
+
+func discoverSystemPrinters() systemPrintersResponse {
+	if response := printersFromEnv(); len(response.Printers) > 0 {
+		return response
+	}
+
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		return printersFromLPStat()
+	case "windows":
+		return printersFromPowerShell()
+	default:
+		return systemPrintersResponse{
+			Status:   "unavailable",
+			Message:  "Druckerabfrage ist auf dieser Plattform nicht verfügbar. Der Browser-Systemdialog bleibt aktiv.",
+			Printers: []systemPrinter{},
+		}
+	}
+}
+
+func printersFromEnv() systemPrintersResponse {
+	configured := strings.TrimSpace(os.Getenv("RAILKEEPER_PRINTERS"))
+	if configured == "" {
+		return systemPrintersResponse{}
+	}
+	defaultPrinter := strings.TrimSpace(os.Getenv("RAILKEEPER_DEFAULT_PRINTER"))
+	printers := []systemPrinter{}
+	seen := map[string]struct{}{}
+	for _, part := range strings.Split(configured, ",") {
+		name := strings.TrimSpace(part)
+		if name == "" {
+			continue
+		}
+		id := printerID(name)
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		printers = append(printers, systemPrinter{
+			ID:        id,
+			Name:      name,
+			IsDefault: defaultPrinter != "" && strings.EqualFold(defaultPrinter, name),
+		})
+	}
+	if defaultPrinter == "" && len(printers) > 0 {
+		printers[0].IsDefault = true
+		defaultPrinter = printers[0].Name
+	}
+	return systemPrintersResponse{
+		Status:         "configured",
+		Message:        "Druckerliste wurde aus der RailKeeper-Konfiguration gelesen.",
+		DefaultPrinter: defaultPrinter,
+		Printers:       printers,
+	}
+}
+
+func printersFromLPStat() systemPrintersResponse {
+	namesOut, err := exec.Command("lpstat", "-e").Output()
+	if err != nil {
+		return systemPrintersResponse{
+			Status:   "unavailable",
+			Message:  "Keine Systemdrucker im Container oder auf dem Host ermittelbar. Der Browser-Systemdialog bleibt aktiv.",
+			Printers: []systemPrinter{},
+		}
+	}
+	defaultPrinter := ""
+	if defaultOut, err := exec.Command("lpstat", "-d").Output(); err == nil {
+		defaultPrinter = parseLPStatDefault(string(defaultOut))
+	}
+	printers := printersFromNames(strings.Fields(string(namesOut)), defaultPrinter)
+	return systemPrintersResponse{
+		Status:         "available",
+		Message:        "Systemdrucker wurden über CUPS gelesen.",
+		DefaultPrinter: defaultPrinter,
+		Printers:       printers,
+	}
+}
+
+func printersFromPowerShell() systemPrintersResponse {
+	script := `Get-CimInstance Win32_Printer | Select-Object Name,Default | ConvertTo-Json -Compress`
+	output, err := exec.Command("powershell", "-NoProfile", "-Command", script).Output()
+	if err != nil {
+		return systemPrintersResponse{
+			Status:   "unavailable",
+			Message:  "Windows-Drucker konnten nicht gelesen werden. Der Browser-Systemdialog bleibt aktiv.",
+			Printers: []systemPrinter{},
+		}
+	}
+	type windowsPrinter struct {
+		Name    string `json:"Name"`
+		Default bool   `json:"Default"`
+	}
+	var many []windowsPrinter
+	if err := json.Unmarshal(output, &many); err != nil {
+		var one windowsPrinter
+		if err := json.Unmarshal(output, &one); err != nil {
+			return systemPrintersResponse{
+				Status:   "unavailable",
+				Message:  "Windows-Druckerantwort konnte nicht ausgewertet werden.",
+				Printers: []systemPrinter{},
+			}
+		}
+		many = []windowsPrinter{one}
+	}
+	printers := []systemPrinter{}
+	defaultPrinter := ""
+	for _, printer := range many {
+		name := strings.TrimSpace(printer.Name)
+		if name == "" {
+			continue
+		}
+		if printer.Default {
+			defaultPrinter = name
+		}
+		printers = append(printers, systemPrinter{
+			ID:        printerID(name),
+			Name:      name,
+			IsDefault: printer.Default,
+		})
+	}
+	return systemPrintersResponse{
+		Status:         "available",
+		Message:        "Windows-Systemdrucker wurden gelesen.",
+		DefaultPrinter: defaultPrinter,
+		Printers:       printers,
+	}
+}
+
+func parseLPStatDefault(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	if index := strings.LastIndex(value, ":"); index >= 0 {
+		return strings.TrimSpace(value[index+1:])
+	}
+	return ""
+}
+
+func printersFromNames(names []string, defaultPrinter string) []systemPrinter {
+	printers := []systemPrinter{}
+	seen := map[string]struct{}{}
+	for _, rawName := range names {
+		name := strings.TrimSpace(rawName)
+		if name == "" {
+			continue
+		}
+		id := printerID(name)
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		printers = append(printers, systemPrinter{
+			ID:        id,
+			Name:      name,
+			IsDefault: defaultPrinter != "" && strings.EqualFold(defaultPrinter, name),
+		})
+	}
+	return printers
+}
+
+func printerID(name string) string {
+	id := strings.ToLower(strings.TrimSpace(name))
+	id = regexp.MustCompile(`[^a-z0-9._-]+`).ReplaceAllString(id, "-")
+	id = strings.Trim(id, "-")
+	if id == "" {
+		return "printer"
+	}
+	return id
 }
 
 func storageCategoryKey(relativePath string) string {

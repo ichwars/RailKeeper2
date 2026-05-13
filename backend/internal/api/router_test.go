@@ -116,3 +116,16 @@ func TestRateLimiterBlocksAfterLimit(t *testing.T) {
 		t.Fatalf("third attempt should be blocked")
 	}
 }
+
+func TestPrinterHelpers(t *testing.T) {
+	if got := parseLPStatDefault("system default destination: Office_Printer"); got != "Office_Printer" {
+		t.Fatalf("unexpected default printer %q", got)
+	}
+	printers := printersFromNames([]string{"Office Printer", "Office Printer", "Label"}, "Label")
+	if len(printers) != 2 {
+		t.Fatalf("expected deduplicated printers, got %#v", printers)
+	}
+	if printers[0].ID != "office-printer" || printers[1].ID != "label" || !printers[1].IsDefault {
+		t.Fatalf("unexpected printers: %#v", printers)
+	}
+}

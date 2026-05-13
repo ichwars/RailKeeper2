@@ -30,6 +30,7 @@ import {
   MasterDataInput,
   Role,
   Session,
+  SystemPrinters,
   StorageUsage,
   UserAccount,
   VersionInfo
@@ -295,6 +296,9 @@ export function SettingsView() {
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
   const [storageMessage, setStorageMessage] = useState("");
   const [storageLoading, setStorageLoading] = useState(false);
+  const [systemPrinters, setSystemPrinters] = useState<SystemPrinters | null>(null);
+  const [printerMessage, setPrinterMessage] = useState("");
+  const [printersLoading, setPrintersLoading] = useState(false);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [authMessage, setAuthMessage] = useState("");
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
@@ -337,6 +341,7 @@ export function SettingsView() {
     if (activeSettingsTab !== "general") return;
     loadVersionInfo();
     loadStorageUsage();
+    loadSystemPrinters();
   }, [activeSettingsTab]);
 
   useEffect(() => {
@@ -472,6 +477,23 @@ export function SettingsView() {
       .then(setStorageUsage)
       .catch((error: Error) => setStorageMessage(error.message))
       .finally(() => setStorageLoading(false));
+  };
+
+  const loadSystemPrinters = () => {
+    setPrintersLoading(true);
+    setPrinterMessage("");
+    api
+      .systemPrinters()
+      .then((result) => {
+        setSystemPrinters(result);
+        setPrinterMessage(result.message);
+        if (defaultPrinter === "system-dialog" && result.defaultPrinter) {
+          setDefaultPrinter(`printer:${result.defaultPrinter}`);
+          window.localStorage.setItem(localSettingKeys.defaultPrinter, `printer:${result.defaultPrinter}`);
+        }
+      })
+      .catch((error: Error) => setPrinterMessage(error.message))
+      .finally(() => setPrintersLoading(false));
   };
 
   const loadCurrentSession = () => {
@@ -781,16 +803,24 @@ export function SettingsView() {
                   Standarddrucker
                   <select value={defaultPrinter} onChange={(event) => setLocalSetting(localSettingKeys.defaultPrinter, event.target.value, setDefaultPrinter)}>
                     <option value="system-dialog">Systemdialog / Standarddrucker</option>
+                    {(systemPrinters?.printers || []).map((printer) => (
+                      <option key={printer.id} value={`printer:${printer.name}`}>
+                        {printer.name}{printer.isDefault ? " (Standard)" : ""}
+                      </option>
+                    ))}
                     <option value="ask">Jedes Mal fragen</option>
                     <option value="pdf">Als PDF speichern</option>
                   </select>
                 </label>
               </div>
               <div className="settings-action-row">
-                <p>RailKeeper nutzt den Browser-Systemdialog. Die konkrete Druckerauswahl kommt vom Betriebssystem.</p>
+                <p>{printerMessage || "RailKeeper nutzt den Browser-Systemdialog. Die konkrete Druckerauswahl kommt vom Betriebssystem."}</p>
                 <button type="button" className="secondary-button" onClick={() => window.print()}>
                   <Printer size={17} />
                   Systemdrucker öffnen
+                </button>
+                <button type="button" className="icon-button" onClick={loadSystemPrinters} aria-label="Systemdrucker aktualisieren" title="Systemdrucker aktualisieren" disabled={printersLoading}>
+                  <RefreshCw size={16} />
                 </button>
               </div>
               <section className="sidebar-order-box" aria-label="Seitenleisten-Reihenfolge">

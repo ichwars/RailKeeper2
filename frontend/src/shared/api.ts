@@ -477,6 +477,19 @@ export type StorageUsage = {
   updatedAt: string;
 };
 
+export type SystemPrinter = {
+  id: string;
+  name: string;
+  isDefault: boolean;
+};
+
+export type SystemPrinters = {
+  status: "available" | "configured" | "unavailable";
+  message: string;
+  defaultPrinter?: string;
+  printers: SystemPrinter[];
+};
+
 export type ExhibitionList = {
   id: string;
   designation: string;
@@ -643,6 +656,7 @@ export const api = {
       { timeoutMs: 10000 }
     ),
   storageUsage: () => request<StorageUsage>("/system/storage", {}, { timeoutMs: 30000 }),
+  systemPrinters: () => request<SystemPrinters>("/system/printers", {}, { timeoutMs: 10000 }),
   exhibitionLists: () => request<ExhibitionList[]>("/exhibition-lists"),
   exhibitionList: (id: string) => request<ExhibitionList>(`/exhibition-lists/${encodeURIComponent(id)}`),
   createExhibitionList: (input: ExhibitionListInput) =>
