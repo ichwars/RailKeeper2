@@ -2018,19 +2018,34 @@ export function SettingsView() {
           </section>
 
           <section className="panel settings-card settings-tool-card">
-            <h2>Geplante Integrationen</h2>
+            <div className="settings-card-title">
+              <ShieldAlert size={18} />
+              <div>
+                <h2>Geplante Integrationen</h2>
+                <p>Vorgemerkte Authentifizierungswege ohne aktive Backend-Erzwingung.</p>
+              </div>
+            </div>
             <div className="integration-list">
               <article>
-                <strong>LDAP</strong>
-                <span>Vorbereitet, aktuell deaktiviert.</span>
+                <Shield size={17} />
+                <div>
+                  <strong>LDAP</strong>
+                  <span>Vorbereitet, aktuell deaktiviert.</span>
+                </div>
               </article>
               <article>
-                <strong>SSO / OIDC</strong>
-                <span>Für spätere zentrale Anmeldung vorgemerkt.</span>
+                <UserCog size={17} />
+                <div>
+                  <strong>SSO / OIDC</strong>
+                  <span>Für spätere zentrale Anmeldung vorgemerkt.</span>
+                </div>
               </article>
               <article>
-                <strong>Passwort zurücksetzen</strong>
-                <span>Login-Hinweis vorhanden, Mail-Flow noch nicht aktiviert.</span>
+                <KeyRound size={17} />
+                <div>
+                  <strong>Passwort zurücksetzen</strong>
+                  <span>Login-Hinweis vorhanden, Mail-Flow noch nicht aktiviert.</span>
+                </div>
               </article>
             </div>
           </section>

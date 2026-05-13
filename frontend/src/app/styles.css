@@ -936,14 +936,34 @@ h1 {
   gap: 6px;
 }
 
-.role-list article,
-.integration-list article {
+.role-list article {
   display: grid;
   gap: 4px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-subtle);
+}
+
+.integration-list article {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+}
+
+.integration-list article > svg {
+  margin-top: 2px;
+  color: var(--accent-bright);
+}
+
+.integration-list article > div {
+  display: grid;
+  gap: 4px;
 }
 
 .user-management-card {
