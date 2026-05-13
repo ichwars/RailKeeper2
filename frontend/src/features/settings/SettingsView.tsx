@@ -358,6 +358,10 @@ export function SettingsView() {
     () => masterDataTypes.find((item) => item.type === activeType) || masterDataTypes[0],
     [activeType]
   );
+  const storageFileCount = useMemo(
+    () => (storageUsage?.categories || []).reduce((total, category) => total + category.files, 0),
+    [storageUsage]
+  );
   const items = itemsByType[activeType] || [];
   const loading = Boolean(loadingTypes[activeType]);
 
@@ -387,6 +391,11 @@ export function SettingsView() {
     loadStorageUsage();
     loadSystemPrinters();
   }, [activeSettingsTab]);
+
+  useEffect(() => {
+    if (activeSettingsTab !== "data" || storageUsage || storageLoading) return;
+    loadStorageUsage();
+  }, [activeSettingsTab, storageUsage, storageLoading]);
 
   useEffect(() => {
     if (activeSettingsTab !== "auth") return;
@@ -1329,6 +1338,19 @@ export function SettingsView() {
               <div>
                 <h3>Backup exportieren</h3>
                 <p>Erstellt eine JSON-Datei mit allen RailKeeper-Daten und lokal gespeicherten Uploads. Benutzerkonten und Sitzungen werden nicht exportiert.</p>
+              </div>
+              <div className="backup-summary-strip">
+                <span>
+                  <strong>{formatBytes(storageUsage?.totalBytes || 0)}</strong>
+                  lokale Ablage
+                </span>
+                <span>
+                  <strong>{storageFileCount.toLocaleString("de-DE")}</strong>
+                  Dateien
+                </span>
+                <button type="button" className="icon-button" onClick={loadStorageUsage} disabled={storageLoading} aria-label="Speichernutzung aktualisieren" title="Speichernutzung aktualisieren">
+                  <RefreshCw size={15} />
+                </button>
               </div>
               <a className="primary-button" href={api.backupExportUrl()}>
                 <Download size={17} />

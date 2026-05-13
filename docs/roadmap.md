@@ -55,6 +55,7 @@
 - admin session management with targeted local session revocation
 - current-user password change with automatic revocation of other sessions
 - settings security event review for audit logs
+- compact backup export storage summary in settings
 
 ## Next Practical Milestones
 

@@ -1260,6 +1260,35 @@ h1 {
   margin: 0;
 }
 
+.backup-summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.backup-summary-strip span {
+  display: grid;
+  gap: 2px;
+  min-width: 96px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.backup-summary-strip strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.backup-summary-strip .icon-button {
+  margin-left: auto;
+}
+
 .backup-box .primary-button,
 .backup-box .secondary-button {
   justify-self: start;
