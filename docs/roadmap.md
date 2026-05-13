@@ -58,6 +58,10 @@
 - admin password resets revoke affected user sessions
 - settings security event review for audit logs
 - compact backup export storage summary in settings
+- exhibition lists for fair/show operations with a dedicated Messe role
+- exhibition entry dialogs with shared function symbol picker
+- exhibition print view for the current list state
+- audit coverage for exhibition list and entry lifecycle actions
 
 ## Next Practical Milestones
 
