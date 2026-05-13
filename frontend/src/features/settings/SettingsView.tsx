@@ -208,7 +208,15 @@ const auditActionLabels: Record<string, string> = {
   SessionRevoked: "Sitzung widerrufen",
   VehicleCreated: "Fahrzeug angelegt",
   VehicleUpdated: "Fahrzeug geändert",
-  VehicleDeleted: "Fahrzeug gelöscht"
+  VehicleDeleted: "Fahrzeug gelöscht",
+  ExhibitionListCreated: "Messeliste angelegt",
+  ExhibitionListUpdated: "Messeliste geändert",
+  ExhibitionListDeleted: "Messeliste gelöscht",
+  ExhibitionListLocked: "Messeliste gesperrt",
+  ExhibitionListUnlocked: "Messeliste entsperrt",
+  ExhibitionEntryCreated: "Messe-Eintrag angelegt",
+  ExhibitionEntryUpdated: "Messe-Eintrag geändert",
+  ExhibitionEntryDeleted: "Messe-Eintrag gelöscht"
 };
 
 function auditActor(entry: AuditLogEntry) {

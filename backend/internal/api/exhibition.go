@@ -33,6 +33,7 @@ func (a *App) createExhibitionList(w http.ResponseWriter, r *http.Request) {
 		handleExhibitionError(a, w, err, "exhibition_create_failed", "Could not create exhibition list.")
 		return
 	}
+	a.recordAudit(r, "ExhibitionListCreated", "exhibition_list", list.ID)
 	respondJSON(w, http.StatusCreated, list)
 }
 
@@ -56,14 +57,17 @@ func (a *App) updateExhibitionList(w http.ResponseWriter, r *http.Request) {
 		handleExhibitionError(a, w, err, "exhibition_update_failed", "Could not update exhibition list.")
 		return
 	}
+	a.recordAudit(r, "ExhibitionListUpdated", "exhibition_list", list.ID)
 	respondJSON(w, http.StatusOK, list)
 }
 
 func (a *App) deleteExhibitionList(w http.ResponseWriter, r *http.Request) {
-	if err := a.exhibitionService.Delete(r.Context(), r.PathValue("id")); err != nil {
+	id := r.PathValue("id")
+	if err := a.exhibitionService.Delete(r.Context(), id); err != nil {
 		handleExhibitionError(a, w, err, "exhibition_delete_failed", "Could not delete exhibition list.")
 		return
 	}
+	a.recordAudit(r, "ExhibitionListDeleted", "exhibition_list", id)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -77,6 +81,11 @@ func (a *App) setExhibitionListLocked(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		handleExhibitionError(a, w, err, "exhibition_lock_failed", "Could not update exhibition lock state.")
 		return
+	}
+	if list.Locked {
+		a.recordAudit(r, "ExhibitionListLocked", "exhibition_list", list.ID)
+	} else {
+		a.recordAudit(r, "ExhibitionListUnlocked", "exhibition_list", list.ID)
 	}
 	respondJSON(w, http.StatusOK, list)
 }
@@ -101,6 +110,7 @@ func (a *App) createExhibitionEntry(w http.ResponseWriter, r *http.Request) {
 		handleExhibitionError(a, w, err, "exhibition_entry_create_failed", "Could not create exhibition entry.")
 		return
 	}
+	a.recordAudit(r, "ExhibitionEntryCreated", "exhibition_entry", entry.ID)
 	respondJSON(w, http.StatusCreated, entry)
 }
 
@@ -115,15 +125,27 @@ func (a *App) updateExhibitionEntry(w http.ResponseWriter, r *http.Request) {
 		handleExhibitionError(a, w, err, "exhibition_entry_update_failed", "Could not update exhibition entry.")
 		return
 	}
+	a.recordAudit(r, "ExhibitionEntryUpdated", "exhibition_entry", entry.ID)
 	respondJSON(w, http.StatusOK, entry)
 }
 
 func (a *App) deleteExhibitionEntry(w http.ResponseWriter, r *http.Request) {
-	if err := a.exhibitionService.DeleteEntry(r.Context(), r.PathValue("id"), r.PathValue("entryID")); err != nil {
+	entryID := r.PathValue("entryID")
+	if err := a.exhibitionService.DeleteEntry(r.Context(), r.PathValue("id"), entryID); err != nil {
 		handleExhibitionError(a, w, err, "exhibition_entry_delete_failed", "Could not delete exhibition entry.")
 		return
 	}
+	a.recordAudit(r, "ExhibitionEntryDeleted", "exhibition_entry", entryID)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *App) recordAudit(r *http.Request, action, targetType, targetID string) {
+	if a.authService == nil {
+		return
+	}
+	if err := a.authService.RecordAudit(r.Context(), actorUserID(r), action, targetType, targetID, "{}"); err != nil {
+		a.logger.Warn("audit write failed", "action", action, "targetType", targetType, "targetID", targetID, "error", err)
+	}
 }
 
 func handleExhibitionError(a *App, w http.ResponseWriter, err error, code, message string) {

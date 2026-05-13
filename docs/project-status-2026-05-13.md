@@ -19,6 +19,7 @@ Der aktuelle Stand ist lokal gebaut, per Docker Compose gestartet und auf GitHub
 - Messelisten-Einträge nutzen in der Funktionstasten-Maske den Symbol-Picker mit den gespeicherten Stammdaten-SVGs.
 - Messelisten-Druck gibt den aktuellen Tabellenstand inklusive Bildspalte, Notizen und Sperrstatus aus.
 - Messe-API ist per HTTP-Test für Messe-Rollenzugriff und gesperrte Listen abgesichert.
+- Messe-/Messelisten-Aktionen werden im Audit-Log mit eigenen Labels protokolliert.
 - Zusätzliche HTTP-Tests für Passwortwechsel und Session-Management.
 
 ## Letzte Commits

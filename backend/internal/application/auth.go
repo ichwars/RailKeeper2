@@ -211,6 +211,10 @@ func (s *AuthService) ListAuditLog(ctx context.Context, limit int) ([]AuditLogEn
 	return entries, nil
 }
 
+func (s *AuthService) RecordAudit(ctx context.Context, actorUserID, action, targetType, targetID, detailsJSON string) error {
+	return s.audit(ctx, actorUserID, action, targetType, targetID, detailsJSON)
+}
+
 func (s *AuthService) ListSessions(ctx context.Context) ([]SessionRecord, error) {
 	rows, err := s.db.QueryContext(
 		ctx,
