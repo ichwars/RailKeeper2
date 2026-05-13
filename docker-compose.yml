@@ -19,7 +19,7 @@ services:
       RAILKEEPER_MAX_IMAGE_MB: "${RAILKEEPER_MAX_IMAGE_MB:-10}"
       RAILKEEPER_MAX_ATTACHMENT_MB: "${RAILKEEPER_MAX_ATTACHMENT_MB:-25}"
       RAILKEEPER_ALLOWED_ATTACHMENT_EXTENSIONS: "${RAILKEEPER_ALLOWED_ATTACHMENT_EXTENSIONS:-.pdf,.txt,.csv,.json,.xml,.zip,.jpg,.jpeg,.png,.webp}"
-      RAILKEEPER_UPDATE_CHECK_URL: "${RAILKEEPER_UPDATE_CHECK_URL:-}"
+      RAILKEEPER_UPDATE_CHECK_URL: "${RAILKEEPER_UPDATE_CHECK_URL:-https://api.github.com/repos/ichwars/RailKeeper2/releases/latest}"
     volumes:
       - railkeeper2_data:/data
     security_opt:

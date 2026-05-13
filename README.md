@@ -112,11 +112,12 @@ RAILKEEPER_COOKIE_SECURE=false
 RAILKEEPER_MAX_IMAGE_MB=10
 RAILKEEPER_MAX_ATTACHMENT_MB=25
 RAILKEEPER_ALLOWED_ATTACHMENT_EXTENSIONS=.pdf,.txt,.csv,.json,.xml,.zip,.jpg,.jpeg,.png,.webp
+RAILKEEPER_UPDATE_CHECK_URL=https://api.github.com/repos/ichwars/RailKeeper2/releases/latest
 ```
 
 ## Docker
 
-Optionally create `.env` from `.env.example` when you want to override operational settings such as upload limits or secure cookies. Do not put host paths for migrations, seeds or static files into the Docker `.env`; Compose sets the required container paths itself.
+Optionally create `.env` from `.env.example` when you want to override operational settings such as upload limits, secure cookies or the GitHub release update endpoint. Do not put host paths for migrations, seeds or static files into the Docker `.env`; Compose sets the required container paths itself.
 
 Run:
 

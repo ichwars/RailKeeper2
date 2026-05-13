@@ -250,6 +250,23 @@ export type VehicleCVFilePreview = {
   lokProgrammer?: string;
   suggestedDecoderProfile?: string;
   suggestedDescription?: string;
+  suggestedCvValues?: {
+    cvNumber: number;
+    value: number;
+    description?: string;
+    category?: string;
+  }[];
+  suggestedFunctions?: {
+    functionKey: string;
+    name: string;
+    functionType?: string;
+  }[];
+  suggestedPreviewImage?: {
+    mimeType: string;
+    width: number;
+    height: number;
+    dataUrl: string;
+  };
 };
 
 export type CreateVehicleRequest = {

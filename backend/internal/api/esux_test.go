@@ -1,6 +1,9 @@
 package api
 
 import (
+	"archive/zip"
+	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"strings"
 	"testing"
@@ -72,6 +75,86 @@ func TestESUXPreviewResponseWithoutMetadata(t *testing.T) {
 	}
 }
 
+func TestDecoderCSVPreviewFindsCVValuesAndFunctions(t *testing.T) {
+	data := []byte("CV;Wert;Beschreibung\n1;3;Adresse\n29;14;Konfiguration\nFunktion;Name;Typ\nF0;Licht vorne;licht\nF1;Sound an;sound\n")
+
+	preview := esuxPreviewResponse("lokprogrammer.csv", int64(len(data)), "text/csv", data)
+	if len(preview.SuggestedCVValues) != 2 {
+		t.Fatalf("expected cv suggestions, got %#v", preview.SuggestedCVValues)
+	}
+	if preview.SuggestedCVValues[0].CVNumber != 1 || preview.SuggestedCVValues[0].Value != 3 {
+		t.Fatalf("unexpected cv suggestion: %#v", preview.SuggestedCVValues[0])
+	}
+	if len(preview.SuggestedFunctions) != 2 {
+		t.Fatalf("expected function suggestions, got %#v", preview.SuggestedFunctions)
+	}
+	if preview.SuggestedFunctions[0].FunctionKey != "F0" || preview.SuggestedFunctions[0].Name != "Licht vorne" {
+		t.Fatalf("unexpected function suggestion: %#v", preview.SuggestedFunctions[0])
+	}
+}
+
+func TestDecoderXMLPreviewFindsCVValuesAndFunctions(t *testing.T) {
+	data := []byte(`<decoder>
+  <cv number="1" value="3" description="Adresse" />
+  <cv nr="29" wert="14" beschreibung="Konfiguration" />
+  <function key="F0" name="Licht vorne" />
+  <function taste="F1" description="Sound an" />
+</decoder>`)
+
+	preview := esuxPreviewResponse("lokprogrammer.xml", int64(len(data)), "text/xml", data)
+	if len(preview.SuggestedCVValues) != 2 {
+		t.Fatalf("expected cv suggestions, got %#v", preview.SuggestedCVValues)
+	}
+	if preview.SuggestedCVValues[1].CVNumber != 29 || preview.SuggestedCVValues[1].Value != 14 {
+		t.Fatalf("unexpected cv suggestion: %#v", preview.SuggestedCVValues[1])
+	}
+	if len(preview.SuggestedFunctions) != 2 {
+		t.Fatalf("expected function suggestions, got %#v", preview.SuggestedFunctions)
+	}
+	if preview.SuggestedFunctions[1].FunctionKey != "F1" || preview.SuggestedFunctions[1].FunctionType != "sound" {
+		t.Fatalf("unexpected function suggestion: %#v", preview.SuggestedFunctions[1])
+	}
+}
+
+func TestESUXPreviewFindsEmbeddedPreviewImage(t *testing.T) {
+	pngData := testPNG(t)
+	data := append([]byte("ESU binary preview "), pngData...)
+
+	preview := esuxPreviewResponse("projekt.esux", int64(len(data)), "application/octet-stream", data)
+	if preview.SuggestedPreviewImage == nil {
+		t.Fatal("expected embedded preview image")
+	}
+	if preview.SuggestedPreviewImage.MimeType != "image/png" || preview.SuggestedPreviewImage.Width != 1 || preview.SuggestedPreviewImage.Height != 1 {
+		t.Fatalf("unexpected preview image: %#v", preview.SuggestedPreviewImage)
+	}
+	if !strings.HasPrefix(preview.SuggestedPreviewImage.DataURL, "data:image/png;base64,") {
+		t.Fatalf("unexpected data url %q", preview.SuggestedPreviewImage.DataURL)
+	}
+}
+
+func TestZIPPreviewFindsImageEntry(t *testing.T) {
+	var buffer bytes.Buffer
+	writer := zip.NewWriter(&buffer)
+	entry, err := writer.Create("preview/thumb.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := entry.Write(testPNG(t)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	preview := esuxPreviewResponse("lokprogrammer.zip", int64(buffer.Len()), "application/zip", buffer.Bytes())
+	if preview.SuggestedPreviewImage == nil {
+		t.Fatal("expected zip preview image")
+	}
+	if preview.SuggestedPreviewImage.MimeType != "image/png" {
+		t.Fatalf("unexpected preview image: %#v", preview.SuggestedPreviewImage)
+	}
+}
+
 func containsAll(value string, parts ...string) bool {
 	for _, part := range parts {
 		if !strings.Contains(value, part) {
@@ -79,4 +162,13 @@ func containsAll(value string, parts ...string) bool {
 		}
 	}
 	return true
+}
+
+func testPNG(t *testing.T) []byte {
+	t.Helper()
+	data, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }

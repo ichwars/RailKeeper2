@@ -14,7 +14,10 @@ import (
 	"railkeeper2/backend/internal/infrastructure"
 )
 
-const version = "0.1.0-dev"
+const (
+	version               = "0.1.0-dev"
+	defaultUpdateCheckURL = "https://api.github.com/repos/ichwars/RailKeeper2/releases/latest"
+)
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
@@ -34,7 +37,7 @@ func main() {
 	maxImageBytes := envMegabytes("RAILKEEPER_MAX_IMAGE_MB", 10)
 	maxAttachmentBytes := envMegabytes("RAILKEEPER_MAX_ATTACHMENT_MB", 25)
 	allowedAttachmentExtensions := envExtensionSet("RAILKEEPER_ALLOWED_ATTACHMENT_EXTENSIONS")
-	updateCheckURL := env("RAILKEEPER_UPDATE_CHECK_URL", "")
+	updateCheckURL := env("RAILKEEPER_UPDATE_CHECK_URL", defaultUpdateCheckURL)
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	db, err := infrastructure.OpenSQLite(dataDir)

@@ -2,7 +2,7 @@
 
 The default deployment target is Docker Compose with a single container and a persistent `/data` volume.
 
-Copy `.env.example` to `.env` only if you want to override operational settings such as upload limits or secure cookies. Docker Compose sets the required container paths for data, migrations, seeds and static files itself.
+Copy `.env.example` to `.env` only if you want to override operational settings such as upload limits, secure cookies or the GitHub release update endpoint. Docker Compose sets the required container paths for data, migrations, seeds and static files itself.
 
 Build and start:
 

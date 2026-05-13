@@ -3927,6 +3927,12 @@ export function VehiclesView() {
                                 <strong>{preview.fileName}</strong>
                                 <span>{preview.mimeType || "Datei"} - {formatFileSize(preview.sizeBytes)}</span>
                               </div>
+                              {preview.suggestedPreviewImage && (
+                                <figure className="decoder-preview-image">
+                                  <img src={preview.suggestedPreviewImage.dataUrl} alt="" />
+                                  <figcaption>{preview.suggestedPreviewImage.width} × {preview.suggestedPreviewImage.height}</figcaption>
+                                </figure>
+                              )}
                               {preview.hasMetadata ? (
                                 <dl>
                                   <div><dt>Projekt</dt><dd>{preview.projectName || "-"}</dd></div>
@@ -3938,6 +3944,16 @@ export function VehiclesView() {
                                 </dl>
                               ) : (
                                 <p>Keine ESU/LokProgrammer-Metadaten gefunden. Die Datei kann trotzdem gespeichert werden.</p>
+                              )}
+                              {((preview.suggestedCvValues?.length || 0) > 0 || (preview.suggestedFunctions?.length || 0) > 0) && (
+                                <div className="decoder-preview-summary">
+                                  {(preview.suggestedCvValues?.length || 0) > 0 && (
+                                    <span>{preview.suggestedCvValues?.length} CV-Werte erkannt</span>
+                                  )}
+                                  {(preview.suggestedFunctions?.length || 0) > 0 && (
+                                    <span>{preview.suggestedFunctions?.length} Funktionstasten erkannt</span>
+                                  )}
+                                </div>
                               )}
                             </article>
                           ))}

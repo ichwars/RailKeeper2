@@ -646,6 +646,44 @@ components:
           type: string
         suggestedDescription:
           type: string
+        suggestedCvValues:
+          type: array
+          items:
+            type: object
+            required: [cvNumber, value]
+            properties:
+              cvNumber:
+                type: integer
+              value:
+                type: integer
+              description:
+                type: string
+              category:
+                type: string
+        suggestedFunctions:
+          type: array
+          items:
+            type: object
+            required: [functionKey, name]
+            properties:
+              functionKey:
+                type: string
+              name:
+                type: string
+              functionType:
+                type: string
+        suggestedPreviewImage:
+          type: object
+          required: [mimeType, width, height, dataUrl]
+          properties:
+            mimeType:
+              type: string
+            width:
+              type: integer
+            height:
+              type: integer
+            dataUrl:
+              type: string
     BackupImportResult:
       type: object
       required: [restoredTables, restoredRows, restoredFiles]

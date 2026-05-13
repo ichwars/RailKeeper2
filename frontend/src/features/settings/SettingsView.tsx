@@ -922,10 +922,10 @@ export function SettingsView() {
               <label className="settings-toggle-row">
                 <span>
                   <strong>Beta-Versionen einschließen</strong>
-                  <small>Nur vormerken, solange kein Update-Kanal verbunden ist.</small>
+                  <small>Der aktive Kanal prüft stabile GitHub-Releases. Beta-Kanal folgt später.</small>
                 </span>
                 <span className="switch-field">
-                  <input type="checkbox" checked={betaUpdates} onChange={(event) => setLocalBool(localSettingKeys.betaUpdates, event.target.checked, setBetaUpdates)} />
+                  <input type="checkbox" checked={betaUpdates} onChange={(event) => setLocalBool(localSettingKeys.betaUpdates, event.target.checked, setBetaUpdates)} disabled />
                   <span />
                 </span>
               </label>

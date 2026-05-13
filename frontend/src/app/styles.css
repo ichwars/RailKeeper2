@@ -4613,6 +4613,46 @@ td {
   font-weight: 850;
 }
 
+.decoder-preview-image {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.decoder-preview-image img {
+  width: 96px;
+  height: 64px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.decoder-preview-image figcaption {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.decoder-preview-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.decoder-preview-summary span {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 999px;
+  padding: 0 10px;
+  background: color-mix(in srgb, var(--accent-bright) 9%, transparent);
+  color: var(--text);
+}
+
 .cv-summary,
 .maintenance-summary {
   display: grid;

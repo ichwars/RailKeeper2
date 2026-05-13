@@ -35,6 +35,8 @@
 - decoder profile suggestions for CV values and files
 - visible CV change history
 - ESU/LokProgrammer project files as decoder attachments with safe metadata preview and extraction
+- safe decoder preview image detection for embedded JPG/PNG/WebP images
+- LokProgrammer/decoder CSV, XML and text preview for CV values and function mappings
 - responsive inventory table/card switch
 - compact mobile inventory layout
 - compact vehicle quick menu for rows/cards/mobile entries
@@ -43,17 +45,16 @@
 - overview statistics export
 - login redirect to the overview dashboard
 - configurable update-check endpoint with offline-safe UI status
+- default GitHub release update endpoint for stable release checks
 - admin user management for local accounts and Admin, Editor, Viewer and Messe role assignment
 
 ## Next Practical Milestones
 
 1. ESU LokProgrammer import
-   - add preview image extraction when safely available
-   - evaluate LokProgrammer CSV/XML/text exports for CV values and function mappings
    - only reverse-engineer proprietary ESUX blocks if no supported export path exists
 2. Settings and system integration
    - wire default printer selection to real system printers where the host platform allows it
-   - decide on the final GitHub release/update endpoint and set `RAILKEEPER_UPDATE_CHECK_URL`
+   - decide whether a separate beta/prerelease update channel is needed
    - decide which authentication options should become functional instead of informational
    - keep storage usage, backup and restore visible without making settings feel overloaded
 3. Ongoing Bambuddy-inspired design polish
