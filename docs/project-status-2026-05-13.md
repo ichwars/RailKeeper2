@@ -7,12 +7,14 @@ Der aktuelle Stand ist lokal gebaut, per Docker Compose gestartet und auf GitHub
 ## Heute abgeschlossen
 
 - Admin-Sitzungsverwaltung in den Einstellungen: Sitzungen anzeigen, aktualisieren und gezielt widerrufen.
+- Sitzungsansicht lädt serverseitig begrenzt nur die benötigten Einträge und ist per API-Test abgesichert.
 - Passwortwechsel für den aktuellen Benutzer inklusive Widerruf anderer eigener Sitzungen.
 - Admin-Passwort-Reset widerruft aktive Sitzungen des betroffenen Benutzers.
 - Persistente Login- und Setup-Rate-Limits.
 - Audit-Log in den Einstellungen inklusive Labels für neue Authentifizierungsereignisse.
 - Backup-Restore mit Texteingabe `WIEDERHERSTELLEN`.
 - Backup-Export zeigt kompakt lokale Ablagegröße und Dateianzahl.
+- Backup-Export/Restore ist gegen versehentliche Auth-Tabellen, Sitzungen und Passworthashes abgesichert; ignorierte Auth-Tabellen werden in der Validierung als Warnung behandelt.
 - Beta-/Prerelease-Updateprüfung ist im Backend und in der Settings-UI aktivierbar.
 - Decoder-Preview-Aktionen übernehmen erkannte CV-Werte und Funktionstasten.
 - ESU/ECoS-Funktionstastensymbole werden als Stammdaten mit SVG-Bild, Beschreibung und Upload-Pflege gespeichert.
@@ -28,16 +30,17 @@ Der aktuelle Stand ist lokal gebaut, per Docker Compose gestartet und auf GitHub
 ## Letzte Commits
 
 ```text
+83c66a9 Cover ignored auth backup tables
+6fa4356 Cover backup auth table exclusions
+778eed2 Cover session list API limit
+57f2cf6 Limit session list in API
+68bd0c1 Align planned integration cards
+19bd1eb Polish settings security layout
+04f2a0a Update status for exhibition print symbols
 ebc75a4 Print exhibition function symbols
+e9ea6df Document exhibition roadmap progress
+5044f7a Update status with messe safeguards
 e5625a3 Cover messe entry permissions
-ff4091c Cover exhibition list audit lifecycle
-c162269 Cover exhibition entry audit logging
-3c798f4 Refresh project status notes
-647cfdd Distinguish missing update releases
-754f29e Document messe role boundaries
-cadde19 Respect combined roles in navigation
-269eff4 Cover exhibition audit logging
-8e0ad2b Audit exhibition changes
 ```
 
 ## Offene Entscheidungen
