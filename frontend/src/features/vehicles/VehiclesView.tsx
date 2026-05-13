@@ -2587,6 +2587,65 @@ export function VehiclesView() {
     }
   };
 
+  const previewCVFileValuesForImport = () => {
+    if (!selected || !cvFileUploadPreview) return;
+    const values = cvFileUploadPreview.previews.flatMap((preview) =>
+      (preview.suggestedCvValues || []).map((value) => ({
+        cvNumber: value.cvNumber,
+        value: value.value,
+        description: value.description || "",
+        category: value.category || "",
+        decoderProfile: preview.suggestedDecoderProfile || cvFileProfile || preview.decoder || preview.projectName || "",
+        sourceFileId: ""
+      }))
+    );
+    const preview = buildCVImportPreview("Decoder-Datei-Vorschau", values, selected.cvValues || []);
+    if (!preview.rows.some((row) => row.status !== "invalid")) {
+      setMessage("Keine gÃ¼ltigen CV-Werte in der Decoder-Vorschau gefunden.");
+      return;
+    }
+    setCVImportPreview(preview);
+    setMessage(`${values.length} erkannte CV-Werte in die ImportprÃ¼fung Ã¼bernommen.`);
+  };
+
+  const applyCVFileFunctionSuggestions = () => {
+    if (!selected || !cvFileUploadPreview) return;
+    const mappings = cvFileUploadPreview.previews.flatMap((preview) =>
+      (preview.suggestedFunctions || []).map((mapping) => ({
+        functionKey: mapping.functionKey,
+        name: mapping.name || "",
+        symbolKey: "",
+        functionType: mapping.functionType || "standard",
+        mode: "dauer",
+        directionDependent: false,
+        notes: preview.fileName
+      }))
+    );
+    const valid = Array.from(new Map(mappings.filter(isValidFunctionMapping).map((mapping) => [mapping.functionKey, mapping])).values());
+    if (valid.length === 0) {
+      setMessage("Keine gÃ¼ltigen Funktionstasten in der Decoder-Vorschau gefunden.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    (async () => {
+      for (const row of valid) {
+        await api.updateVehicleFunction(selected.id, row.functionKey, {
+          name: row.name || "",
+          symbolKey: row.symbolKey || "",
+          functionType: row.functionType || "standard",
+          mode: row.mode || "dauer",
+          directionDependent: Boolean(row.directionDependent),
+          notes: row.notes || ""
+        });
+      }
+    })()
+      .then(() => refreshSelectedVehicle(selected.id))
+      .then(() => setMessage(`${valid.length} Funktionstaste${valid.length === 1 ? "" : "n"} aus der Decoder-Vorschau Ã¼bernommen.`))
+      .catch((error: Error) => setMessage(error.message))
+      .finally(() => setSaving(false));
+  };
+
   const confirmCVFileUpload = () => {
     if (!selected || !cvFileUploadPreview) return;
     const uploadFiles = cvFileUploadPreview.files;
@@ -2989,6 +3048,10 @@ export function VehiclesView() {
     changed: cvImportPreview?.rows.filter((row) => row.status === "changed").length || 0,
     same: cvImportPreview?.rows.filter((row) => row.status === "same").length || 0,
     invalid: cvImportPreview?.rows.filter((row) => row.status === "invalid").length || 0
+  };
+  const cvFilePreviewStats = {
+    cvValues: cvFileUploadPreview?.previews.reduce((sum, preview) => sum + (preview.suggestedCvValues?.length || 0), 0) || 0,
+    functions: cvFileUploadPreview?.previews.reduce((sum, preview) => sum + (preview.suggestedFunctions?.length || 0), 0) || 0
   };
   const storedDecoderProfiles = Array.from(new Set([
     ...(selected?.cvValues || []).map((value) => value.decoderProfile).filter((profile): profile is string => Boolean(profile)),
@@ -3910,6 +3973,12 @@ export function VehiclesView() {
                           <div className="inline-actions">
                             <button type="button" className="secondary-button" onClick={applyFirstCVFileSuggestion} disabled={saving || !cvFileUploadPreview.previews.some((preview) => preview.hasMetadata)}>
                               Vorschlag übernehmen
+                            </button>
+                            <button type="button" className="secondary-button" onClick={previewCVFileValuesForImport} disabled={saving || readonly || cvFilePreviewStats.cvValues === 0}>
+                              CVs prüfen
+                            </button>
+                            <button type="button" className="secondary-button" onClick={applyCVFileFunctionSuggestions} disabled={saving || readonly || cvFilePreviewStats.functions === 0}>
+                              Funktionen übernehmen
                             </button>
                             <button type="button" className="primary-button" onClick={confirmCVFileUpload} disabled={saving || readonly}>
                               <Upload size={15} aria-hidden="true" />

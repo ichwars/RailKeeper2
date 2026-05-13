@@ -39,6 +39,7 @@
 - ESU/LokProgrammer project files as decoder attachments with safe metadata preview and extraction
 - safe decoder preview image detection for embedded JPG/PNG/WebP images
 - LokProgrammer/decoder CSV, XML and text preview for CV values and function mappings
+- decoder preview actions for CV import review and function mapping import
 - responsive inventory table/card switch
 - compact mobile inventory layout
 - compact vehicle quick menu for rows/cards/mobile entries
@@ -56,6 +57,7 @@
 
 1. ESU LokProgrammer import
    - only reverse-engineer proprietary ESUX blocks if no supported export path exists
+   - keep expanding supported export formats when real samples become available
 2. Settings and system integration
    - decide how far print jobs should be automated beyond the browser system dialog
    - decide whether a separate beta/prerelease update channel is needed
