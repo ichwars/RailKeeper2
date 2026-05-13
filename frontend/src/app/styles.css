@@ -5398,7 +5398,7 @@ td {
 }
 
 .exhibition-function-row {
-  grid-template-columns: 54px minmax(220px, 1fr) minmax(150px, 220px);
+  grid-template-columns: 72px minmax(220px, 1fr) minmax(180px, 260px) minmax(150px, 220px);
 }
 
 .checkbox-line {

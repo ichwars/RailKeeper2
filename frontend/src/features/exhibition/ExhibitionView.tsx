@@ -1,6 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, Eye, Image as ImageIcon, Lock, LockOpen, Plus, Printer, Trash2, Upload } from "lucide-react";
-import { api, ExhibitionEntry, ExhibitionEntryInput, ExhibitionList, ExhibitionListInput } from "../../shared/api";
+import {
+  AlertTriangle,
+  Circle,
+  Cloud,
+  Edit3,
+  Eye,
+  Gauge,
+  Image as ImageIcon,
+  Lightbulb,
+  Link,
+  Lock,
+  LockOpen,
+  Megaphone,
+  Plus,
+  Printer,
+  Trash2,
+  Upload,
+  Volume2
+} from "lucide-react";
+import { api, ExhibitionEntry, ExhibitionEntryInput, ExhibitionList, ExhibitionListInput, MasterDataEntry } from "../../shared/api";
 
 type ListSortKey = "designation" | "date" | "entryCount" | "locked";
 type EntrySortKey = "owner" | "locomotiveName" | "dtDecoder" | "decoderNumber" | "functionKeys";
@@ -11,6 +29,7 @@ type ExhibitionFunction = {
   key: string;
   name: string;
   type: string;
+  symbolKey?: string;
 };
 
 const emptyListForm: ExhibitionListInput = { designation: "", date: new Date().toISOString().slice(0, 10) };
@@ -25,6 +44,15 @@ const emptyEntryForm: ExhibitionEntryInput = {
 };
 const functionKeys = Array.from({ length: 32 }, (_, index) => `F${index}`);
 const functionTypes = ["standard", "licht", "sound", "kupplung", "rauch", "sonderfunktion"];
+const fallbackFunctionSymbols = [
+  { key: "light", label: "Licht" },
+  { key: "sound", label: "Sound" },
+  { key: "horn", label: "Horn" },
+  { key: "coupling", label: "Kupplung" },
+  { key: "smoke", label: "Rauch" },
+  { key: "drive", label: "Fahren" },
+  { key: "warning", label: "Warnung" }
+];
 const htmlEscapes: Record<string, string> = {
   "&": "&amp;",
   "<": "&lt;",
@@ -32,7 +60,7 @@ const htmlEscapes: Record<string, string> = {
   "\"": "&quot;",
   "'": "&#39;"
 };
-const emptyFunctions = () => functionKeys.map((key) => ({ key, name: key === "F0" ? "Fahrlicht" : "", type: key === "F0" ? "licht" : "standard" }));
+const emptyFunctions = () => functionKeys.map((key) => ({ key, name: key === "F0" ? "Fahrlicht" : "", type: key === "F0" ? "licht" : "standard", symbolKey: key === "F0" ? "light" : "" }));
 
 function hasAdmin(roles: string[]) {
   return roles.includes("Admin");
@@ -69,7 +97,7 @@ function parseFunctions(value?: string): ExhibitionFunction[] {
 }
 
 function serializeFunctions(functions: ExhibitionFunction[]) {
-  return JSON.stringify(functions.filter((item) => item.name.trim()).map((item) => ({ ...item, name: item.name.trim() })));
+  return JSON.stringify(functions.filter((item) => item.name.trim()).map((item) => ({ ...item, name: item.name.trim(), symbolKey: item.symbolKey || "" })));
 }
 
 function displayFunctions(value?: string) {
@@ -89,6 +117,97 @@ function fileToDataURL(file: File) {
     reader.onerror = () => reject(reader.error || new Error("Bild konnte nicht gelesen werden."));
     reader.readAsDataURL(file);
   });
+}
+
+function symbolImageFromMetadata(metadata?: Record<string, unknown>) {
+  const value = metadata?.imageData || metadata?.activeImageData || metadata?.svgData;
+  return typeof value === "string" ? value : "";
+}
+
+function functionSymbolIcon(symbolKey?: string, functionType?: string, metadata?: Record<string, unknown>) {
+  const imageData = symbolImageFromMetadata(metadata);
+  if (imageData) {
+    return <img className="function-symbol-image" src={imageData} alt="" aria-hidden="true" />;
+  }
+
+  const key = symbolKey || functionType || "standard";
+  const props = { size: 16, "aria-hidden": true };
+  switch (key) {
+    case "light":
+    case "licht":
+      return <Lightbulb {...props} />;
+    case "sound":
+      return <Volume2 {...props} />;
+    case "horn":
+      return <Megaphone {...props} />;
+    case "coupling":
+    case "kupplung":
+      return <Link {...props} />;
+    case "smoke":
+    case "rauch":
+      return <Cloud {...props} />;
+    case "drive":
+      return <Gauge {...props} />;
+    case "warning":
+      return <AlertTriangle {...props} />;
+    default:
+      return <Circle {...props} />;
+  }
+}
+
+function functionSymbolOptions(symbols: MasterDataEntry[]) {
+  const merged = new Map<string, { key: string; label: string; metadata?: Record<string, unknown> }>();
+  for (const symbol of fallbackFunctionSymbols) {
+    merged.set(symbol.key, symbol);
+  }
+  for (const symbol of symbols) {
+    if (symbol.active) {
+      merged.set(symbol.key, { key: symbol.key, label: symbol.label, metadata: symbol.metadata });
+    }
+  }
+  return [...merged.values()];
+}
+
+function functionSymbolMetadata(symbols: MasterDataEntry[], key?: string) {
+  if (!key) return undefined;
+  return symbols.find((symbol) => symbol.key === key && symbol.active)?.metadata;
+}
+
+function FunctionSymbolPicker({
+  value,
+  functionType,
+  symbols,
+  label,
+  onChange
+}: {
+  value?: string;
+  functionType?: string;
+  symbols: MasterDataEntry[];
+  label: string;
+  onChange: (value: string) => void;
+}) {
+  const options = functionSymbolOptions(symbols);
+  const selected = options.find((symbol) => symbol.key === value);
+  return (
+    <details className="function-symbol-picker">
+      <summary aria-label={label}>
+        {functionSymbolIcon(value, functionType, selected?.metadata)}
+        <span>{selected?.label || "Symbol"}</span>
+      </summary>
+      <div className="function-symbol-menu">
+        <button type="button" className={!value ? "active" : ""} onClick={() => onChange("")}>
+          <Circle size={16} aria-hidden="true" />
+          <span>Kein Symbol</span>
+        </button>
+        {options.map((symbol) => (
+          <button type="button" key={symbol.key} className={value === symbol.key ? "active" : ""} onClick={() => onChange(symbol.key)} title={symbol.label}>
+            {functionSymbolIcon(symbol.key, functionType, symbol.metadata)}
+            <span>{symbol.label}</span>
+          </button>
+        ))}
+      </div>
+    </details>
+  );
 }
 
 function printList(list: ExhibitionList, entries: ExhibitionEntry[]) {
@@ -149,6 +268,7 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
   const [entryFunctions, setEntryFunctions] = useState<ExhibitionFunction[]>(emptyFunctions);
   const [listForm, setListForm] = useState<ExhibitionListInput>(emptyListForm);
   const [entryForm, setEntryForm] = useState<ExhibitionEntryInput>(emptyEntryForm);
+  const [symbols, setSymbols] = useState<MasterDataEntry[]>([]);
 
   const selectedList = lists.find((list) => list.id === selectedID) || null;
   const canEditEntries = Boolean(selectedList && !selectedList.locked);
@@ -183,6 +303,10 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
 
   useEffect(() => {
     load();
+  }, []);
+
+  useEffect(() => {
+    api.masterData("symbols", true).then(setSymbols).catch((error: Error) => setMessage(error.message));
   }, []);
 
   useEffect(() => {
@@ -567,8 +691,18 @@ export function ExhibitionView({ roles }: { roles: string[] }) {
                     </div>
                     {entryFunctions.map((item) => (
                       <article key={item.key} className={item.name.trim() ? "function-row exhibition-function-row persisted" : "function-row exhibition-function-row"}>
-                        <strong className="function-key">{item.key}</strong>
+                        <strong className="function-key">
+                          {functionSymbolIcon(item.symbolKey, item.type, functionSymbolMetadata(symbols, item.symbolKey))}
+                          {item.key}
+                        </strong>
                         <input value={item.name} onChange={(event) => updateEntryFunction(item.key, { name: event.target.value })} placeholder="Funktionsname" aria-label={`${item.key} Funktionsname`} />
+                        <FunctionSymbolPicker
+                          value={item.symbolKey || ""}
+                          functionType={item.type}
+                          symbols={symbols}
+                          label={`${item.key} Symbol`}
+                          onChange={(symbolKey) => updateEntryFunction(item.key, { symbolKey })}
+                        />
                         <select value={item.type} onChange={(event) => updateEntryFunction(item.key, { type: event.target.value })} aria-label={`${item.key} Typ`}>
                           {functionTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                         </select>
