@@ -133,6 +133,8 @@ func NewRouter(config Config) http.Handler {
 	mux.HandleFunc("POST /api/v1/users", app.require("Admin", app.createUser))
 	mux.HandleFunc("PUT /api/v1/users/{id}", app.require("Admin", app.updateUser))
 	mux.HandleFunc("DELETE /api/v1/users/{id}", app.require("Admin", app.deleteUser))
+	mux.HandleFunc("GET /api/v1/sessions", app.require("Admin", app.listSessions))
+	mux.HandleFunc("PUT /api/v1/sessions/{id}/revoke", app.require("Admin", app.revokeSession))
 	mux.HandleFunc("GET /api/v1/vehicles", app.require("Viewer", app.listVehicles))
 	mux.HandleFunc("POST /api/v1/vehicle-import/preview", app.require("Editor", app.previewVehicleImport))
 	mux.HandleFunc("POST /api/v1/vehicles", app.require("Editor", app.createVehicle))

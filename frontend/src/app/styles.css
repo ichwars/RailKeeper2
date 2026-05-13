@@ -948,6 +948,10 @@ h1 {
   grid-column: 1 / -1;
 }
 
+.session-management-card {
+  grid-column: 1 / -1;
+}
+
 .audit-log-card {
   grid-column: 1 / -1;
 }
@@ -978,6 +982,10 @@ h1 {
 }
 
 .user-table td {
+  vertical-align: middle;
+}
+
+.session-table td {
   vertical-align: middle;
 }
 

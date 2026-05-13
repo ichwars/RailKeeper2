@@ -32,6 +32,7 @@ import {
   MasterDataInput,
   Role,
   Session,
+  SessionRecord,
   SystemPrinters,
   StorageUsage,
   UserAccount,
@@ -332,6 +333,9 @@ export function SettingsView() {
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [auditLogLoading, setAuditLogLoading] = useState(false);
   const [auditLogMessage, setAuditLogMessage] = useState("");
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsMessage, setSessionsMessage] = useState("");
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [userForm, setUserForm] = useState<UserFormState>(emptyUserForm);
   const [userSaving, setUserSaving] = useState(false);
@@ -382,6 +386,7 @@ export function SettingsView() {
     if (activeSettingsTab !== "auth" || !canManageUsers) return;
     loadUsersAndRoles();
     loadAuditLog();
+    loadSessions();
   }, [activeSettingsTab, canManageUsers]);
 
   useEffect(() => {
@@ -554,6 +559,28 @@ export function SettingsView() {
       .then((result) => setAuditLog(result.entries))
       .catch((error: Error) => setAuditLogMessage(error.message))
       .finally(() => setAuditLogLoading(false));
+  };
+
+  const loadSessions = () => {
+    setSessionsLoading(true);
+    setSessionsMessage("");
+    api
+      .sessions()
+      .then(setSessions)
+      .catch((error: Error) => setSessionsMessage(error.message))
+      .finally(() => setSessionsLoading(false));
+  };
+
+  const revokeSession = (session: SessionRecord) => {
+    if (!window.confirm(`Sitzung von ${session.username} widerrufen?`)) return;
+    setSessionsMessage("");
+    api
+      .revokeSession(session.id)
+      .then(() => {
+        loadSessions();
+        loadAuditLog();
+      })
+      .catch((error: Error) => setSessionsMessage(error.message));
   };
 
   const startUserCreate = () => {
@@ -1629,6 +1656,68 @@ export function SettingsView() {
                   </table>
                 </div>
               </div>
+            )}
+          </section>
+
+          <section className="panel settings-card settings-tool-card session-management-card">
+            <div className="settings-section-head">
+              <div className="settings-card-title">
+                <KeyRound size={18} />
+                <div>
+                  <h2>Sitzungen</h2>
+                  <p>Aktive lokale Anmeldungen prüfen und bei Bedarf widerrufen.</p>
+                </div>
+              </div>
+              {canManageUsers && (
+                <button type="button" className="icon-button" onClick={loadSessions} disabled={sessionsLoading} aria-label="Sitzungen aktualisieren" title="Sitzungen aktualisieren">
+                  <RefreshCw size={16} />
+                </button>
+              )}
+            </div>
+
+            {!canManageUsers ? (
+              <div className="current-user-card">
+                <strong>Admin erforderlich</strong>
+                <span>Nur Admins dürfen Sitzungen einsehen oder widerrufen.</span>
+              </div>
+            ) : (
+              <>
+                <div className="table-wrap settings-inline-table session-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Benutzer</th>
+                        <th>Status</th>
+                        <th>Erstellt</th>
+                        <th>Ablauf</th>
+                        <th>Aktionen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sessionsLoading ? (
+                        <tr><td colSpan={5} className="loading-cell">Sitzungen werden geladen...</td></tr>
+                      ) : sessions.length === 0 ? (
+                        <tr><td colSpan={5} className="loading-cell">Keine Sitzungen gefunden.</td></tr>
+                      ) : (
+                        sessions.map((session) => (
+                          <tr key={session.id} className={session.active ? "" : "muted-row"}>
+                            <td><strong>{session.username}</strong></td>
+                            <td><span className={session.active ? "settings-pill active" : "settings-pill muted"}>{session.active ? "aktiv" : "beendet"}</span></td>
+                            <td>{formatDateTime(session.createdAt)}</td>
+                            <td>{session.revokedAt ? "Widerrufen " + formatDateTime(session.revokedAt) : formatDateTime(session.expiresAt)}</td>
+                            <td>
+                              <button type="button" className="icon-button danger" onClick={() => revokeSession(session)} disabled={!session.active || sessionsLoading} aria-label="Sitzung widerrufen" title="Sitzung widerrufen">
+                                <X size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {sessionsMessage && <p className="form-message">{sessionsMessage}</p>}
+              </>
             )}
           </section>
 

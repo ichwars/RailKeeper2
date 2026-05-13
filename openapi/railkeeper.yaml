@@ -66,6 +66,27 @@ components:
             type: string
         csrfToken:
           type: string
+    SessionRecord:
+      type: object
+      required: [id, userId, username, createdAt, expiresAt, active]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        username:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+        active:
+          type: boolean
     Role:
       type: object
       required: [id, name]
@@ -991,6 +1012,48 @@ paths:
                 $ref: "#/components/schemas/Problem"
         "409":
           description: Last admin protection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /sessions:
+    get:
+      tags: [Users]
+      responses:
+        "200":
+          description: Recent local sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SessionRecord"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /sessions/{id}/revoke:
+    put:
+      tags: [Users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session revoked
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Session not found
           content:
             application/json:
               schema:

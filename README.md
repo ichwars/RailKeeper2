@@ -8,6 +8,7 @@ The application runs as one Go service that serves both the JSON API and the Rea
 
 - first-run setup without default credentials
 - login, logout, server-side sessions, roles and CSRF protection
+- admin session review and targeted session revocation
 - overview dashboard with inventory, value, digital/analog, maintenance and data-quality indicators
 - vehicle list with search and sortable columns
 - table/card inventory view with responsive navigation and compact mobile list
@@ -46,6 +47,7 @@ RailKeeper2 is built for private or small self-hosted installations, but the def
 - SameSite cookies
 - CSRF token for write requests
 - role checks for viewer/editor/admin operations
+- admin-only session review and revocation
 - persistent login/setup rate limiting
 - security headers including CSP, frame blocking and nosniff
 - upload size limit and executable attachment blocking

@@ -36,6 +36,16 @@ export type UserAccountInput = {
   roles: string[];
 };
 
+export type SessionRecord = {
+  id: string;
+  userId: string;
+  username: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string;
+  active: boolean;
+};
+
 export type Vehicle = {
   id: string;
   inventoryNumber: string;
@@ -663,6 +673,11 @@ export const api = {
   deleteUser: (id: string) =>
     request<void>(`/users/${encodeURIComponent(id)}`, {
       method: "DELETE"
+    }),
+  sessions: () => request<SessionRecord[]>("/sessions"),
+  revokeSession: (id: string) =>
+    request<void>(`/sessions/${encodeURIComponent(id)}/revoke`, {
+      method: "PUT"
     }),
   version: (check = false, includePrerelease = false) =>
     request<VersionInfo>(

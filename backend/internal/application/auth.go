@@ -16,14 +16,15 @@ import (
 )
 
 var (
-	ErrInvalidLogin   = errors.New("invalid credentials")
-	ErrUnauthorized   = errors.New("unauthorized")
-	ErrInvalidCSRF    = errors.New("invalid csrf token")
-	ErrForbidden      = errors.New("forbidden")
-	ErrUserValidation = errors.New("user validation failed")
-	ErrUserNotFound   = errors.New("user not found")
-	ErrDuplicateUser  = errors.New("user already exists")
-	ErrLastAdmin      = errors.New("last admin cannot be removed")
+	ErrInvalidLogin    = errors.New("invalid credentials")
+	ErrUnauthorized    = errors.New("unauthorized")
+	ErrInvalidCSRF     = errors.New("invalid csrf token")
+	ErrForbidden       = errors.New("forbidden")
+	ErrUserValidation  = errors.New("user validation failed")
+	ErrUserNotFound    = errors.New("user not found")
+	ErrSessionNotFound = errors.New("session not found")
+	ErrDuplicateUser   = errors.New("user already exists")
+	ErrLastAdmin       = errors.New("last admin cannot be removed")
 )
 
 type AuthService struct {
@@ -62,6 +63,16 @@ type AuditLogEntry struct {
 	TargetID      string `json:"targetId,omitempty"`
 	CreatedAt     string `json:"createdAt"`
 	DetailsJSON   string `json:"detailsJson"`
+}
+
+type SessionRecord struct {
+	ID        string `json:"id"`
+	UserID    string `json:"userId"`
+	Username  string `json:"username"`
+	CreatedAt string `json:"createdAt"`
+	ExpiresAt string `json:"expiresAt"`
+	RevokedAt string `json:"revokedAt,omitempty"`
+	Active    bool   `json:"active"`
 }
 
 type CreateUserInput struct {
@@ -193,6 +204,67 @@ func (s *AuthService) ListAuditLog(ctx context.Context, limit int) ([]AuditLogEn
 		return nil, fmt.Errorf("read audit log: %w", err)
 	}
 	return entries, nil
+}
+
+func (s *AuthService) ListSessions(ctx context.Context) ([]SessionRecord, error) {
+	rows, err := s.db.QueryContext(
+		ctx,
+		`SELECT sessions.id,
+		        sessions.user_id,
+		        users.username,
+		        sessions.created_at,
+		        sessions.expires_at,
+		        COALESCE(sessions.revoked_at, ''),
+		        CASE WHEN sessions.revoked_at IS NULL AND sessions.expires_at > ? THEN 1 ELSE 0 END AS active
+		   FROM sessions
+		   JOIN users ON users.id = sessions.user_id
+		  ORDER BY active DESC, sessions.created_at DESC
+		  LIMIT 200`,
+		time.Now().UTC().Format(time.RFC3339),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	sessions := []SessionRecord{}
+	for rows.Next() {
+		var session SessionRecord
+		var active int
+		if err := rows.Scan(&session.ID, &session.UserID, &session.Username, &session.CreatedAt, &session.ExpiresAt, &session.RevokedAt, &active); err != nil {
+			return nil, fmt.Errorf("scan session: %w", err)
+		}
+		session.Active = active == 1
+		sessions = append(sessions, session)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read sessions: %w", err)
+	}
+	return sessions, nil
+}
+
+func (s *AuthService) RevokeSession(ctx context.Context, actorUserID, sessionID string) error {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return ErrSessionNotFound
+	}
+	result, err := s.db.ExecContext(
+		ctx,
+		`UPDATE sessions SET revoked_at=? WHERE id=? AND revoked_at IS NULL`,
+		time.Now().UTC().Format(time.RFC3339),
+		sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("revoke session: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read revoked session count: %w", err)
+	}
+	if affected == 0 {
+		return ErrSessionNotFound
+	}
+	return s.audit(ctx, actorUserID, "SessionRevoked", "session", sessionID, "{}")
 }
 
 func (s *AuthService) CreateUser(ctx context.Context, actorUserID string, input CreateUserInput) (*UserView, error) {

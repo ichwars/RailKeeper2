@@ -104,6 +104,40 @@ func TestLogoutRevokesSession(t *testing.T) {
 	}
 }
 
+func TestListAndRevokeSessions(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	setup := application.NewSetupService(db)
+	auth := application.NewAuthService(db)
+
+	if err := setup.CreateAdmin(ctx, application.CreateAdminInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := auth.Login(ctx, application.LoginInput{
+		Username: "admin",
+		Password: "very-secure-password",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions, err := auth.ListSessions(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions) != 1 || !sessions[0].Active || sessions[0].Username != "admin" {
+		t.Fatalf("expected active admin session, got %#v", sessions)
+	}
+	if err := auth.RevokeSession(ctx, "", sessions[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.CurrentSession(ctx, result.SessionToken); !errors.Is(err, application.ErrUnauthorized) {
+		t.Fatalf("expected revoked session to be unauthorized, got %v", err)
+	}
+}
+
 func TestListAuditLogReturnsRecentSecurityEvents(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
