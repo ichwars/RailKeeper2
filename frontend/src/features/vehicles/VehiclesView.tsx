@@ -1,5 +1,6 @@
 ﻿import { DragEvent, FormEvent, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -2123,22 +2124,12 @@ type BarcodeSearchDialogProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-type DetectedBarcode = {
-  rawValue?: string;
-};
-
-type BarcodeDetectorInstance = {
-  detect(source: HTMLVideoElement): Promise<DetectedBarcode[]>;
-};
-
-type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
-
 function BarcodeSearchDialog({ value, onValueChange, onClose, onSubmit }: BarcodeSearchDialogProps) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const frameRef = useRef<number | null>(null);
+  const scannerControlsRef = useRef<IScannerControls | null>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerActiveRef = useRef(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerMessage, setScannerMessage] = useState("");
@@ -2150,12 +2141,8 @@ function BarcodeSearchDialog({ value, onValueChange, onClose, onSubmit }: Barcod
 
   const stopCameraScan = useCallback(() => {
     scannerActiveRef.current = false;
-    if (frameRef.current !== null) {
-      window.cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-    }
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+    scannerControlsRef.current?.stop();
+    scannerControlsRef.current = null;
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
@@ -2165,8 +2152,7 @@ function BarcodeSearchDialog({ value, onValueChange, onClose, onSubmit }: Barcod
   useEffect(() => () => stopCameraScan(), [stopCameraScan]);
 
   const startCameraScan = async () => {
-    const Detector = (window as typeof window & { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
-    if (!navigator.mediaDevices?.getUserMedia || !Detector) {
+    if (!navigator.mediaDevices?.getUserMedia) {
       setScannerMessage(t("vehicles.barcode.cameraUnsupported"));
       setScannerOpen(false);
       return;
@@ -2177,60 +2163,53 @@ function BarcodeSearchDialog({ value, onValueChange, onClose, onSubmit }: Barcod
     setScannerOpen(true);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          facingMode: { ideal: "environment" }
-        }
-      });
-      streamRef.current = stream;
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
 
       const video = videoRef.current;
       if (!video) {
-        stream.getTracks().forEach((track) => track.stop());
         setScannerMessage(t("vehicles.barcode.cameraUnavailable"));
         return;
       }
 
-      video.srcObject = stream;
-      await video.play();
-
-      let detector: BarcodeDetectorInstance;
-      try {
-        detector = new Detector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"] });
-      } catch {
-        detector = new Detector();
-      }
-
+      const reader = readerRef.current ?? new BrowserMultiFormatReader();
+      readerRef.current = reader;
       scannerActiveRef.current = true;
       setScannerMessage(t("vehicles.barcode.cameraReady"));
 
-      const scan = async () => {
-        if (!scannerActiveRef.current || !videoRef.current) {
-          return;
-        }
-        try {
-          if (videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-            const codes = await detector.detect(videoRef.current);
-            const rawValue = codes.find((code) => code.rawValue)?.rawValue?.trim();
-            const ean = rawValue?.replace(/[^\d]/g, "") ?? "";
-            if (ean.length >= 8) {
-              onValueChange(ean);
-              setScannerMessage(t("vehicles.barcode.cameraDetected"));
-              stopCameraScan();
-              inputRef.current?.focus();
-              inputRef.current?.select();
-              return;
-            }
+      const controls = await reader.decodeFromConstraints(
+        {
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            height: { ideal: 720 },
+            width: { ideal: 1280 }
           }
-        } catch {
-          setScannerMessage(t("vehicles.barcode.cameraDetecting"));
-        }
-        frameRef.current = window.requestAnimationFrame(scan);
-      };
+        },
+        video,
+        (result, _error, controlsFromCallback) => {
+          if (!scannerActiveRef.current || !result) {
+            return;
+          }
 
-      frameRef.current = window.requestAnimationFrame(scan);
+          const ean = result.getText().replace(/[^\d]/g, "");
+          if (ean.length < 8) {
+            setScannerMessage(t("vehicles.barcode.cameraDetecting"));
+            return;
+          }
+
+          onValueChange(ean);
+          setScannerMessage(t("vehicles.barcode.cameraDetected"));
+          scannerActiveRef.current = false;
+          controlsFromCallback.stop();
+          scannerControlsRef.current = null;
+          setScannerOpen(false);
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        }
+      );
+      scannerControlsRef.current = controls;
     } catch {
+      scannerActiveRef.current = false;
       setScannerMessage(t("vehicles.barcode.cameraPermission"));
       setScannerOpen(false);
     }

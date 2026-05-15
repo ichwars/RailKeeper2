@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
+    "@zxing/browser": "^0.2.0",
     "lucide-react": "latest",
     "qrcode": "^1.5.4",
     "react": "latest",

@@ -964,7 +964,7 @@ export function SettingsView() {
     <>
       <section className="settings-head">
         <h1>
-          {t("settings.title")} <span>0.1.5</span>
+          {t("settings.title")} <span>0.1.6</span>
         </h1>
         <p>{t("settings.subtitle")}</p>
       </section>

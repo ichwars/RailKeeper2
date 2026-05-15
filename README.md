@@ -29,7 +29,7 @@ The project is designed for private collections, clubs and small workshops that 
 
 - Local-first inventory with SQLite, uploads and JSON backups
 - Vehicle records with model data, technical fields, ownership details, images, attachments, QR codes and clean read-only detail views
-- Article data web search with configurable sources, barcode/EAN entry, camera-assisted EAN scanning where supported and explicit field-by-field review
+- Article data web search with configurable sources, barcode/EAN entry, ZXing-based camera scanning and explicit field-by-field review
 - PDF report dialog for inventory overview and detail lists with selectable vehicles, QR codes and images
 - ECoS live connection for reading locomotive lists and preparing future external ID synchronization
 - Decoder function mapping from F0 to F31 with symbol library and stored SVG/PNG graphics
@@ -83,7 +83,7 @@ The SQLite database, uploads and local files stay in the `railkeeper2_data` Dock
 To pin a specific release instead of `latest`, set this in `.env`:
 
 ```env
-RAILKEEPER_IMAGE=ghcr.io/ichwars/railkeeper2:v0.1.5
+RAILKEEPER_IMAGE=ghcr.io/ichwars/railkeeper2:v0.1.6
 ```
 
 If you intentionally want to build the checked-out source tree, use:

@@ -145,7 +145,7 @@ export function Shell({
                 <LogOut size={17} aria-hidden="true" />
               </button>
             </div>
-            <span className="sidebar-version">v0.1.5</span>
+            <span className="sidebar-version">v0.1.6</span>
           </div>
         </nav>
       </aside>
